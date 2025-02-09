@@ -663,6 +663,7 @@ canvas_ribbon:
   size: 300 # The width of the ribbon
   alpha: 0.6 # The transparency of the ribbon
   zIndex: -1 # The display level of the ribbon
+  # click_to_change: true # 点击是否更换颜色
 
 
 # ---------------------------------------------------------------
