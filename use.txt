@@ -1,0 +1,17 @@
+1. 在~/blog/source/_posts/ 下写文章
+2. 启动本地服务 hexo s
+3. 生成静态文件并部署： hexo clean && hexo g -d
+4. 新写一篇文章 hexo new "我的第一篇博客"
+
+常用的文章设置
+---
+title: 文章标题
+date: 2024-02-09 14:30:00
+updated: 2024-02-09 15:00:00  # 更新时间
+tags: [标签1, 标签2]
+categories: [分类1, 分类2]
+keywords: [关键词1, 关键词2]
+description: 文章描述
+top: true  # 置顶文章
+comments: true  # 是否开启评论
+---
