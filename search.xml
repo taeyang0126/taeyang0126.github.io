@@ -120,6 +120,29 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       </tags>
   </entry>
   <entry>
+    <title>Feign 更换 Client</title>
+    <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
+    <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
+<li>feignClient 实现类依旧是 LoadBalancerFeignClient</li>
+<li>LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClient</span> <span class="keyword">implements</span> <span class="title class_">Client</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> WebClient webClient;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VertxFeignClient</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Vertx</span> <span class="variable">vertx</span> <span class="operator">=</span> Vertx.vertx();</span><br><span class="line">        <span class="type">WebClientOptions</span> <span class="variable">webClientOptions</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">WebClientOptions</span>()</span><br><span class="line">                .setMaxPoolSize(<span class="number">100</span>)</span><br><span class="line">                .setMaxWaitQueueSize(<span class="number">10000</span>);</span><br><span class="line">        <span class="built_in">this</span>.webClient = WebClient.create(vertx, webClientOptions);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Response <span class="title function_">execute</span><span class="params">(Request request, Request.Options options)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> request.url();</span><br><span class="line">        <span class="type">var</span> <span class="variable">bodys</span> <span class="operator">=</span> request.requestBody().asBytes();</span><br><span class="line">        Map&lt;String, Collection&lt;String&gt;&gt; headers = request.headers();</span><br><span class="line">        io.vertx.core.http.<span class="type">HttpMethod</span> <span class="variable">vertxMethod</span> <span class="operator">=</span> io.vertx.core.http.HttpMethod.valueOf(request.httpMethod().name());</span><br><span class="line"></span><br><span class="line">        <span class="type">HeadersMultiMap</span> <span class="variable">entries</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeadersMultiMap</span>();</span><br><span class="line">        headers.forEach(entries::add);</span><br><span class="line"></span><br><span class="line">        CompletableFuture&lt;Response&gt; completableFuture = <span class="keyword">new</span> <span class="title class_">CompletableFuture</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        webClient.requestAbs(vertxMethod, url)</span><br><span class="line">                .putHeaders(entries)</span><br><span class="line">                .sendBuffer(bodys == <span class="literal">null</span> ? Buffer.buffer() : Buffer.buffer(bodys))</span><br><span class="line">                .timeout(options.readTimeoutMillis(), TimeUnit.MILLISECONDS)</span><br><span class="line">                .onSuccess(t -&gt; &#123;</span><br><span class="line">                    log.info(<span class="string">&quot;url[&#123;&#125;] 响应 -&gt; &#123;&#125;&quot;</span>, url, t.bodyAsString());</span><br><span class="line">                    <span class="type">MultiMap</span> <span class="variable">responseHeaders</span> <span class="operator">=</span> t.headers();</span><br><span class="line">                    Map&lt;String, Collection&lt;String&gt;&gt; map = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">                    responseHeaders.forEach((k, v) -&gt; map.put(k, Collections.singleton(v)));</span><br><span class="line">                    completableFuture.complete(Response.builder()</span><br><span class="line">                            .status(t.statusCode())</span><br><span class="line">                            .reason(t.statusMessage())</span><br><span class="line">                            .headers(map)</span><br><span class="line">                            .body(t.bodyAsBuffer().getBytes())</span><br><span class="line">                            .request(request)</span><br><span class="line">                            .build());</span><br><span class="line">                &#125;).onFailure(completableFuture::completeExceptionally);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> completableFuture.get();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>配置类装配 FeignClient bean</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>feign</category>
+      </categories>
+      <tags>
+        <tag>feign</tag>
+        <tag>rpc</tag>
+        <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Feign、Hystrix、Ribbon 超时机制</title>
     <url>/2025/02/09/feign/feign-hystrix-ribbon-chao-shi-ji-zhi/posts/undefined/</url>
     <content><![CDATA[<h2 id="使用版本"><a href="#使用版本" class="headerlink" title="使用版本"></a>使用版本</h2><ul>
@@ -264,62 +287,6 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
         <tag>feign</tag>
         <tag>rpc</tag>
         <tag>微服务</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>多线程异常处理</title>
-    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
-</blockquote>
-<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
-<li>新起线程中抛出异常</li>
-</ul>
-<blockquote>
-<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>线程池中抛出的异常</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-
-<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
-<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
-</blockquote>
-<ul>
-<li><p>Try catch 显示处理异常</p>
-</li>
-<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
-<ul>
-<li><p>线程处理</p>
-</li>
-<li><p>thread.setUncaughtExceptionHandler</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
-
-</li>
-<li><p>线程池处理</p>
-</li>
-<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ul>
-<p>Hold on…..有人的地方就不存在信任这一说- -</p>
-<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
-<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
-</blockquote>
-<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>JAVA</category>
-      </categories>
-      <tags>
-        <tag>JAVA</tag>
-        <tag>多线程</tag>
       </tags>
   </entry>
   <entry>
@@ -547,29 +514,6 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       </tags>
   </entry>
   <entry>
-    <title>Feign 更换 Client</title>
-    <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
-    <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
-<li>feignClient 实现类依旧是 LoadBalancerFeignClient</li>
-<li>LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClient</span> <span class="keyword">implements</span> <span class="title class_">Client</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> WebClient webClient;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VertxFeignClient</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Vertx</span> <span class="variable">vertx</span> <span class="operator">=</span> Vertx.vertx();</span><br><span class="line">        <span class="type">WebClientOptions</span> <span class="variable">webClientOptions</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">WebClientOptions</span>()</span><br><span class="line">                .setMaxPoolSize(<span class="number">100</span>)</span><br><span class="line">                .setMaxWaitQueueSize(<span class="number">10000</span>);</span><br><span class="line">        <span class="built_in">this</span>.webClient = WebClient.create(vertx, webClientOptions);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Response <span class="title function_">execute</span><span class="params">(Request request, Request.Options options)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> request.url();</span><br><span class="line">        <span class="type">var</span> <span class="variable">bodys</span> <span class="operator">=</span> request.requestBody().asBytes();</span><br><span class="line">        Map&lt;String, Collection&lt;String&gt;&gt; headers = request.headers();</span><br><span class="line">        io.vertx.core.http.<span class="type">HttpMethod</span> <span class="variable">vertxMethod</span> <span class="operator">=</span> io.vertx.core.http.HttpMethod.valueOf(request.httpMethod().name());</span><br><span class="line"></span><br><span class="line">        <span class="type">HeadersMultiMap</span> <span class="variable">entries</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeadersMultiMap</span>();</span><br><span class="line">        headers.forEach(entries::add);</span><br><span class="line"></span><br><span class="line">        CompletableFuture&lt;Response&gt; completableFuture = <span class="keyword">new</span> <span class="title class_">CompletableFuture</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        webClient.requestAbs(vertxMethod, url)</span><br><span class="line">                .putHeaders(entries)</span><br><span class="line">                .sendBuffer(bodys == <span class="literal">null</span> ? Buffer.buffer() : Buffer.buffer(bodys))</span><br><span class="line">                .timeout(options.readTimeoutMillis(), TimeUnit.MILLISECONDS)</span><br><span class="line">                .onSuccess(t -&gt; &#123;</span><br><span class="line">                    log.info(<span class="string">&quot;url[&#123;&#125;] 响应 -&gt; &#123;&#125;&quot;</span>, url, t.bodyAsString());</span><br><span class="line">                    <span class="type">MultiMap</span> <span class="variable">responseHeaders</span> <span class="operator">=</span> t.headers();</span><br><span class="line">                    Map&lt;String, Collection&lt;String&gt;&gt; map = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">                    responseHeaders.forEach((k, v) -&gt; map.put(k, Collections.singleton(v)));</span><br><span class="line">                    completableFuture.complete(Response.builder()</span><br><span class="line">                            .status(t.statusCode())</span><br><span class="line">                            .reason(t.statusMessage())</span><br><span class="line">                            .headers(map)</span><br><span class="line">                            .body(t.bodyAsBuffer().getBytes())</span><br><span class="line">                            .request(request)</span><br><span class="line">                            .build());</span><br><span class="line">                &#125;).onFailure(completableFuture::completeExceptionally);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> completableFuture.get();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>配置类装配 FeignClient bean</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>feign</category>
-      </categories>
-      <tags>
-        <tag>feign</tag>
-        <tag>rpc</tag>
-        <tag>微服务</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>JVM内存相关的监控指标</title>
     <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
     <content><![CDATA[<p><img data-src="/images/jvm-memory.PNG" alt="jvm内存图片"></p>
@@ -646,6 +590,174 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       <tags>
         <tag>JVM</tag>
         <tag>参数</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>多线程异常处理</title>
+    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
+</blockquote>
+<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
+<li>新起线程中抛出异常</li>
+</ul>
+<blockquote>
+<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>线程池中抛出的异常</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
+<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
+</blockquote>
+<ul>
+<li><p>Try catch 显示处理异常</p>
+</li>
+<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
+<ul>
+<li><p>线程处理</p>
+</li>
+<li><p>thread.setUncaughtExceptionHandler</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
+
+</li>
+<li><p>线程池处理</p>
+</li>
+<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<p>Hold on…..有人的地方就不存在信任这一说- -</p>
+<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
+<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
+</blockquote>
+<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>JAVA</category>
+      </categories>
+      <tags>
+        <tag>JAVA</tag>
+        <tag>多线程</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Netty Reactor 启动流程-1</title>
+    <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
+<p><img data-src="/images/netty_01_01.png" alt="netty"></p>
+<h2 id="Netty-服务端的启动流程"><a href="#Netty-服务端的启动流程" class="headerlink" title="Netty 服务端的启动流程"></a>Netty 服务端的启动流程</h2><ul>
+<li>创建服务端<code>NioServerSocketChannel</code>并初始化</li>
+<li>将服务端<code>NioServerSocketChannel</code>注册到<code>主Reactor线程组</code>中</li>
+<li>注册成功后，开始初始化<code>NioServerSocketChannel</code>中的 pipeline，然后在 pipeline 中触发 channelRegister 事件。</li>
+<li>随后由<code>NioServerSocketChannel</code>绑定端口地址。</li>
+<li>绑定端口地址成功后，向<code>NioServerSocketChannel</code>对应的<code>Pipeline</code>中触发传播<code>ChannelActive事件</code>，在<code>ChannelActive事件回调</code>中向<code>Main Reactor</code>注册<code>OP_ACCEPT事件</code>，开始等待客户端连接。服务端启动完成。</li>
+</ul>
+<p><img data-src="/images/netty_01_02.png" alt="netty"></p>
+<h2 id="1-initAndRegister"><a href="#1-initAndRegister" class="headerlink" title="1. initAndRegister"></a>1. initAndRegister</h2><p><img data-src="/images/netty_01_03.png" alt="netty"></p>
+<p>开始注册</p>
+<p><img data-src="/images/netty_01_04.png" alt="netty"></p>
+<h2 id="2-Bind"><a href="#2-Bind" class="headerlink" title="2. Bind"></a>2. Bind</h2><p><code>bind事件</code>在 Netty 中被定义为<code>outbound事件</code>，所以它在<code>pipeline</code>中是反向传播。先从<code>TailContext</code>开始反向传播直到<code>HeadContext</code>；<code>bind</code>的核心逻辑也正是实现在<code>HeadContext</code>中</p>
+<blockquote>
+<p>headContext 中的绑定方法</p>
+</blockquote>
+<p><img data-src="/images/netty_01_05.png" alt="netty"></p>
+<blockquote>
+<p>NioServerSocketChannel 中的绑定动作</p>
+</blockquote>
+<p><img data-src="/images/netty_01_06.png" alt="netty"></p>
+<blockquote>
+<p>绑定完成后触发 active 操作 –&gt; HeadContext</p>
+</blockquote>
+<p><img data-src="/images/netty_01_07.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</p>
+</blockquote>
+<p><img data-src="/images/netty_01_08.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
+</blockquote>
+<p><img data-src="/images/netty_01_09.png" alt="netty"></p>
+<h2 id="细节点"><a href="#细节点" class="headerlink" title="细节点"></a>细节点</h2><h3 id="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"><a href="#Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的" class="headerlink" title="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"></a><code>Reactor线程</code>的启动是在向<code>Reactor</code>提交第一个异步任务的时候启动的</h3><blockquote>
+<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable, boolean)</p>
+</blockquote>
+<p><img data-src="/images/netty_01_10.png" alt="netty"></p>
+<h3 id="Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"><a href="#Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务" class="headerlink" title="Reactor线程的核心工作 轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"></a><code>Reactor</code>线程的核心工作 <code>轮询所有注册其上的Channel中的IO就绪事件</code>，<code>处理对应Channel上的IO事件</code>，<code>执行异步任务</code></h3><blockquote>
+<p>io.netty.channel.nio.NioEventLoop#run</p>
+</blockquote>
+<p><img data-src="/images/netty_01_11.png" alt="netty"></p>
+<h3 id="Channel-的各种事件触发顺序"><a href="#Channel-的各种事件触发顺序" class="headerlink" title="Channel 的各种事件触发顺序"></a>Channel 的各种事件触发顺序</h3><ol>
+<li><p>handlerAdded</p>
+<p> socket 向 jdk selector 注册后、在通知注册的 promise 完成之前（也就是 promise 回调之前）触发</p>
+<p> <img data-src="/images/netty_01_12.png" alt="netty"></p>
+</li>
+<li><p>channelRegistered</p>
+<p> 在通知 promise 完成后（也就是回调执行完成之后）会传播 Registered 事件</p>
+<p> <img data-src="/images/netty_01_13.png" alt="netty"></p>
+</li>
+<li><p>Active </p>
+<p>a. 服务端 NioServerSocketChannel 判断是否激活的标准为端口是否绑定成功。</p>
+<p>b. </p>
+   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">NioServerSocketChannel</span> <span class="keyword">extends</span> <span class="title class_">AbstractNioMessageChannel</span></span><br><span class="line">                             <span class="keyword">implements</span> <span class="title class_">io</span>.netty.channel.socket.ServerSocketChannel &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> isOpen() &amp;&amp; javaChannel().socket().isBound();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>c. 客户端<code>NioSocketChannel</code>判断是否激活的标准为是否处于<code>Connected状态</code>。</p>
+<p>d. </p>
+   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">SocketChannel</span> <span class="variable">ch</span> <span class="operator">=</span> javaChannel();</span><br><span class="line">    <span class="keyword">return</span> ch.isOpen() &amp;&amp; ch.isConnected();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p> e. 向后传播 active 事件<br> f. <code>readIfIsAutoRead</code></p>
+<blockquote>
+<p>如果开启了自动读（io.netty.channel.ChannelConfig#isAutoRead），则注册对应感兴趣的事件</p>
+</blockquote>
+<ul>
+<li>server 连接注册 OP_ACCEPT 事件</li>
+<li>client 连接注册 OP_READ 事件</li>
+</ul>
+</li>
+</ol>
+<h3 id="向底层-selector-注册"><a href="#向底层-selector-注册" class="headerlink" title="向底层 selector 注册"></a>向底层 selector 注册</h3><blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doRegister</p>
+</blockquote>
+<p><img data-src="/images/netty_01_14.png" alt="netty"></p>
+<h3 id="NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"><a href="#NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行" class="headerlink" title="NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"></a>NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行</h3><p><img data-src="/images/netty_01_15.png" alt="netty"></p>
+<h3 id="事件在pipeline中的传播"><a href="#事件在pipeline中的传播" class="headerlink" title="事件在pipeline中的传播"></a>事件在<code>pipeline</code>中的传播</h3><ul>
+<li><code>inbound事件</code>从<code>HeadContext</code>开始逐个向后传播直到<code>TailContext</code></li>
+<li><code>outbound事件</code>则是反向传播，从<code>TailContext</code>开始反向向前传播直到<code>HeadContext</code></li>
+</ul>
+<p><img data-src="/images/netty_01_16.png" alt="netty"></p>
+<h3 id="服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？"><a href="#服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？" class="headerlink" title="服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？"></a>服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？</h3><ul>
+<li>注册感兴趣的事件触发时机都是<code>ChannelActive</code><ul>
+<li><img data-src="/images/netty_01_17.png" alt="netty"></li>
+<li>对于服务端 socket 来说，bind 成功后会传递 <code>channelActive</code>事件</li>
+<li>io.netty.channel.AbstractChannel.AbstractUnsafe#bind</li>
+<li><img data-src="/images/netty_01_18.png" alt="netty"></li>
+<li>对于客户端 socket 来说，register 成功后会传递 <code>channelActive</code>事件</li>
+<li>io.netty.channel.AbstractChannel.AbstractUnsafe#register0</li>
+<li><img data-src="/images/netty_01_19.png" alt="netty"></li>
+</ul>
+</li>
+<li>通过 <code>HeadContext#read</code> 方法进行感兴趣事件的注册</li>
+</ul>
+<blockquote>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</span><br></pre></td></tr></table></figure></blockquote>
+<p><img data-src="/images/netty_01_20.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
+</blockquote>
+<p><img data-src="/images/netty_01_21.png" alt="netty"></p>
+]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
       </tags>
   </entry>
   <entry>
@@ -781,118 +893,6 @@ sequenceDiagram
         <tag>linux</tag>
         <tag>网络</tag>
         <tag>socket</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Netty Reactor 启动流程-1</title>
-    <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
-<p><img data-src="/images/netty_01_01.png" alt="netty"></p>
-<h2 id="Netty-服务端的启动流程"><a href="#Netty-服务端的启动流程" class="headerlink" title="Netty 服务端的启动流程"></a>Netty 服务端的启动流程</h2><ul>
-<li>创建服务端<code>NioServerSocketChannel</code>并初始化</li>
-<li>将服务端<code>NioServerSocketChannel</code>注册到<code>主Reactor线程组</code>中</li>
-<li>注册成功后，开始初始化<code>NioServerSocketChannel</code>中的 pipeline，然后在 pipeline 中触发 channelRegister 事件。</li>
-<li>随后由<code>NioServerSocketChannel</code>绑定端口地址。</li>
-<li>绑定端口地址成功后，向<code>NioServerSocketChannel</code>对应的<code>Pipeline</code>中触发传播<code>ChannelActive事件</code>，在<code>ChannelActive事件回调</code>中向<code>Main Reactor</code>注册<code>OP_ACCEPT事件</code>，开始等待客户端连接。服务端启动完成。</li>
-</ul>
-<p><img data-src="/images/netty_01_02.png" alt="netty"></p>
-<h2 id="1-initAndRegister"><a href="#1-initAndRegister" class="headerlink" title="1. initAndRegister"></a>1. initAndRegister</h2><p><img data-src="/images/netty_01_03.png" alt="netty"></p>
-<p>开始注册</p>
-<p><img data-src="/images/netty_01_04.png" alt="netty"></p>
-<h2 id="2-Bind"><a href="#2-Bind" class="headerlink" title="2. Bind"></a>2. Bind</h2><p><code>bind事件</code>在 Netty 中被定义为<code>outbound事件</code>，所以它在<code>pipeline</code>中是反向传播。先从<code>TailContext</code>开始反向传播直到<code>HeadContext</code>；<code>bind</code>的核心逻辑也正是实现在<code>HeadContext</code>中</p>
-<blockquote>
-<p>headContext 中的绑定方法</p>
-</blockquote>
-<p><img data-src="/images/netty_01_05.png" alt="netty"></p>
-<blockquote>
-<p>NioServerSocketChannel 中的绑定动作</p>
-</blockquote>
-<p><img data-src="/images/netty_01_06.png" alt="netty"></p>
-<blockquote>
-<p>绑定完成后触发 active 操作 –&gt; HeadContext</p>
-</blockquote>
-<p><img data-src="/images/netty_01_07.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</p>
-</blockquote>
-<p><img data-src="/images/netty_01_08.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
-</blockquote>
-<p><img data-src="/images/netty_01_09.png" alt="netty"></p>
-<h2 id="细节点"><a href="#细节点" class="headerlink" title="细节点"></a>细节点</h2><h3 id="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"><a href="#Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的" class="headerlink" title="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"></a><code>Reactor线程</code>的启动是在向<code>Reactor</code>提交第一个异步任务的时候启动的</h3><blockquote>
-<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable, boolean)</p>
-</blockquote>
-<p><img data-src="/images/netty_01_10.png" alt="netty"></p>
-<h3 id="Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"><a href="#Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务" class="headerlink" title="Reactor线程的核心工作 轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"></a><code>Reactor</code>线程的核心工作 <code>轮询所有注册其上的Channel中的IO就绪事件</code>，<code>处理对应Channel上的IO事件</code>，<code>执行异步任务</code></h3><blockquote>
-<p>io.netty.channel.nio.NioEventLoop#run</p>
-</blockquote>
-<p><img data-src="/images/netty_01_11.png" alt="netty"></p>
-<h3 id="Channel-的各种事件触发顺序"><a href="#Channel-的各种事件触发顺序" class="headerlink" title="Channel 的各种事件触发顺序"></a>Channel 的各种事件触发顺序</h3><ol>
-<li><p>handlerAdded</p>
-<p> socket 向 jdk selector 注册后、在通知注册的 promise 完成之前（也就是 promise 回调之前）触发</p>
-<p> <img data-src="/images/netty_01_12.png" alt="netty"></p>
-</li>
-<li><p>channelRegistered</p>
-<p> 在通知 promise 完成后（也就是回调执行完成之后）会传播 Registered 事件</p>
-<p> <img data-src="/images/netty_01_13.png" alt="netty"></p>
-</li>
-<li><p>Active </p>
-<p>a. 服务端 NioServerSocketChannel 判断是否激活的标准为端口是否绑定成功。</p>
-<p>b. </p>
-   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">NioServerSocketChannel</span> <span class="keyword">extends</span> <span class="title class_">AbstractNioMessageChannel</span></span><br><span class="line">                             <span class="keyword">implements</span> <span class="title class_">io</span>.netty.channel.socket.ServerSocketChannel &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> isOpen() &amp;&amp; javaChannel().socket().isBound();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>c. 客户端<code>NioSocketChannel</code>判断是否激活的标准为是否处于<code>Connected状态</code>。</p>
-<p>d. </p>
-   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">SocketChannel</span> <span class="variable">ch</span> <span class="operator">=</span> javaChannel();</span><br><span class="line">    <span class="keyword">return</span> ch.isOpen() &amp;&amp; ch.isConnected();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p> e. 向后传播 active 事件<br> f. <code>readIfIsAutoRead</code></p>
-<blockquote>
-<p>如果开启了自动读（io.netty.channel.ChannelConfig#isAutoRead），则注册对应感兴趣的事件</p>
-</blockquote>
-<ul>
-<li>server 连接注册 OP_ACCEPT 事件</li>
-<li>client 连接注册 OP_READ 事件</li>
-</ul>
-</li>
-</ol>
-<h3 id="向底层-selector-注册"><a href="#向底层-selector-注册" class="headerlink" title="向底层 selector 注册"></a>向底层 selector 注册</h3><blockquote>
-<p>io.netty.channel.nio.AbstractNioChannel#doRegister</p>
-</blockquote>
-<p><img data-src="/images/netty_01_14.png" alt="netty"></p>
-<h3 id="NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"><a href="#NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行" class="headerlink" title="NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"></a>NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行</h3><p><img data-src="/images/netty_01_15.png" alt="netty"></p>
-<h3 id="事件在pipeline中的传播"><a href="#事件在pipeline中的传播" class="headerlink" title="事件在pipeline中的传播"></a>事件在<code>pipeline</code>中的传播</h3><ul>
-<li><code>inbound事件</code>从<code>HeadContext</code>开始逐个向后传播直到<code>TailContext</code></li>
-<li><code>outbound事件</code>则是反向传播，从<code>TailContext</code>开始反向向前传播直到<code>HeadContext</code></li>
-</ul>
-<p><img data-src="/images/netty_01_16.png" alt="netty"></p>
-<h3 id="服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？"><a href="#服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？" class="headerlink" title="服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？"></a>服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？</h3><ul>
-<li>注册感兴趣的事件触发时机都是<code>ChannelActive</code><ul>
-<li><img data-src="/images/netty_01_17.png" alt="netty"></li>
-<li>对于服务端 socket 来说，bind 成功后会传递 <code>channelActive</code>事件</li>
-<li>io.netty.channel.AbstractChannel.AbstractUnsafe#bind</li>
-<li><img data-src="/images/netty_01_18.png" alt="netty"></li>
-<li>对于客户端 socket 来说，register 成功后会传递 <code>channelActive</code>事件</li>
-<li>io.netty.channel.AbstractChannel.AbstractUnsafe#register0</li>
-<li><img data-src="/images/netty_01_19.png" alt="netty"></li>
-</ul>
-</li>
-<li>通过 <code>HeadContext#read</code> 方法进行感兴趣事件的注册</li>
-</ul>
-<blockquote>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</span><br></pre></td></tr></table></figure></blockquote>
-<p><img data-src="/images/netty_01_20.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
-</blockquote>
-<p><img data-src="/images/netty_01_21.png" alt="netty"></p>
-]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
       </tags>
   </entry>
   <entry>
@@ -1551,6 +1551,133 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>spring-kafka</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> Spring kafka 版本 2.8.4</p>
+</blockquote>
+<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
+<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
+<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
+</ul>
+<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
+<li>enable.auto.commit&#x3D;true</li>
+<li>auto-commit-interval 自动提交的时间间隔</li>
+</ul>
+<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
+<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
+
+  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
+
+  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
+</code></pre>
+<ul>
+<li>自动提交流程</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
+<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
+<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
+<li>ackMode &#x3D; <em>RECORD</em></li>
+</ul>
+<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
+<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
+<ul>
+<li>ackMode !&#x3D; <em>RECORD</em></li>
+</ul>
+<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
+<ul>
+<li>AckMode 解析</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">类型</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><em>RECORD</em></td>
+<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>BATCH</em></td>
+<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
+</tr>
+<tr>
+<td align="left"><em>TIME</em></td>
+<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT</em></td>
+<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT_TIME</em></td>
+<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL_IMMEDIATE</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
+</tr>
+</tbody></table>
+<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
+<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
+<li>异步提交 syncCommits&#x3D;false</li>
+</ul>
+<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
+<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
+<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
+<li>默认重试 9 次，每次重试之前没有间隔</li>
+</ul>
+<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
+<ul>
+<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
+</ul>
+<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
+<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
+<ul>
+<li>定义重试次数 &amp; 重试间隔</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
+
+<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
+<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
+
+<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
+<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
+<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
+<li>autoCommit &#x3D; false</li>
+<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
+<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
+</ul>
+</li>
+</ul>
+<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+        <tag>spring</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>kafka-consumer</title>
     <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
     <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
@@ -1707,133 +1834,6 @@ sequenceDiagram
         <tag>消息队列</tag>
         <tag>中间件</tag>
         <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>spring-kafka</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> Spring kafka 版本 2.8.4</p>
-</blockquote>
-<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
-<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
-<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
-</ul>
-<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
-<li>enable.auto.commit&#x3D;true</li>
-<li>auto-commit-interval 自动提交的时间间隔</li>
-</ul>
-<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
-<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
-
-  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
-
-  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
-</code></pre>
-<ul>
-<li>自动提交流程</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
-<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
-<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
-<li>ackMode &#x3D; <em>RECORD</em></li>
-</ul>
-<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
-<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
-<ul>
-<li>ackMode !&#x3D; <em>RECORD</em></li>
-</ul>
-<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
-<ul>
-<li>AckMode 解析</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th align="left">类型</th>
-<th align="left">说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><em>RECORD</em></td>
-<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>BATCH</em></td>
-<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
-</tr>
-<tr>
-<td align="left"><em>TIME</em></td>
-<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT</em></td>
-<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT_TIME</em></td>
-<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL_IMMEDIATE</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
-</tr>
-</tbody></table>
-<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
-<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
-<li>异步提交 syncCommits&#x3D;false</li>
-</ul>
-<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
-<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
-<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
-<li>默认重试 9 次，每次重试之前没有间隔</li>
-</ul>
-<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
-<ul>
-<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
-</ul>
-<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
-<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
-<ul>
-<li>定义重试次数 &amp; 重试间隔</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
-
-<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
-<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
-
-<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
-<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
-<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
-<li>autoCommit &#x3D; false</li>
-<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
-<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
-</ul>
-</li>
-</ul>
-<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-        <tag>spring</tag>
       </tags>
   </entry>
   <entry>
