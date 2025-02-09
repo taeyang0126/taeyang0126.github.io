@@ -56,11 +56,11 @@ counter:
     one: 目前共计 1 个分类
     other: "目前共计 %d 个分类"
   archive_posts:
-    zero: 暂无日志。
-    one: 目前共计 1 篇日志。
-    other: "目前共计 %d 篇日志。"
+    zero: 暂无文章。
+    one: 目前共计 1 篇文章。
+    other: "目前共计 %d 篇文章。"
 state:
-  posts: 日志
+  posts: 文章
   tags: 标签
   categories: 分类
 search:
@@ -88,7 +88,7 @@ reward:
   bitcoin: 比特币
   comment: 请我一杯咖啡吧！
 follow_me:
-  welcome: 欢迎关注我的其它发布渠道
+  welcome: follow me
 accessibility:
   nav_toggle: 切换导航栏
   prev_page: 上一页

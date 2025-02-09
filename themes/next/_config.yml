@@ -68,11 +68,11 @@ creative_commons:
   license: by-nc-sa
   # Available values: big | small
   size: small
-  sidebar: false
-  post: false
+  sidebar: true
+  post: true
   # You can set a language value if you prefer a translated version of CC license, e.g. deed.zh
   # CC licenses are available in 39 languages, you can find the specific and correct abbreviation you need on https://creativecommons.org
-  language:
+  language: deed.zh
 
 # Open graph settings
 # See: https://hexo.io/docs/helpers#open-graph
@@ -208,14 +208,14 @@ language_switcher: false
 
 footer:
   # Specify the year when the site was setup. If not defined, current year will be used.
-  #since: 2021
+  since: 2025
 
   # Icon between year and copyright info.
   icon:
     # Icon name in Font Awesome. See: https://fontawesome.com/icons
     name: fa fa-heart
     # If you want to animate the icon, set it to true.
-    animated: false
+    animated: true
     # Change the color of icon, using Hex Code.
     color: "#ff0000"
 
@@ -263,7 +263,8 @@ post_meta:
 # Dependencies: https://github.com/next-theme/hexo-word-counter
 symbols_count_time:
   separated_meta: true
-  item_text_total: false
+  item_text_post: true
+  item_text_total: true
 
 # Use icon instead of the symbol # to indicate the tag at the bottom of the post
 tag_icon: false
@@ -388,7 +389,7 @@ back2top:
   # Back to top in sidebar.
   sidebar: false
   # Scroll percent label in b2t button.
-  scrollpercent: false
+  scrollpercent: true
 
 # Reading progress bar
 reading_progress:
@@ -511,11 +512,12 @@ note:
   #  - modern    bootstrap callout new (v2-v3) alert style.
   #  - flat      flat callout style with background, like on Mozilla or StackOverflow.
   #  - disabled  disable all CSS styles import of note tag.
-  style: simple
-  icons: false
+  style: flat
+  icons: true
   # Offset lighter of background in % for modern and flat styles (modern: -12 | 12; flat: -18 | 6).
   # Offset also applied to label tag variables. This option can work with disabled note tag.
   light_bg_offset: 0
+  border_radius: 3
 
 # Tabs tag
 tabs:
@@ -592,11 +594,11 @@ fancybox: false
 # Medium Zoom is a JavaScript library for zooming images like Medium.
 # Warning: Do not enable both `fancybox` and `mediumzoom`.
 # For more information: https://medium-zoom.francoischalifour.com
-mediumzoom: false
+mediumzoom: true
 
 # Vanilla JavaScript plugin for lazyloading images.
 # For more information: https://apoorv.pro/lozad.js/demo/
-lazyload: false
+lazyload: true
 
 # Automatically insert whitespace between CJK and half-width characters.
 # For more information: https://github.com/vinta/pangu.js
@@ -645,7 +647,7 @@ motion:
 # Progress bar in the top during page loading.
 # For more information: https://github.com/CodeByZach/pace
 pace:
-  enable: false
+  enable: true
   # All available colors:
   # black | blue | green | orange | pink | purple | red | silver | white | yellow
   color: blue
@@ -868,11 +870,11 @@ local_search:
   enable: true
   trigger: auto
   # Show top n results per article, show all results by setting to -1
-  top_n_per_article: 1
+  top_n_per_article: 3
   # Unescape html strings to the readable one.
-  unescape: false
+  unescape: true
   # Preload the search data when the page loads.
-  preload: false
+  preload: true
 
 
 # ---------------------------------------------------------------

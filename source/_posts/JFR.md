@@ -99,4 +99,4 @@ jcmd 21 JFR.stop name=profile_online
 
 - [JIT相关jfr事件](https://zhuanlan.zhihu.com/p/158592899)
 
-![img](https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=MGQ5ZTQ4M2E5NTExOTI1MmQ2N2QyYjM2MTEyZjcxZDFfMk5FVW5iMXFUWXdjS1J5c2xXU21YOWJJZnBqT290QTZfVG9rZW46RldvTmIwOG1lbzBHRFd4U3pqcmNUYWdabmJiXzE3MzkwODE2OTc6MTczOTA4NTI5N19WNA)
+![img](/images/jfr_01_01.png)
