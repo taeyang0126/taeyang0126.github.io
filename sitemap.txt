@@ -1,5 +1,7 @@
-https://taeyang0126.github.io/2025/02/09/my-first-post/posts/undefined/
+https://taeyang0126.github.io/tags/index.html
+https://taeyang0126.github.io/categories/index.html
 https://taeyang0126.github.io/2025/02/09/hello-world/posts/undefined/
+https://taeyang0126.github.io/2025/02/09/my-first-post/posts/undefined/
 https://taeyang0126.github.io/about/index.html
 https://taeyang0126.github.io/
 https://taeyang0126.github.io/tags/test/

@@ -2,7 +2,16 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>https://taeyang0126.github.io/2025/02/09/my-first-post/posts/undefined/</loc>
+    <loc>https://taeyang0126.github.io/tags/index.html</loc>
+    
+    <lastmod>2025-02-09</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://taeyang0126.github.io/categories/index.html</loc>
     
     <lastmod>2025-02-09</lastmod>
     
@@ -12,6 +21,15 @@
   
   <url>
     <loc>https://taeyang0126.github.io/2025/02/09/hello-world/posts/undefined/</loc>
+    
+    <lastmod>2025-02-09</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://taeyang0126.github.io/2025/02/09/my-first-post/posts/undefined/</loc>
     
     <lastmod>2025-02-09</lastmod>
     
