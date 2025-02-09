@@ -167,10 +167,11 @@ related_posts:
 live2d:
   enable: true
   model:
-    use: live2d-widget-model-wanko  # 使用小狗模型
+    use: live2d-widget-model-wanko
   display:
     position: right
-    width: 200
-    height: 200
+    width: 150     # 适当减小尺寸
+    height: 150
+    fps: 30        # 降低帧率（默认是60）
   mobile:
-    show: true
+    show: false    # 移动端建议关闭，可以大幅减少移动设备的资源消耗
