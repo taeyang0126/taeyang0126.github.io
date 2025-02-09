@@ -368,7 +368,7 @@ codeblock:
   # Code Highlight theme
   # All available themes: https://theme-next.js.org/highlight/
   theme:
-    light: default
+    light: a11y-dark
     dark: stackoverflow-dark
   prism:
     light: prism
@@ -377,7 +377,7 @@ codeblock:
   copy_button:
     enable: true
     # Available values: default | flat | mac
-    style:
+    style: mac
   # Fold code block
   fold:
     enable: true
@@ -866,6 +866,7 @@ algolia_search:
 # Dependencies: https://github.com/next-theme/hexo-generator-searchdb
 local_search:
   enable: true
+  trigger: auto
   # Show top n results per article, show all results by setting to -1
   top_n_per_article: 1
   # Unescape html strings to the readable one.
