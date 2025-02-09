@@ -1,35 +1,234 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>JVM内存相关的监控指标</title>
-    <url>/2025/02/09/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img src="/images/jvm-memory.PNG" alt="jvm内存图片"></p>
-<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
-<p>JVM Heap代表存放Java Objects的Heap</p>
+    <title>1. Netty Reactor 启动流程</title>
+    <url>/2025/02/09/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=M2RkN2M3YjVjNDQ5ZDdkMGI0OGE2Y2MwMjY0MzQ4NTRfMlhkYk5KOEp5ZGxqT1lHeWphWWtjVzRCTGIzOGgyTjNfVG9rZW46WFZWQWJxR09EbzVMekh4NHdiNmNPT2JUbnZnXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h2 id="Netty-服务端的启动流程"><a href="#Netty-服务端的启动流程" class="headerlink" title="Netty 服务端的启动流程"></a>Netty 服务端的启动流程</h2><ul>
+<li>创建服务端<code>NioServerSocketChannel</code>并初始化</li>
+<li>将服务端<code>NioServerSocketChannel</code>注册到<code>主Reactor线程组</code>中</li>
+<li>注册成功后，开始初始化<code>NioServerSocketChannel</code>中的 pipeline，然后在 pipeline 中触发 channelRegister 事件。</li>
+<li>随后由<code>NioServerSocketChannel</code>绑定端口地址。</li>
+<li>绑定端口地址成功后，向<code>NioServerSocketChannel</code>对应的<code>Pipeline</code>中触发传播<code>ChannelActive事件</code>，在<code>ChannelActive事件回调</code>中向<code>Main Reactor</code>注册<code>OP_ACCEPT事件</code>，开始等待客户端连接。服务端启动完成。</li>
+</ul>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ODdjNjJhMmQwYmYzN2VmY2M4OTk4NTczZTA0ODZjMTBfd1kxMVl4ZWxiemtQcHIzRk01aDFxbHRaQU9Ud2hBZkhfVG9rZW46RGlVbGJaQUtGb2FtRkF4Zk1QbmNuaU85bmVlXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h2 id="1-initAndRegister"><a href="#1-initAndRegister" class="headerlink" title="1. initAndRegister"></a>1. initAndRegister</h2><p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=NDNlYWMzY2YzYjBiZDBjZmU5MzU2ZTMzZTAwNWQwNDhfc2g0Z0dGR0RZRUl2S2FPalB3b3Q3VUFhRUhKVnRIT2pfVG9rZW46RlJEVGJhQ2k0b2RKWGV4c01kS2M3S3dxbkRmXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p>开始注册</p>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=OWVlMmQyMWM0NzgzNThjYWMyNTYwMzZlZjc1NzM2MTFfQU9DaEFWNUJIeENxYnBZMVNUYmdLZFpLUDRhR1lGTHlfVG9rZW46V1JlTWJqSFhkb1FKR1N4OFI0S2NObWJqbnlkXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h2 id="2-Bind"><a href="#2-Bind" class="headerlink" title="2. Bind"></a>2. Bind</h2><p><code>bind事件</code>在 Netty 中被定义为<code>outbound事件</code>，所以它在<code>pipeline</code>中是反向传播。先从<code>TailContext</code>开始反向传播直到<code>HeadContext</code>；<code>bind</code>的核心逻辑也正是实现在<code>HeadContext</code>中</p>
+<blockquote>
+<p>headContext 中的绑定方法</p>
 </blockquote>
-<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ZGU2YWI1OWU2OGE5ZTRhMWY0ODEzYmI4ZTlmOGU3NGVfcE5lbkVzUU1lalNEWkZIUXQ1bzdvOGU3RFc2U05ZdW9fVG9rZW46RjhRSWIwR0xjbzl2RVh4TXNtMWM4WmpBbndjXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<blockquote>
+<p>NioServerSocketChannel 中的绑定动作</p>
+</blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=YWNjZGZhY2UxMmJiNDJkYmI3MzQxZjhjM2FmZWEzYmNfWTlwSWVSTmFtQWVERDQ2MXJ3eENPSGh0OW4yajJPdk9fVG9rZW46TEt1SmJTOWdxb1k3OXd4d0RZeWNKMmJRbklkXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<blockquote>
+<p>绑定完成后触发 active 操作 –&gt; HeadContext</p>
+</blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=MjBkYTExNDA4YTJlNDI1MjllM2NkNzg3MGIyZjMyODNfRGNVRzFIZmpkTUpzRnAxTGhnS3k0NUdYdHNNVFRTeUVfVG9rZW46TU5TamJMeUtWb2hRRlN4cEg3b2MwYmtQbmpkXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<blockquote>
+<p>io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</p>
+</blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=N2QxNjBkZGYzNDI3N2FjZThiY2ZhYmJkMjBmMGRmZmJfVTFwbkc4RGJrU1llcVN6QUlWVUc2MUlDRlV4Y3BwMTRfVG9rZW46U04yT2I3VjRsb01IN0d4VE1jd2M2Q241bjlnXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
+</blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=YTJmNDAxY2NmZjgxMzZiOGE3YzczZDhmYmRhMjNhMTBfeHU3dTl4SUdiQ0x1RUJ2OUNneDVoazNnYWpTMHBHNVdfVG9rZW46U0t3dWJXdzg5bzJKd2J4b3dUaGNtTXREbjliXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h2 id="细节点"><a href="#细节点" class="headerlink" title="细节点"></a>细节点</h2><h3 id="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"><a href="#Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的" class="headerlink" title="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"></a><code>Reactor线程</code>的启动是在向<code>Reactor</code>提交第一个异步任务的时候启动的</h3><blockquote>
+<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable, boolean)</p>
+</blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=NWFjYzZhNDgyMDk3YmU2Y2U3ZDJjMDk1YzE0MjE2YjBfOHBSQ0xRa1pyRUFId3gwNmNIYTRXWjFUTFVLZkI0b05fVG9rZW46SWM3V2JNcVdpb1JqY1h4SzV6d2NPZWpLbjNnXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h3 id="Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"><a href="#Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务" class="headerlink" title="Reactor线程的核心工作 轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"></a><code>Reactor</code>线程的核心工作 <code>轮询所有注册其上的Channel中的IO就绪事件</code>，<code>处理对应Channel上的IO事件</code>，<code>执行异步任务</code></h3><blockquote>
+<p>io.netty.channel.nio.NioEventLoop#run</p>
+</blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ZTc1ZjJiYjNiNzIyNTE4ZjJiNmQ3ZDE4MjliMDcwZWJfRmtZS0liRHp0ZGVNREFkZlVSRXBheTBLNWFNTU1aNGdfVG9rZW46R29RcmJIYlgxb043bEd4S0ZkTGNBN3VKbkRjXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h3 id="Channel-的各种事件触发顺序"><a href="#Channel-的各种事件触发顺序" class="headerlink" title="Channel 的各种事件触发顺序"></a>Channel 的各种事件触发顺序</h3><ol>
+<li><p>handlerAdded</p>
+<p> socket 向 jdk selector 注册后、在通知注册的 promise 完成之前（也就是 promise 回调之前）触发</p>
+<p> <img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=M2E3NmM0N2QzM2MwNDExMDc4OWNiYTFjYzIyMzRmODNfSnhEUTdXTkpITHRxWWlMV0VZRGFUaTl3UzhrOVdFSE1fVG9rZW46RHMyamJJU0Z1b1FMQXJ4c2JBOWNpNUtybjliXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+</li>
+<li><p>channelRegistered</p>
+<p> 在通知 promise 完成后（也就是回调执行完成之后）会传播 Registered 事件</p>
+<p> <img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=MjA5MGIxYzk4NjcwNmU1NTVkZTE4MmQ4NjQ3YzA2ZjdfUEtkQ1czdGdKVnV5VTlpRXNwVTlUcVVrYkxQYjVRc0hfVG9rZW46QkdyTmJNS0ZPb3VWNFp4c2VHeWMyYVdNbkNiXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+</li>
+<li><p>Active </p>
+<p>a. 服务端 NioServerSocketChannel 判断是否激活的标准为端口是否绑定成功。</p>
+<p>b. </p>
+   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">NioServerSocketChannel</span> <span class="keyword">extends</span> <span class="title class_">AbstractNioMessageChannel</span></span><br><span class="line">                             <span class="keyword">implements</span> <span class="title class_">io</span>.netty.channel.socket.ServerSocketChannel &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> isOpen() &amp;&amp; javaChannel().socket().isBound();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
-<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+<p>c. 客户端<code>NioSocketChannel</code>判断是否激活的标准为是否处于<code>Connected状态</code>。</p>
+<p>d. </p>
+   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">SocketChannel</span> <span class="variable">ch</span> <span class="operator">=</span> javaChannel();</span><br><span class="line">    <span class="keyword">return</span> ch.isOpen() &amp;&amp; ch.isConnected();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p> e. 向后传播 active 事件<br> f. <code>readIfIsAutoRead</code></p>
+<blockquote>
+<p>如果开启了自动读（io.netty.channel.ChannelConfig#isAutoRead），则注册对应感兴趣的事件</p>
 </blockquote>
 <ul>
-<li>CodeCache</li>
-<li>Metaspace</li>
-<li>CompressedClassSpace</li>
-<li>DirectBuffer</li>
-<li>Thread Stacks</li>
+<li>server 连接注册 OP_ACCEPT 事件</li>
+<li>client 连接注册 OP_READ 事件</li>
 </ul>
-<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
-<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
-<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+</li>
+</ol>
+<h3 id="向底层-selector-注册"><a href="#向底层-selector-注册" class="headerlink" title="向底层 selector 注册"></a>向底层 selector 注册</h3><blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doRegister</p>
+</blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ODE3MGZhZjAzZWE4ODE0ZjAzNjM2ZDY3MmM1NmY2MmRfOU1SUmU1WHVVbzFmVjg0RDNKYUcyZzZTdlBTaVpJakRfVG9rZW46SGtaSmJXSnpyb0xTQlp4aDZNb2NYMmlrbmdlXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h3 id="NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"><a href="#NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行" class="headerlink" title="NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"></a>NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行</h3><p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=OTBiZTI4ZjgwMjBhNjZhZTUxZDk5YmY4NDAyZTFlNzdfaWl3RUNlVjM2VDlXV01rekEycnFRSGtZc3I0bHRuRkdfVG9rZW46TVBva2JmTVdYb0F6OWF4UUI1WWNsVE9EbkliXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h3 id="事件在pipeline中的传播"><a href="#事件在pipeline中的传播" class="headerlink" title="事件在pipeline中的传播"></a>事件在<code>pipeline</code>中的传播</h3><ul>
+<li><code>inbound事件</code>从<code>HeadContext</code>开始逐个向后传播直到<code>TailContext</code></li>
+<li><code>outbound事件</code>则是反向传播，从<code>TailContext</code>开始反向向前传播直到<code>HeadContext</code></li>
+</ul>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=NzgwNDg4ZDkwMjViMDI3OGM3MzJjZWY4MTYwZmFjODNfZzAxVllzZ1ZWVzJtemJ5dENZdHowVnh6VkNtUnVuaTVfVG9rZW46T0xFYmJOU1Y0b3Fnekd4N3JnZGN2cDZPbkZkXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<h3 id="服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？"><a href="#服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？" class="headerlink" title="服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？"></a>服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？</h3><ul>
+<li>注册感兴趣的事件触发时机都是<code>ChannelActive</code><ul>
+<li><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=Y2I2ZjE5ZjU1MTM0MjdjZWI0NjNiZTFlYWViZjdjYmJfM28xa05jbEl5OFdHUnVLS3U5bnRtMzRtOTNid0E5YzFfVG9rZW46SmNma2JNT0dRb0FIQjF4VXRwTGNZMWZjbkxnXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></li>
+<li>对于服务端 socket 来说，bind 成功后会传递 <code>channelActive</code>事件</li>
+<li>io.netty.channel.AbstractChannel.AbstractUnsafe#bind</li>
+<li><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=MjZkMzU1OGZjZGM5NWQxNzNjNzdjYjA5YjlhNzJiZDBfUEtDN3FpOXFtbzZXNTRKYWF6ZDU3Vmo0ampra3UzVUNfVG9rZW46WG1hRmJiYkxWb3M5Q0l4OEp6RGMxS003bnNmXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></li>
+<li>对于客户端 socket 来说，register 成功后会传递 <code>channelActive</code>事件</li>
+<li>io.netty.channel.AbstractChannel.AbstractUnsafe#register0</li>
+<li><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ZjIyOGFiNmY3MGQwOGYwZTY0OWFhYjEwMDU2NzMxYjJfMjU2UEJpb3AwdDRXUUJmZVp4STRDVXdRSDRKQkh1MEFfVG9rZW46UmE0RmJkQ09ab1o1S0h4Wm95c2MyQ3hobndDXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></li>
+</ul>
+</li>
+<li>通过 <code>HeadContext#read</code> 方法进行感兴趣事件的注册</li>
+</ul>
+<blockquote>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</span><br></pre></td></tr></table></figure></blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=YTBlMzQ4NTJjNzFiM2ZiNDFkZDhlMDAyNjc1MDJjN2ZfZzl5N1NUTE5YVzhkak1tOEVvS1g3aVF0aWtMRjlXOFFfVG9rZW46VnczYWJESDBGb3RWakl4OWxtMGNaemRqbkxjXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
+</blockquote>
+<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ZTA0MzgyZDc2NjY4YTY3N2NjNjgxMjRkYWNjN2NhYzZfaE8zOU1tWGhMSzRYWUlwdVR6Z3pZdHVjY2lUS0k1dWpfVG9rZW46Sm1ZNmI4TnFTb0VLZGp4YTVIQmNKS0NZbnlFXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
 ]]></content>
       <categories>
-        <category>JVM</category>
+        <category>Netty</category>
       </categories>
       <tags>
-        <tag>JVM</tag>
-        <tag>监控</tag>
-        <tag>内存</tag>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Arthas</title>
+    <url>/2025/02/09/arthas/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><p><a href="https://github.com/alibaba/arthas/issues/71">Arthas的一些特殊用法文档说明 · Issue #71 · alibaba&#x2F;arthas</a></p>
+</li>
+<li><p><a href="https://github.com/alibaba/arthas/issues/1424">arthas 获取spring被代理的目标对象 · Issue #1424 · alibaba&#x2F;arthas</a></p>
+</li>
+<li><p><a href="https://github.com/alibaba/arthas/issues/537">Arthas实践–jad&#x2F;mc&#x2F;redefine线上热更新一条龙 · Issue #537 · alibaba&#x2F;arthas</a></p>
+</li>
+</ul>
+<h3 id="1-获取当前HttpServletRequest"><a href="#1-获取当前HttpServletRequest" class="headerlink" title="1. 获取当前HttpServletRequest"></a>1. 获取当前HttpServletRequest</h3><ul>
+<li><p>执行某个request方法</p>
+<p>  <code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes().getRequest().xxx</code></p>
+</li>
+<li><p>获取全部的请求头</p>
+<p>  <code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes().getRequest().getHeaderNames()</code></p>
+</li>
+</ul>
+<h3 id="2-获取spring-context-并执行某些操作"><a href="#2-获取spring-context-并执行某些操作" class="headerlink" title="2. 获取spring context 并执行某些操作"></a>2. 获取spring context 并执行某些操作</h3><blockquote>
+<p><strong>前置</strong> 使用tt记录请求，获取到上下文</p>
+<p>tt -t org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter invokeHandlerMethod -n 3</p>
+</blockquote>
+<pre><code>tt -i 1000 -w &#39;target.getApplicationContext().getBean(&quot;jdbcTemplate&quot;)&#39;
+
+tt -i 1000 -w &#39;target.getApplicationContext().getBean(&quot;jdbcTemplate&quot;).dataSource.ConnectionPool&#39;
+
+tt -i 1000 -w &#39;target.getApplicationContext().getBean(&quot;jdbcTemplate&quot;).getTargetSource().target&#39;
+
+tt -i 1000 -w &#39;target.getApplicationContext().getBean(&quot;jdbcTemplate&quot;).getTargetSource().target.cacheMap&#39;
+
+tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(&quot;spring.datasource.riskctrl.url&quot;)&#39;
+</code></pre>
+<h3 id="3-使用ognl"><a href="#3-使用ognl" class="headerlink" title="3. 使用ognl"></a>3. 使用<a href="https://commons.apache.org/dormant/commons-ognl/language-guide.html">ognl</a></h3><ul>
+<li><p>对前置表达式值进行二次计算  #this 表示前置表达式的值 <strong><code>.()</code></strong> 表示自表达式，产生一个单一值</p>
+<p>  <strong><code>listeners.size().(#this &gt; 100? 2\*#this : 20+#this)</code></strong></p>
+</li>
+<li><p>对前置表达式进行二次计算，产生一个数组</p>
+<p>  <strong><code>params[0].&#123;#this == &quot;lei&quot; ?  &quot;yes&quot; : &quot;no&quot;&#125;</code></strong></p>
+</li>
+<li><p>对前置表达式(数组类型)进行二次计算，产生一个新的数组</p>
+<p>  <strong><code>params.&#123;#this instanceof String ?  &quot;yes&quot; : &quot;no&quot;&#125;</code></strong></p>
+</li>
+<li><p>返回数组中第一个匹配的对象</p>
+<p>  <strong><code>params.&#123;^#this instanceof Integer&#125;</code></strong></p>
+</li>
+<li><p>调用static方法 使用  <strong>@class@method(<strong><strong>args</strong></strong>)</strong></p>
+<p>  <strong><code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes()</code></strong></p>
+</li>
+<li><p>获取静态字段 <strong>@class@field</strong></p>
+</li>
+</ul>
+<h3 id="4-一些常用命令"><a href="#4-一些常用命令" class="headerlink" title="4. 一些常用命令"></a>4. 一些常用命令</h3><ul>
+<li><p>获取classloader hash，如果是springBoot项目取 org.springframework.boot.loader.LaunchedURLClassLoader</p>
+<p>  <strong><code>classloader -t</code></strong></p>
+</li>
+<li><p>容器安装 vim</p>
+<p>  <strong><code>apt-get update &amp;&amp; apt-get install -y vim</code></strong></p>
+</li>
+<li><p>Ognl 获取spring context</p>
+  <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># 49c2faae 表示classloader hash</span><br><span class="line"># cn.hutool.extra.spring.SpringUtil 表示能获取到spring容器的方法</span><br><span class="line">ognl -c 49c2faae &#x27;#beanName=&quot;eventDataAuthManage&quot;, #bean=@cn.hutool.extra.spring.SpringUtil@getBean(#beanName), @org.springframework.aop.support.AopUtils@getTargetClass(#bean).getName()&#x27;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Ognl lambda 表达式</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 使用 =:[] 定义lambda即函数</span><br><span class="line">-- 使用 #getBean() 调用</span><br><span class="line">ognl -c 49c2faae &#x27;</span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash">getBean =:[@cn.hutool.extra.spring.SpringUtil@getBean(#this)],</span></span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash">getBean(<span class="string">&quot;syncDataAuthController&quot;</span>).dataCodeList<span class="string">&#x27;</span></span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查找方法</p>
+<p>  <strong><code>sm com.xx.class</code></strong></p>
+</li>
+<li><p>修改静态变量的值</p>
+<p>  <strong><code>getstatic com.xyz.HelloWorld s &quot;#s=&#39;abc&#39;&quot;</code></strong></p>
+</li>
+<li><p>修改变量的值</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 1. 使用 tt 记录方法调用</span><br><span class="line">tt -t com.example.UserService getUserById</span><br><span class="line">-- 2. 查看记录</span><br><span class="line">tt -l</span><br><span class="line">-- 3. 修改捕获的对象 target 代表当前被调用方法的对象实例（即 &quot;this&quot; 对象）</span><br><span class="line">tt -i 1000 -w &#x27;target.name=&quot;newName&quot;&#x27;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>过滤参数类型为class的方法</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 过滤要点就是通过全类名@class拿到class对象，再getName()获取名称</span><br><span class="line">watch com.wangji92.arthas.plugin.demo.controller.StaticTest invokeClass &#x27;&#123;returnObj,throwExp&#125;&#x27;  -n 5  -x 3  </span><br><span class="line">&#x27;params[0].getName().equals(@com.wangji92.arthas.plug.demo.controller.User@class.getName())&#x27; -v</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查找response404的堆栈</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">stack -E javax.servlet.http.HttpServletResponse sendError|setStatus params[0]==404</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="5-特殊命令"><a href="#5-特殊命令" class="headerlink" title="5. 特殊命令"></a>5. 特殊命令</h3><ul>
+<li><p>Trace 命令多个类、多个方法、指定线程、指定耗时时间</p>
+  <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># trace -E 表示正则</span><br><span class="line">trace -E </span><br><span class="line"># 表示类是 NioEventLoop 或者 SingleThreadEventExecutor</span><br><span class="line">&#x27;io\.netty\.channel\.nio\.NioEventLoop|io\.netty\.util\.concurrent\.SingleThreadEventExecutor&#x27;  </span><br><span class="line"># 表示方法是 select processSelectedKeys runAllTasks</span><br><span class="line">&#x27;select|processSelectedKeys|runAllTasks&#x27; </span><br><span class="line"># @Thread arthas提供表示当前线程 #cost arthas提供，表示耗时</span><br><span class="line">&#x27;@Thread@currentThread().getName().contains(&quot;IO-HTTP-WORKER-IOPool&quot;)&amp;&amp;#cost&gt;500&#x27;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取代理对象的原始对象</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tt -w &#x27;#isProxy=:[ @org.springframework.aop.support.AopUtils@isAopProxy(#this)?1: #this instanceof java.lang.reflect.Proxy ? 0 :-1],#isJdkDynamicProxy =:[@org.springframework.aop.support.AopUtils@isJdkDynamicProxy(#this) ? true :false ],#cglibTarget =:[#hField =#this.getClass().getDeclaredField(&quot;CGLIB$CALLBACK_0&quot;),#hField.setAccessible(true),#dynamicAdvisedInterceptor=#hField.get(#this),#fieldAdvised=#dynamicAdvisedInterceptor.getClass().getDeclaredField(&quot;advised&quot;),#fieldAdvised.setAccessible(true),1==1? #fieldAdvised.get(#dynamicAdvisedInterceptor).getTargetSource().getTarget():null],#jdkTarget=:[ #hField=#this.getClass().getSuperclass().getDeclaredField(&quot;h&quot;),#hField.setAccessible(true),#aopProxy=#hField.get(#this),#advisedField=#aopProxy.getClass().getDeclaredField(&quot;advised&quot;),#advisedField.setAccessible(true),1==1?#advisedField.get(#aopProxy).getTargetSource().getTarget():null],#nonProxyResultFunc = :[#proxyResul=#isProxy(#this),#proxyResul== -1 ?#this :#proxyResul== 0? @java.lang.reflect.Proxy@getInvocationHandler(#this):#isJdkDynamicProxy(#this)? #isJdkDynamicProxy(#this) : #cglibTarget(#this)],#nonProxyTarget=#nonProxyResultFunc(target),#nonProxyTarget&#x27;  -x 1 -i 1002</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="6-Vmtool-使用"><a href="#6-Vmtool-使用" class="headerlink" title="6. Vmtool 使用"></a>6. Vmtool 使用</h3><blockquote>
+<p><code>vmtool</code> 利用 Java 的 Instrumentation API 和 JVM TI（JVM Tool Interface）与 JVM 进行交互，可以绕过spring context 直接获取对象</p>
+</blockquote>
+<ul>
+<li><p>常用子命令</p>
+<ul>
+<li><code>--action getInstances</code>：获取类的实例</li>
+<li><code>--action forceGc</code>：强制执行垃圾回收</li>
+<li><code>--action getClassLoader</code>：获取类加载器信息</li>
+</ul>
+</li>
+<li><p>com.xxx.cache.CacheAspect 中的 boolean 变量 cacheEnabled 修改为false</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool: Arthas 的一个命令，用于对 JVM 进行底层操作。</span><br><span class="line">-x 3: 设置执行次数限制为 3 次。</span><br><span class="line">--action getInstances: 指定操作为获取类的实例。</span><br><span class="line">--className com.xxx.cache.CacheAspect: 指定要操作的类名。</span><br><span class="line">--express: 后面跟着的是要执行的 OGNL 表达式</span><br><span class="line">ongl表达式:</span><br><span class="line">反射获取字段 #field=instances[0].getClass().getDeclaredField(&quot;cacheEnabled&quot;)</span><br><span class="line">设置为true #field.setAccessible(true)</span><br><span class="line">修改字段 #field.set(instances[0],false)</span><br><span class="line"></span><br><span class="line">vmtool -x 3 --action getInstances --className com.xxx.cache.CacheAspect --express &#x27;#field=instances[0].getClass().getDeclaredField(&quot;cacheEnabled&quot;),#field.setAccessible(true),#field.set(instances[0],false)&#x27; -c 3bd94634</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改final变量</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 4 --action getInstances --className com.wangji92.arthas.plugin.demo.controller.CommonController  --express &#x27;#field=instances[0].getClass().getDeclaredField(&quot;FINAL_VALUE&quot;),#modifiers=#field.getClass().getDeclaredField(&quot;modifiers&quot;),#modifiers.setAccessible(true),#modifiers.setInt(#field,#field.getModifiers() &amp; ~@java.lang.reflect.Modifier@FINAL),#field.setAccessible(true),#field.set(instances[0],&quot; 3333&quot;)&#x27; -c  18b4aac2</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>执行某个方法</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 1 --action getInstances </span><br><span class="line">--className com.xx.SyncDataAuthController </span><br><span class="line">--express &#x27;instances[0].getDataCodePage(@com.xx.UtilJson@convertValue(&quot;&#123;\&quot;pageIndex\&quot;:0,\&quot;pageSize\&quot;:0&#125;&quot;, @com.xx.BaseQuery@class))&#x27;</span><br><span class="line">-c 49c2faae</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取spring context</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool --action getInstances --className org.springframework.context.ConfigurableApplicationContext --express &#x27;instances[0].getEnvironment().getProperty(&quot;server.port&quot;)&#x27;</span><br></pre></td></tr></table></figure></li>
+</ul>
+]]></content>
+      <categories>
+        <category>Arthas</category>
+      </categories>
+      <tags>
+        <tag>Arthas</tag>
+        <tag>问题排查</tag>
       </tags>
   </entry>
   <entry>
@@ -252,64 +451,8 @@
       </categories>
       <tags>
         <tag>JVM</tag>
-        <tag>监控</tag>
         <tag>JFR</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>多线程异常处理</title>
-    <url>/2025/02/09/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
-</blockquote>
-<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
-<li>新起线程中抛出异常</li>
-</ul>
-<blockquote>
-<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>线程池中抛出的异常</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-
-<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
-<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
-</blockquote>
-<ul>
-<li><p>Try catch 显示处理异常</p>
-</li>
-<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
-<ul>
-<li><p>线程处理</p>
-</li>
-<li><p>thread.setUncaughtExceptionHandler</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
-
-</li>
-<li><p>线程池处理</p>
-</li>
-<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ul>
-<p>Hold on…..有人的地方就不存在信任这一说- -</p>
-<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
-<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
-</blockquote>
-<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>JAVA</category>
-      </categories>
-      <tags>
-        <tag>JAVA</tag>
-        <tag>多线程</tag>
+        <tag>监控</tag>
       </tags>
   </entry>
   <entry>
@@ -403,6 +546,94 @@
       <tags>
         <tag>JVM</tag>
         <tag>参数</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM内存相关的监控指标</title>
+    <url>/2025/02/09/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
+    <content><![CDATA[<p><img src="/images/jvm-memory.PNG" alt="jvm内存图片"></p>
+<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
+<p>JVM Heap代表存放Java Objects的Heap</p>
+</blockquote>
+<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
+<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+</blockquote>
+<ul>
+<li>CodeCache</li>
+<li>Metaspace</li>
+<li>CompressedClassSpace</li>
+<li>DirectBuffer</li>
+<li>Thread Stacks</li>
+</ul>
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
+<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
+<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>监控</tag>
+        <tag>内存</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>多线程异常处理</title>
+    <url>/2025/02/09/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
+</blockquote>
+<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
+<li>新起线程中抛出异常</li>
+</ul>
+<blockquote>
+<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>线程池中抛出的异常</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
+<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
+</blockquote>
+<ul>
+<li><p>Try catch 显示处理异常</p>
+</li>
+<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
+<ul>
+<li><p>线程处理</p>
+</li>
+<li><p>thread.setUncaughtExceptionHandler</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
+
+</li>
+<li><p>线程池处理</p>
+</li>
+<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<p>Hold on…..有人的地方就不存在信任这一说- -</p>
+<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
+<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
+</blockquote>
+<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>JAVA</category>
+      </categories>
+      <tags>
+        <tag>JAVA</tag>
+        <tag>多线程</tag>
       </tags>
   </entry>
 </search>
