@@ -233,3 +233,43 @@ body::-webkit-scrollbar-track {
 .post-title:hover {
   transform: translateX(10px);
 }
+
+// 搜索结果标题
+.search-result-title {
+  color: var(--link-color);
+  font-weight: 600;
+}
+
+// 搜索结果区域
+#local-search-result {
+  background: transparent !important;
+  padding: 20px 0;
+}
+
+// 搜索结果条目
+.local-search-result-item {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  margin: 10px 0;
+  padding: 15px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.local-search-result-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+// 搜索结果标题
+.local-search-result-title {
+  color: var(--link-color);
+  font-weight: 600;
+}
+
+// 搜索结果内容
+.local-search-result-content {
+  color: #666;
+}
