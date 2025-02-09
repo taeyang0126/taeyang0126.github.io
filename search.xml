@@ -761,53 +761,6 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       </tags>
   </entry>
   <entry>
-    <title>Spring Cloud Gateway</title>
-    <url>/2025/02/09/wang-guan/spring-cloud-gateway/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要属性"><a href="#重要属性" class="headerlink" title="重要属性"></a>重要属性</h2><ol>
-<li>GATEWAY_ORIGINAL_REQUEST_URL_ATTR</li>
-</ol>
-<ul>
-<li>记录原始的url请求</li>
-<li>错误重试时可以用原始URI重试</li>
-<li>可以记录完整的请求转换链路</li>
-<li>故障分析时可以知道请求的来源</li>
-<li>在路由重写时需要更新此属性</li>
-</ul>
-<ol start="2">
-<li>GATEWAY_REQUEST_URL_ATTR</li>
-</ol>
-<ul>
-<li>存储请求将要转发的目标URL</li>
-<li>后续的过滤器和路由可以通过这个属性知道请求要被转发到哪里</li>
-<li>在路由重写时需要更新此属性</li>
-</ul>
-<ol start="3">
-<li>PRESERVE_HOST_HEADER_ATTRIBUTE</li>
-</ol>
-<ul>
-<li>控制是否保留原始请求的 Host 头</li>
-<li>true: 转发请求时会保留客户端的原始 Host header</li>
-<li>false: 会使用目标服务的 Host</li>
-<li>使用场景：假设自定义的过滤器修改了host属性，如果没有开启此配置，那么后续的处理可能影响此属性，这时候需要开启此配置</li>
-</ul>
-<h2 id="重要过滤器"><a href="#重要过滤器" class="headerlink" title="重要过滤器"></a>重要过滤器</h2><ol>
-<li><p>RetryGatewayFilterFactory</p>
-<blockquote>
-<p>重试过滤器</p>
-</blockquote>
- <figure class="highlight java"><table><tr><td class="code"><pre><span class="line">- name: Retry #重试策略:目前只对提供者下线导致的连接异常重试，需持续观察异常情况</span><br><span class="line">  args: </span><br><span class="line">    retries: <span class="number">1</span></span><br><span class="line">    series: #不对http状态来判断是否进行重试</span><br><span class="line">    exceptions: io.netty.channel.AbstractChannel$AnnotatedConnectException</span><br></pre></td></tr></table></figure></li>
-</ol>
-]]></content>
-      <categories>
-        <category>网关</category>
-      </categories>
-      <tags>
-        <tag>网关</tag>
-        <tag>spring cloud gateway</tag>
-        <tag>spring cloud</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Socket</title>
     <url>/2025/02/09/wang-luo/socket/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -1218,6 +1171,53 @@ sequenceDiagram
         <tag>网络</tag>
         <tag>tcp</tag>
         <tag>抓包</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spring Cloud Gateway</title>
+    <url>/2025/02/09/wang-guan/spring-cloud-gateway/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要属性"><a href="#重要属性" class="headerlink" title="重要属性"></a>重要属性</h2><ol>
+<li>GATEWAY_ORIGINAL_REQUEST_URL_ATTR</li>
+</ol>
+<ul>
+<li>记录原始的url请求</li>
+<li>错误重试时可以用原始URI重试</li>
+<li>可以记录完整的请求转换链路</li>
+<li>故障分析时可以知道请求的来源</li>
+<li>在路由重写时需要更新此属性</li>
+</ul>
+<ol start="2">
+<li>GATEWAY_REQUEST_URL_ATTR</li>
+</ol>
+<ul>
+<li>存储请求将要转发的目标URL</li>
+<li>后续的过滤器和路由可以通过这个属性知道请求要被转发到哪里</li>
+<li>在路由重写时需要更新此属性</li>
+</ul>
+<ol start="3">
+<li>PRESERVE_HOST_HEADER_ATTRIBUTE</li>
+</ol>
+<ul>
+<li>控制是否保留原始请求的 Host 头</li>
+<li>true: 转发请求时会保留客户端的原始 Host header</li>
+<li>false: 会使用目标服务的 Host</li>
+<li>使用场景：假设自定义的过滤器修改了host属性，如果没有开启此配置，那么后续的处理可能影响此属性，这时候需要开启此配置</li>
+</ul>
+<h2 id="重要过滤器"><a href="#重要过滤器" class="headerlink" title="重要过滤器"></a>重要过滤器</h2><ol>
+<li><p>RetryGatewayFilterFactory</p>
+<blockquote>
+<p>重试过滤器</p>
+</blockquote>
+ <figure class="highlight java"><table><tr><td class="code"><pre><span class="line">- name: Retry #重试策略:目前只对提供者下线导致的连接异常重试，需持续观察异常情况</span><br><span class="line">  args: </span><br><span class="line">    retries: <span class="number">1</span></span><br><span class="line">    series: #不对http状态来判断是否进行重试</span><br><span class="line">    exceptions: io.netty.channel.AbstractChannel$AnnotatedConnectException</span><br></pre></td></tr></table></figure></li>
+</ol>
+]]></content>
+      <categories>
+        <category>网关</category>
+      </categories>
+      <tags>
+        <tag>网关</tag>
+        <tag>spring cloud gateway</tag>
+        <tag>spring cloud</tag>
       </tags>
   </entry>
   <entry>
