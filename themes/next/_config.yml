@@ -737,7 +737,7 @@ gitalk:
   # If you want everyone visiting your site to see a uniform language, you can set a force language value
   # Available values: en | es-ES | fr | ru | zh-CN | zh-TW
   language: zh-CN    # 语言
-  createIssueManually: false  # 自动创建评论issue
+  createIssueManually: true  # 设置为 true 后只有在点击按钮时才会创建 issue
 
 # Utterances
 # For more information: https://utteranc.es
