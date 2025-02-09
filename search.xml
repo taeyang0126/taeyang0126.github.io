@@ -1,47 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>Hello World</title>
-    <url>/2025/02/09/hello-world/posts/undefined/</url>
-    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+    <title>Spring Cloud Gateway</title>
+    <url>/2025/02/09/spring-cloud-gateway/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要属性"><a href="#重要属性" class="headerlink" title="重要属性"></a>重要属性</h2><ol>
+<li>GATEWAY_ORIGINAL_REQUEST_URL_ATTR</li>
+</ol>
+<ul>
+<li>记录原始的url请求</li>
+<li>错误重试时可以用原始URI重试</li>
+<li>可以记录完整的请求转换链路</li>
+<li>故障分析时可以知道请求的来源</li>
+<li>在路由重写时需要更新此属性</li>
+</ul>
+<ol start="2">
+<li>GATEWAY_REQUEST_URL_ATTR</li>
+</ol>
+<ul>
+<li>存储请求将要转发的目标URL</li>
+<li>后续的过滤器和路由可以通过这个属性知道请求要被转发到哪里</li>
+<li>在路由重写时需要更新此属性</li>
+</ul>
+<ol start="3">
+<li>PRESERVE_HOST_HEADER_ATTRIBUTE</li>
+</ol>
+<ul>
+<li>控制是否保留原始请求的 Host 头</li>
+<li>true: 转发请求时会保留客户端的原始 Host header</li>
+<li>false: 会使用目标服务的 Host</li>
+<li>使用场景：假设自定义的过滤器修改了host属性，如果没有开启此配置，那么后续的处理可能影响此属性，这时候需要开启此配置</li>
+</ul>
+<h2 id="重要过滤器"><a href="#重要过滤器" class="headerlink" title="重要过滤器"></a>重要过滤器</h2><ol>
+<li><p>RetryGatewayFilterFactory</p>
+<blockquote>
+<p>重试过滤器</p>
+</blockquote>
+ <figure class="highlight java"><table><tr><td class="code"><pre><span class="line">- name: Retry #重试策略:目前只对提供者下线导致的连接异常重试，需持续观察异常情况</span><br><span class="line">  args: </span><br><span class="line">    retries: <span class="number">1</span></span><br><span class="line">    series: #不对http状态来判断是否进行重试</span><br><span class="line">    exceptions: io.netty.channel.AbstractChannel$AnnotatedConnectException</span><br></pre></td></tr></table></figure></li>
+</ol>
 ]]></content>
-  </entry>
-  <entry>
-    <title>my-first-post</title>
-    <url>/2025/02/09/my-first-post/posts/undefined/</url>
-    <content><![CDATA[<h3 id="测试下文章"><a href="#测试下文章" class="headerlink" title="测试下文章"></a>测试下文章</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">classDiagram</span><br><span class="line">    class Animal &#123;</span><br><span class="line">        +String name</span><br><span class="line">        +move()</span><br><span class="line">    &#125;</span><br><span class="line">    class Dog &#123;</span><br><span class="line">        +bark()</span><br><span class="line">    &#125;</span><br><span class="line">    Animal &lt;|-- Dog</span><br></pre></td></tr></table></figure>
-
-<pre class="mermaid" style="text-align: center;">
-            
-            sequenceDiagram
-    participant Alice
-    participant Bob
-    Alice->>John: Hello John, how are you?
-    loop Healthcheck
-        John->>John: Fight against hypochondria
-    end
-    Note right of John: Rational thoughts <br/>prevail!
-    John-->>Alice: Great!
-    John->>Bob: How about you?
-    Bob-->>John: Jolly good!
-          </pre>]]></content>
       <categories>
-        <category>test</category>
+        <category>网关</category>
       </categories>
       <tags>
-        <tag>test</tag>
+        <tag>网关</tag>
+        <tag>spring cloud gateway</tag>
+        <tag>spring cloud</tag>
       </tags>
   </entry>
 </search>
