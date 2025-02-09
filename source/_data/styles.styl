@@ -1,42 +1,21 @@
-// 文章卡片效果
+// 基础卡片效果
 .post-block {
-  margin-top: 24px;
-  margin-bottom: 24px;
+  margin: 24px 0;
   padding: 24px;
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
   }
 }
 
-// 标题样式优化
-//.post-title {
-//  position: relative;
-//  font-weight: 600;
-//  &:before {
-//    content: "";
-//    position: absolute;
-//    left: -15px;
-//    top: 50%;
-//    margin-top: -2px;
-//    width: 4px;
-//    height: 18px;
-//    background: #0073aa;
-//    border-radius: 2px;
-//  }
-//}
-
 // 链接样式
 a {
-  position: relative;
   color: #0073aa;
   text-decoration: none;
-  transition: color 0.3s ease;
   
   &:hover {
     color: #005177;
@@ -46,545 +25,102 @@ a {
 // 标题样式
 .post-title {
   font-weight: 600;
-  transition: color 0.3s ease;
   
   &:hover {
     color: #0073aa;
   }
 }
 
-.cursor {
-  width: 8px;
-  height: 8px;
-  background-color: #0073aa;
-  border-radius: 50%;
-  position: fixed;
-  pointer-events: none;
-  z-index: 99999;
-  transition: transform 0.2s;
-}
-
-.cursor.active {
-  transform: scale(0.5);
-}
-
-.cursor-follower {
-  width: 24px;
-  height: 24px;
-  background-color: rgba(0, 115, 170, 0.3);
-  border-radius: 50%;
-  position: fixed;
-  pointer-events: none;
-  z-index: 99998;
-  transition: transform 0.2s;
-}
-
-.cursor-follower.active {
-  transform: scale(2);
-}
-
-// 让鼠标经过链接时有特效
-a:hover ~ .cursor {
-  transform: scale(1.5);
-}
-
-a:hover ~ .cursor-follower {
-  transform: scale(0.3);
-}
-
 // 搜索关键词高亮
 .search-keyword {
-  background: yellow;
+  background: rgba(255, 255, 0, 0.3);
   padding: 2px 5px;
   border-radius: 2px;
 }
 
-// 调整内容区域宽度
+// 布局宽度
 .main-inner {
-  max-width: 1100px !important; // 增加最大宽度
-  width: 85% !important; // 响应式宽度
+  max-width: 1100px;
+  width: 85%;
   padding: 40px 50px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .header-inner {
-  max-width: 1200px !important;
-  width: 90% !important;
+  max-width: 1200px;
+  width: 90%;
+  background: #fff;
+  border-radius: 0 0 12px 12px;
 }
 
-// 渐变透明背景
+// 简化背景
 body {
-  background: linear-gradient(135deg, 
-    rgba(255, 255, 255, 0.9),
-    rgba(240, 245, 255, 0.8),
-    rgba(245, 250, 255, 0.9)
-  ) fixed;
-  position: relative;
-}
-
-// 添加动态渐变背景
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-  background: 
-    linear-gradient(45deg, 
-      rgba(66, 133, 244, 0.05) 0%, 
-      rgba(66, 133, 244, 0.01) 70%,
-      transparent 100%),
-    linear-gradient(-45deg, 
-      rgba(25, 118, 210, 0.05) 0%, 
-      rgba(25, 118, 210, 0.01) 70%,
-      transparent 100%),
-    linear-gradient(135deg, 
-      rgba(91, 107, 192, 0.05) 0%, 
-      rgba(91, 107, 192, 0.01) 70%,
-      transparent 100%);
-  animation: gradientBG 15s ease infinite;
-  background-size: 400% 400%;
-  filter: blur(20px);
-}
-
-@keyframes gradientBG {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-// 内容区域样式优化
-.main-inner {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 
-    0 8px 20px rgba(0, 0, 0, 0.05),
-    0 2px 8px rgba(0, 0, 0, 0.03);
-}
-
-// 文章内容区块样式
-.post-block {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
+  background: #f5f7fa;
 }
 
 // 响应式调整
 @media screen and (max-width: 767px) {
   .main-inner {
-    width: 95% !important;
+    width: 95%;
     padding: 20px;
   }
   
   .header-inner {
-    width: 95% !important;
+    width: 95%;
   }
 }
 
-// 优化导航栏
-.header-inner {
-  background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(10px);
-  border-radius: 0 0 12px 12px;
-}
-
-// 文章卡片悬浮效果
-.post-block:hover {
-  transform: translateY(-2px);
-  box-shadow: 
-    0 10px 30px rgba(0, 0, 0, 0.05),
-    0 5px 15px rgba(0, 0, 0, 0.03);
-}
-
-// 搜索弹窗样式
+// 搜索相关样式
 .search-popup {
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.98);
 }
 
-// 搜索框样式
 .search-popup .search-input input {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   padding: 10px 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-// 搜索结果样式
-.search-result-list {
-  background: transparent !important;
 }
 
 .search-result-list li {
-  background: rgba(255, 255, 255, 0.7);
+  background: #fff;
   border-radius: 8px;
   margin: 10px 0;
   padding: 15px;
-  backdrop-filter: blur(5px);
   border: 1px solid rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
 }
 
-.search-result-list li:hover {
-  background: rgba(255, 255, 255, 0.9);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-// 搜索结果标题
-.search-result-title {
-  color: var(--link-color);
-  font-weight: 600;
-}
-
-// 搜索结果内容
-.search-result {
-  color: #666;
-}
-
-// 关闭按钮
-.search-popup .popup-btn-close {
-  color: #666;
-  opacity: 0.8;
-  transition: all 0.3s ease;
-}
-
-.search-popup .popup-btn-close:hover {
-  color: #333;
-  opacity: 1;
-  transform: rotate(90deg);
-}
-
-// 搜索图标
-.popup-trigger i {
-  color: #666;
-}
-
-// 搜索结果高亮
-.search-result .search-keyword {
-  color: var(--link-color);
-  font-weight: bold;
-  background: rgba(0, 102, 204, 0.1);
-  padding: 0 4px;
-  border-radius: 4px;
-}
-
-// 搜索无结果提示
-.search-result-empty {
-  color: #666;
-  padding: 20px;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 8px;
-  backdrop-filter: blur(5px);
-}
-
-// 搜索弹窗的遮罩层
-.search-pop-overlay {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(5px);
-}
-
-// 搜索弹窗主体
-.local-search-popup {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-// 搜索输入框
-#local-search-input {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  border-radius: 8px !important;
-  padding: 12px 15px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-}
-
-#local-search-input:focus {
-  background: rgba(255, 255, 255, 0.95) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: rgba(0, 102, 204, 0.3) !important;
-}
-
-// 搜索结果区域
-#local-search-result {
-  background: transparent !important;
-  padding: 20px 0;
-}
-
-// 搜索结果条目
-.local-search-result-item {
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 8px;
-  margin: 10px 0;
-  padding: 15px;
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-}
-
-.local-search-result-item:hover {
-  background: rgba(255, 255, 255, 0.9);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-// 搜索结果标题
-.local-search-result-title {
-  color: var(--link-color);
-  font-weight: 600;
-}
-
-// 搜索结果内容
-.local-search-result-content {
-  color: #666;
-}
-
-// 关闭按钮
-.popup-btn-close {
-  color: #666 !important;
-  opacity: 0.8;
-  transition: all 0.3s ease;
-}
-
-.popup-btn-close:hover {
-  color: #333 !important;
-  opacity: 1;
-  transform: rotate(90deg);
-}
-
-// 搜索结果高亮
-.search-keyword {
-  color: var(--link-color);
-  font-weight: bold;
-  background: rgba(0, 102, 204, 0.1);
-  padding: 0 4px;
-  border-radius: 4px;
-}
-
-// 无搜索结果提示
-.local-search-empty {
-  color: #666;
-  padding: 20px;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 8px;
-  backdrop-filter: blur(5px);
-}
-
-// 搜索历史（如果有的话）
-.search-history {
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 8px;
-  padding: 10px;
-  margin-top: 10px;
-}
-
-// 加载动画
-.search-loading {
-  background: rgba(255, 255, 255, 0.8);
-}
-
-// 强制覆盖搜索弹窗样式
-.popup {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
-}
-
-// 搜索容器
-.search-popup {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-// 搜索遮罩层
-.search-popup-overlay {
-  background: rgba(0, 0, 0, 0.3) !important;
-  backdrop-filter: blur(5px) !important;
-}
-
-// 确保弹窗内所有元素都使用半透明背景
-.algolia-popup {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-.local-search {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-// 使用更高优先级的选择器
-body .search-popup {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-html body .search-popup {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-// 弹窗内部元素
-.popup-content {
-  background: transparent !important;
-}
-
-// 搜索结果容器
-.search-result-container {
-  background: transparent !important;
-}
-
-/* 在 source/_data/styles.styl 中添加 */
-
-/* 标题悬浮效果 */
-.post-title {
-  transition: all 0.3s ease-in-out;
-}
-.post-title:hover {
-  transform: translateX(10px);
-}
-
-/* 图片放大效果 */
-.post-body img {
-  transition: all 0.3s ease-in-out;
-}
-.post-body img:hover {
-  transform: scale(1.05);
-}
-
-/* 链接下划线动画 */
-.post-body a {
-  position: relative;
-  text-decoration: none;
-}
-.post-body a::after {
-  content: '';
-  position: absolute;
-  width: 0;
-  height: 2px;
-  bottom: 0;
-  left: 0;
-  background-color: #0066cc;
-  transition: width 0.3s ease-in-out;
-}
-.post-body a:hover::after {
-  width: 100%;
-}
-
-// 侧边栏链接呼吸效果
-.sidebar-nav-item {
-  position: relative;
-  &::before {
-    content: "";
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.05);
-    border-radius: 4px;
-    transform: scaleX(0);
-    transition: transform 0.3s ease;
-  }
-  &:hover::before {
-    transform: scaleX(1);
-  }
-}
-
-// 按钮点击波纹效果
-.post-button .btn {
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    background: rgba(255,255,255,0.5);
-    opacity: 0;
-    border-radius: 100%;
-    transform: scale(1, 1) translate(-50%);
-    transform-origin: 50% 50%;
-  }
-  &:active::after {
-    animation: ripple 1s ease-out;
-  }
-}
-
-@keyframes ripple {
-  0% {
-    transform: scale(0, 0);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(100, 100);
-    opacity: 0;
-  }
-}
-
-// 图片放大效果（带过渡）
-.post-body img {
-  transition: transform 0.3s ease;
-  &:hover {
-    transform: scale(1.03);
-  }
-}
-
-// 滚动进度条
+// 滚动条样式
 body::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
+
 body::-webkit-scrollbar-thumb {
-  background: linear-gradient(transparent, #0066cc);
+  background: #c0c4cc;
   border-radius: 4px;
 }
+
 body::-webkit-scrollbar-track {
-  background: transparent;
+  background: #f5f7fa;
 }
 
-// 文字渐入效果
-.post-body p {
-  opacity: 0.8;
-  transition: all 0.3s ease;
-  &:hover {
-    opacity: 1;
-  }
+// 图片样式
+.post-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
 }
 
-// 代码块动画
+// 代码块样式
 .highlight {
-  position: relative;
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 2px;
-    height: 100%;
-    background: #0066cc;
-    transform: scaleY(0);
-    transition: transform 0.3s ease;
-  }
-  &:hover::before {
-    transform: scaleY(1);
-  }
+  margin: 1em 0;
+  padding: 1em;
+  background: #f8f9fa;
+  border-radius: 4px;
+  overflow-x: auto;
 }
 
 // 相关文章样式
@@ -602,39 +138,43 @@ body::-webkit-scrollbar-track {
     padding-bottom: 0.5rem;
   }
   
-  .popular-posts {
-    .popular-posts-item {
-      margin: 0.8rem 0;
-      padding: 0.5rem;
-      transition: all 0.2s ease;
-      border-radius: 4px;
-      
-      &:hover {
-        background: rgba(0,0,0,0.05);
-        transform: translateX(5px);
-      }
-    }
+  .popular-posts-item {
+    margin: 0.8rem 0;
+    padding: 0.5rem;
+    border-radius: 4px;
     
-    .popular-posts-link {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: #666;
-      text-decoration: none;
-      
-      &:hover {
-        color: #0066cc;
-      }
+    &:hover {
+      background: rgba(0,0,0,0.03);
     }
+  }
+  
+  .popular-posts-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #666;
+    text-decoration: none;
     
-    .popular-posts-title {
-      flex: 1;
+    &:hover {
+      color: #0066cc;
     }
-    
-    .popular-posts-date {
-      font-size: 0.9em;
-      color: #999;
-      margin-left: 1rem;
-    }
+  }
+  
+  .popular-posts-title {
+    flex: 1;
+  }
+  
+  .popular-posts-date {
+    font-size: 0.9em;
+    color: #999;
+    margin-left: 1rem;
+  }
+}
+
+// 图片放大效果（带过渡）
+.post-body img {
+  transition: transform 0.3s ease;
+  &:hover {
+    transform: scale(1.03);
   }
 }
