@@ -1,6 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Feign 更换 Client</title>
+    <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
+    <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
+<li>feignClient 实现类依旧是 LoadBalancerFeignClient</li>
+<li>LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClient</span> <span class="keyword">implements</span> <span class="title class_">Client</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> WebClient webClient;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VertxFeignClient</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Vertx</span> <span class="variable">vertx</span> <span class="operator">=</span> Vertx.vertx();</span><br><span class="line">        <span class="type">WebClientOptions</span> <span class="variable">webClientOptions</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">WebClientOptions</span>()</span><br><span class="line">                .setMaxPoolSize(<span class="number">100</span>)</span><br><span class="line">                .setMaxWaitQueueSize(<span class="number">10000</span>);</span><br><span class="line">        <span class="built_in">this</span>.webClient = WebClient.create(vertx, webClientOptions);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Response <span class="title function_">execute</span><span class="params">(Request request, Request.Options options)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> request.url();</span><br><span class="line">        <span class="type">var</span> <span class="variable">bodys</span> <span class="operator">=</span> request.requestBody().asBytes();</span><br><span class="line">        Map&lt;String, Collection&lt;String&gt;&gt; headers = request.headers();</span><br><span class="line">        io.vertx.core.http.<span class="type">HttpMethod</span> <span class="variable">vertxMethod</span> <span class="operator">=</span> io.vertx.core.http.HttpMethod.valueOf(request.httpMethod().name());</span><br><span class="line"></span><br><span class="line">        <span class="type">HeadersMultiMap</span> <span class="variable">entries</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeadersMultiMap</span>();</span><br><span class="line">        headers.forEach(entries::add);</span><br><span class="line"></span><br><span class="line">        CompletableFuture&lt;Response&gt; completableFuture = <span class="keyword">new</span> <span class="title class_">CompletableFuture</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        webClient.requestAbs(vertxMethod, url)</span><br><span class="line">                .putHeaders(entries)</span><br><span class="line">                .sendBuffer(bodys == <span class="literal">null</span> ? Buffer.buffer() : Buffer.buffer(bodys))</span><br><span class="line">                .timeout(options.readTimeoutMillis(), TimeUnit.MILLISECONDS)</span><br><span class="line">                .onSuccess(t -&gt; &#123;</span><br><span class="line">                    log.info(<span class="string">&quot;url[&#123;&#125;] 响应 -&gt; &#123;&#125;&quot;</span>, url, t.bodyAsString());</span><br><span class="line">                    <span class="type">MultiMap</span> <span class="variable">responseHeaders</span> <span class="operator">=</span> t.headers();</span><br><span class="line">                    Map&lt;String, Collection&lt;String&gt;&gt; map = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">                    responseHeaders.forEach((k, v) -&gt; map.put(k, Collections.singleton(v)));</span><br><span class="line">                    completableFuture.complete(Response.builder()</span><br><span class="line">                            .status(t.statusCode())</span><br><span class="line">                            .reason(t.statusMessage())</span><br><span class="line">                            .headers(map)</span><br><span class="line">                            .body(t.bodyAsBuffer().getBytes())</span><br><span class="line">                            .request(request)</span><br><span class="line">                            .build());</span><br><span class="line">                &#125;).onFailure(completableFuture::completeExceptionally);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> completableFuture.get();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>配置类装配 FeignClient bean</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>feign</category>
+      </categories>
+      <tags>
+        <tag>feign</tag>
+        <tag>rpc</tag>
+        <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Arthas</title>
     <url>/2025/02/09/arthas/arthas/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -117,29 +140,6 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       <tags>
         <tag>Arthas</tag>
         <tag>问题排查</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Feign 更换 Client</title>
-    <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
-    <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
-<li>feignClient 实现类依旧是 LoadBalancerFeignClient</li>
-<li>LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClient</span> <span class="keyword">implements</span> <span class="title class_">Client</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> WebClient webClient;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VertxFeignClient</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Vertx</span> <span class="variable">vertx</span> <span class="operator">=</span> Vertx.vertx();</span><br><span class="line">        <span class="type">WebClientOptions</span> <span class="variable">webClientOptions</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">WebClientOptions</span>()</span><br><span class="line">                .setMaxPoolSize(<span class="number">100</span>)</span><br><span class="line">                .setMaxWaitQueueSize(<span class="number">10000</span>);</span><br><span class="line">        <span class="built_in">this</span>.webClient = WebClient.create(vertx, webClientOptions);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Response <span class="title function_">execute</span><span class="params">(Request request, Request.Options options)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> request.url();</span><br><span class="line">        <span class="type">var</span> <span class="variable">bodys</span> <span class="operator">=</span> request.requestBody().asBytes();</span><br><span class="line">        Map&lt;String, Collection&lt;String&gt;&gt; headers = request.headers();</span><br><span class="line">        io.vertx.core.http.<span class="type">HttpMethod</span> <span class="variable">vertxMethod</span> <span class="operator">=</span> io.vertx.core.http.HttpMethod.valueOf(request.httpMethod().name());</span><br><span class="line"></span><br><span class="line">        <span class="type">HeadersMultiMap</span> <span class="variable">entries</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeadersMultiMap</span>();</span><br><span class="line">        headers.forEach(entries::add);</span><br><span class="line"></span><br><span class="line">        CompletableFuture&lt;Response&gt; completableFuture = <span class="keyword">new</span> <span class="title class_">CompletableFuture</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        webClient.requestAbs(vertxMethod, url)</span><br><span class="line">                .putHeaders(entries)</span><br><span class="line">                .sendBuffer(bodys == <span class="literal">null</span> ? Buffer.buffer() : Buffer.buffer(bodys))</span><br><span class="line">                .timeout(options.readTimeoutMillis(), TimeUnit.MILLISECONDS)</span><br><span class="line">                .onSuccess(t -&gt; &#123;</span><br><span class="line">                    log.info(<span class="string">&quot;url[&#123;&#125;] 响应 -&gt; &#123;&#125;&quot;</span>, url, t.bodyAsString());</span><br><span class="line">                    <span class="type">MultiMap</span> <span class="variable">responseHeaders</span> <span class="operator">=</span> t.headers();</span><br><span class="line">                    Map&lt;String, Collection&lt;String&gt;&gt; map = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">                    responseHeaders.forEach((k, v) -&gt; map.put(k, Collections.singleton(v)));</span><br><span class="line">                    completableFuture.complete(Response.builder()</span><br><span class="line">                            .status(t.statusCode())</span><br><span class="line">                            .reason(t.statusMessage())</span><br><span class="line">                            .headers(map)</span><br><span class="line">                            .body(t.bodyAsBuffer().getBytes())</span><br><span class="line">                            .request(request)</span><br><span class="line">                            .build());</span><br><span class="line">                &#125;).onFailure(completableFuture::completeExceptionally);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> completableFuture.get();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>配置类装配 FeignClient bean</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>feign</category>
-      </categories>
-      <tags>
-        <tag>feign</tag>
-        <tag>rpc</tag>
-        <tag>微服务</tag>
       </tags>
   </entry>
   <entry>
@@ -1115,112 +1115,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>抓包相关</title>
-    <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li>查看路由表信息<ul>
-<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
-<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
-<li><code>ip route</code> linux下使用，替代 netstat -r</li>
-<li><code>ss</code>linux下使用，替代 netstat</li>
-</ul>
-</li>
-<li>确认号(ack)计算规则<ul>
-<li>普通数据包：ack &#x3D; 对方seq + len</li>
-<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
-<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
-</ul>
-</li>
-<li>seq <ul>
-<li>不是包的唯一标识，而是数据流的位置标记</li>
-<li>表示”我之后的数据会从这个位置开始发”</li>
-<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
-</ul>
-</li>
-<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
-<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
-</ul>
-</li>
-<li>LSO<ul>
-<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
-<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
-<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
-<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
-</ul>
-</li>
-<li>数据包分段<ul>
-<li>传输层分段(TCP分段)<ul>
-<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
-<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
-<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
-<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
-</ul>
-</li>
-<li>网络层分段(UDP)<ul>
-<li>ip层分片，丢失一个分片包就需要整个包重传</li>
-<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
-<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
-</ul>
-</li>
-<li>接收方如何重组分段包<ul>
-<li>将ID相同的分片按照off值（偏移量）进行重组</li>
-<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>Windos Scale<ul>
-<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
-<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
-<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
-<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
-</ul>
-</li>
-<li>TTL(Time to Live)<ul>
-<li>TTL 初始值一般为64</li>
-<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
-<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
-</ul>
-</li>
-</ul>
-<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
-<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
-</ol>
-<ul>
-<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
-<li>告知对方自己还能接收多少数据</li>
-<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
-</ul>
-<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
-<li>通过TCP头部Win字段告知对方</li>
-<li>反映接收方的处理能力</li>
-<li>防止接收方缓冲区溢出</li>
-<li>由应用程序处理速度决定</li>
-</ul>
-<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
-<p><img data-src="/images/socket_02_12.png" alt="img"></p>
-<ul>
-<li>发送方内部维护，不需要告知对方</li>
-<li>反映网络的承载能力</li>
-<li>防止网络拥塞</li>
-<li>由网络状况动态调整</li>
-<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
-</ul>
-<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
-<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>tcp</tag>
-        <tag>抓包</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>raft</title>
     <url>/2025/02/09/fen-bu-shi/suan-fa/raft/posts/undefined/</url>
     <content><![CDATA[<h2 id="Raft-的核心目标和基本工作原理"><a href="#Raft-的核心目标和基本工作原理" class="headerlink" title="Raft 的核心目标和基本工作原理"></a>Raft 的核心目标和基本工作原理</h2><p>核心目标：</p>
@@ -1410,6 +1304,112 @@ sequenceDiagram
         <tag>分布式</tag>
         <tag>算法</tag>
         <tag>raft</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>抓包相关</title>
+    <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li>查看路由表信息<ul>
+<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
+<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
+<li><code>ip route</code> linux下使用，替代 netstat -r</li>
+<li><code>ss</code>linux下使用，替代 netstat</li>
+</ul>
+</li>
+<li>确认号(ack)计算规则<ul>
+<li>普通数据包：ack &#x3D; 对方seq + len</li>
+<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
+<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
+</ul>
+</li>
+<li>seq <ul>
+<li>不是包的唯一标识，而是数据流的位置标记</li>
+<li>表示”我之后的数据会从这个位置开始发”</li>
+<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
+</ul>
+</li>
+<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
+<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
+</ul>
+</li>
+<li>LSO<ul>
+<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
+<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
+<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
+<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
+</ul>
+</li>
+<li>数据包分段<ul>
+<li>传输层分段(TCP分段)<ul>
+<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
+<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
+<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
+<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
+</ul>
+</li>
+<li>网络层分段(UDP)<ul>
+<li>ip层分片，丢失一个分片包就需要整个包重传</li>
+<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
+<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
+</ul>
+</li>
+<li>接收方如何重组分段包<ul>
+<li>将ID相同的分片按照off值（偏移量）进行重组</li>
+<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Windos Scale<ul>
+<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
+<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
+<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
+<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
+</ul>
+</li>
+<li>TTL(Time to Live)<ul>
+<li>TTL 初始值一般为64</li>
+<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
+<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
+<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
+</ol>
+<ul>
+<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
+<li>告知对方自己还能接收多少数据</li>
+<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
+</ul>
+<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
+<li>通过TCP头部Win字段告知对方</li>
+<li>反映接收方的处理能力</li>
+<li>防止接收方缓冲区溢出</li>
+<li>由应用程序处理速度决定</li>
+</ul>
+<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
+<p><img data-src="/images/socket_02_12.png" alt="img"></p>
+<ul>
+<li>发送方内部维护，不需要告知对方</li>
+<li>反映网络的承载能力</li>
+<li>防止网络拥塞</li>
+<li>由网络状况动态调整</li>
+<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
+</ul>
+<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
+<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>tcp</tag>
+        <tag>抓包</tag>
       </tags>
   </entry>
   <entry>
@@ -1710,58 +1710,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>pulsar-使用</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
-    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
-<li>docker 单机创建</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>可视化 pulsar-manager</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
-</ul>
-<p><img data-src="/images/message/pulsar/01.png" alt="img"></p>
-<ul>
-<li>创建租户</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 namespace</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>显示某个 namespace 下的 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>pulsar</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>spring-kafka</title>
     <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
     <content><![CDATA[<blockquote>
@@ -1886,6 +1834,58 @@ sequenceDiagram
         <tag>中间件</tag>
         <tag>kafka</tag>
         <tag>spring</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>pulsar-使用</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
+    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
+<li>docker 单机创建</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>可视化 pulsar-manager</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
+</ul>
+<p><img data-src="/images/message/pulsar/01.png" alt="img"></p>
+<ul>
+<li>创建租户</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 namespace</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>显示某个 namespace 下的 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>pulsar</tag>
       </tags>
   </entry>
 </search>
