@@ -120,29 +120,6 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       </tags>
   </entry>
   <entry>
-    <title>Feign 更换 Client</title>
-    <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
-    <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
-<li>feignClient 实现类依旧是 LoadBalancerFeignClient</li>
-<li>LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClient</span> <span class="keyword">implements</span> <span class="title class_">Client</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> WebClient webClient;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VertxFeignClient</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Vertx</span> <span class="variable">vertx</span> <span class="operator">=</span> Vertx.vertx();</span><br><span class="line">        <span class="type">WebClientOptions</span> <span class="variable">webClientOptions</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">WebClientOptions</span>()</span><br><span class="line">                .setMaxPoolSize(<span class="number">100</span>)</span><br><span class="line">                .setMaxWaitQueueSize(<span class="number">10000</span>);</span><br><span class="line">        <span class="built_in">this</span>.webClient = WebClient.create(vertx, webClientOptions);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Response <span class="title function_">execute</span><span class="params">(Request request, Request.Options options)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> request.url();</span><br><span class="line">        <span class="type">var</span> <span class="variable">bodys</span> <span class="operator">=</span> request.requestBody().asBytes();</span><br><span class="line">        Map&lt;String, Collection&lt;String&gt;&gt; headers = request.headers();</span><br><span class="line">        io.vertx.core.http.<span class="type">HttpMethod</span> <span class="variable">vertxMethod</span> <span class="operator">=</span> io.vertx.core.http.HttpMethod.valueOf(request.httpMethod().name());</span><br><span class="line"></span><br><span class="line">        <span class="type">HeadersMultiMap</span> <span class="variable">entries</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeadersMultiMap</span>();</span><br><span class="line">        headers.forEach(entries::add);</span><br><span class="line"></span><br><span class="line">        CompletableFuture&lt;Response&gt; completableFuture = <span class="keyword">new</span> <span class="title class_">CompletableFuture</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        webClient.requestAbs(vertxMethod, url)</span><br><span class="line">                .putHeaders(entries)</span><br><span class="line">                .sendBuffer(bodys == <span class="literal">null</span> ? Buffer.buffer() : Buffer.buffer(bodys))</span><br><span class="line">                .timeout(options.readTimeoutMillis(), TimeUnit.MILLISECONDS)</span><br><span class="line">                .onSuccess(t -&gt; &#123;</span><br><span class="line">                    log.info(<span class="string">&quot;url[&#123;&#125;] 响应 -&gt; &#123;&#125;&quot;</span>, url, t.bodyAsString());</span><br><span class="line">                    <span class="type">MultiMap</span> <span class="variable">responseHeaders</span> <span class="operator">=</span> t.headers();</span><br><span class="line">                    Map&lt;String, Collection&lt;String&gt;&gt; map = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">                    responseHeaders.forEach((k, v) -&gt; map.put(k, Collections.singleton(v)));</span><br><span class="line">                    completableFuture.complete(Response.builder()</span><br><span class="line">                            .status(t.statusCode())</span><br><span class="line">                            .reason(t.statusMessage())</span><br><span class="line">                            .headers(map)</span><br><span class="line">                            .body(t.bodyAsBuffer().getBytes())</span><br><span class="line">                            .request(request)</span><br><span class="line">                            .build());</span><br><span class="line">                &#125;).onFailure(completableFuture::completeExceptionally);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> completableFuture.get();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>配置类装配 FeignClient bean</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>feign</category>
-      </categories>
-      <tags>
-        <tag>feign</tag>
-        <tag>rpc</tag>
-        <tag>微服务</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Feign、Hystrix、Ribbon 超时机制</title>
     <url>/2025/02/09/feign/feign-hystrix-ribbon-chao-shi-ji-zhi/posts/undefined/</url>
     <content><![CDATA[<h2 id="使用版本"><a href="#使用版本" class="headerlink" title="使用版本"></a>使用版本</h2><ul>
@@ -570,6 +547,29 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       </tags>
   </entry>
   <entry>
+    <title>Feign 更换 Client</title>
+    <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
+    <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
+<li>feignClient 实现类依旧是 LoadBalancerFeignClient</li>
+<li>LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClient</span> <span class="keyword">implements</span> <span class="title class_">Client</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> WebClient webClient;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VertxFeignClient</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Vertx</span> <span class="variable">vertx</span> <span class="operator">=</span> Vertx.vertx();</span><br><span class="line">        <span class="type">WebClientOptions</span> <span class="variable">webClientOptions</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">WebClientOptions</span>()</span><br><span class="line">                .setMaxPoolSize(<span class="number">100</span>)</span><br><span class="line">                .setMaxWaitQueueSize(<span class="number">10000</span>);</span><br><span class="line">        <span class="built_in">this</span>.webClient = WebClient.create(vertx, webClientOptions);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Response <span class="title function_">execute</span><span class="params">(Request request, Request.Options options)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> request.url();</span><br><span class="line">        <span class="type">var</span> <span class="variable">bodys</span> <span class="operator">=</span> request.requestBody().asBytes();</span><br><span class="line">        Map&lt;String, Collection&lt;String&gt;&gt; headers = request.headers();</span><br><span class="line">        io.vertx.core.http.<span class="type">HttpMethod</span> <span class="variable">vertxMethod</span> <span class="operator">=</span> io.vertx.core.http.HttpMethod.valueOf(request.httpMethod().name());</span><br><span class="line"></span><br><span class="line">        <span class="type">HeadersMultiMap</span> <span class="variable">entries</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeadersMultiMap</span>();</span><br><span class="line">        headers.forEach(entries::add);</span><br><span class="line"></span><br><span class="line">        CompletableFuture&lt;Response&gt; completableFuture = <span class="keyword">new</span> <span class="title class_">CompletableFuture</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        webClient.requestAbs(vertxMethod, url)</span><br><span class="line">                .putHeaders(entries)</span><br><span class="line">                .sendBuffer(bodys == <span class="literal">null</span> ? Buffer.buffer() : Buffer.buffer(bodys))</span><br><span class="line">                .timeout(options.readTimeoutMillis(), TimeUnit.MILLISECONDS)</span><br><span class="line">                .onSuccess(t -&gt; &#123;</span><br><span class="line">                    log.info(<span class="string">&quot;url[&#123;&#125;] 响应 -&gt; &#123;&#125;&quot;</span>, url, t.bodyAsString());</span><br><span class="line">                    <span class="type">MultiMap</span> <span class="variable">responseHeaders</span> <span class="operator">=</span> t.headers();</span><br><span class="line">                    Map&lt;String, Collection&lt;String&gt;&gt; map = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">                    responseHeaders.forEach((k, v) -&gt; map.put(k, Collections.singleton(v)));</span><br><span class="line">                    completableFuture.complete(Response.builder()</span><br><span class="line">                            .status(t.statusCode())</span><br><span class="line">                            .reason(t.statusMessage())</span><br><span class="line">                            .headers(map)</span><br><span class="line">                            .body(t.bodyAsBuffer().getBytes())</span><br><span class="line">                            .request(request)</span><br><span class="line">                            .build());</span><br><span class="line">                &#125;).onFailure(completableFuture::completeExceptionally);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> completableFuture.get();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>配置类装配 FeignClient bean</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>feign</category>
+      </categories>
+      <tags>
+        <tag>feign</tag>
+        <tag>rpc</tag>
+        <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>JVM内存相关的监控指标</title>
     <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
     <content><![CDATA[<p><img data-src="/images/jvm-memory.PNG" alt="jvm内存图片"></p>
@@ -646,118 +646,6 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       <tags>
         <tag>JVM</tag>
         <tag>参数</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Netty Reactor 启动流程-1</title>
-    <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
-<p><img data-src="/images/netty_01_01.png" alt="netty"></p>
-<h2 id="Netty-服务端的启动流程"><a href="#Netty-服务端的启动流程" class="headerlink" title="Netty 服务端的启动流程"></a>Netty 服务端的启动流程</h2><ul>
-<li>创建服务端<code>NioServerSocketChannel</code>并初始化</li>
-<li>将服务端<code>NioServerSocketChannel</code>注册到<code>主Reactor线程组</code>中</li>
-<li>注册成功后，开始初始化<code>NioServerSocketChannel</code>中的 pipeline，然后在 pipeline 中触发 channelRegister 事件。</li>
-<li>随后由<code>NioServerSocketChannel</code>绑定端口地址。</li>
-<li>绑定端口地址成功后，向<code>NioServerSocketChannel</code>对应的<code>Pipeline</code>中触发传播<code>ChannelActive事件</code>，在<code>ChannelActive事件回调</code>中向<code>Main Reactor</code>注册<code>OP_ACCEPT事件</code>，开始等待客户端连接。服务端启动完成。</li>
-</ul>
-<p><img data-src="/images/netty_01_02.png" alt="netty"></p>
-<h2 id="1-initAndRegister"><a href="#1-initAndRegister" class="headerlink" title="1. initAndRegister"></a>1. initAndRegister</h2><p><img data-src="/images/netty_01_03.png" alt="netty"></p>
-<p>开始注册</p>
-<p><img data-src="/images/netty_01_04.png" alt="netty"></p>
-<h2 id="2-Bind"><a href="#2-Bind" class="headerlink" title="2. Bind"></a>2. Bind</h2><p><code>bind事件</code>在 Netty 中被定义为<code>outbound事件</code>，所以它在<code>pipeline</code>中是反向传播。先从<code>TailContext</code>开始反向传播直到<code>HeadContext</code>；<code>bind</code>的核心逻辑也正是实现在<code>HeadContext</code>中</p>
-<blockquote>
-<p>headContext 中的绑定方法</p>
-</blockquote>
-<p><img data-src="/images/netty_01_05.png" alt="netty"></p>
-<blockquote>
-<p>NioServerSocketChannel 中的绑定动作</p>
-</blockquote>
-<p><img data-src="/images/netty_01_06.png" alt="netty"></p>
-<blockquote>
-<p>绑定完成后触发 active 操作 –&gt; HeadContext</p>
-</blockquote>
-<p><img data-src="/images/netty_01_07.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</p>
-</blockquote>
-<p><img data-src="/images/netty_01_08.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
-</blockquote>
-<p><img data-src="/images/netty_01_09.png" alt="netty"></p>
-<h2 id="细节点"><a href="#细节点" class="headerlink" title="细节点"></a>细节点</h2><h3 id="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"><a href="#Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的" class="headerlink" title="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"></a><code>Reactor线程</code>的启动是在向<code>Reactor</code>提交第一个异步任务的时候启动的</h3><blockquote>
-<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable, boolean)</p>
-</blockquote>
-<p><img data-src="/images/netty_01_10.png" alt="netty"></p>
-<h3 id="Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"><a href="#Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务" class="headerlink" title="Reactor线程的核心工作 轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"></a><code>Reactor</code>线程的核心工作 <code>轮询所有注册其上的Channel中的IO就绪事件</code>，<code>处理对应Channel上的IO事件</code>，<code>执行异步任务</code></h3><blockquote>
-<p>io.netty.channel.nio.NioEventLoop#run</p>
-</blockquote>
-<p><img data-src="/images/netty_01_11.png" alt="netty"></p>
-<h3 id="Channel-的各种事件触发顺序"><a href="#Channel-的各种事件触发顺序" class="headerlink" title="Channel 的各种事件触发顺序"></a>Channel 的各种事件触发顺序</h3><ol>
-<li><p>handlerAdded</p>
-<p> socket 向 jdk selector 注册后、在通知注册的 promise 完成之前（也就是 promise 回调之前）触发</p>
-<p> <img data-src="/images/netty_01_12.png" alt="netty"></p>
-</li>
-<li><p>channelRegistered</p>
-<p> 在通知 promise 完成后（也就是回调执行完成之后）会传播 Registered 事件</p>
-<p> <img data-src="/images/netty_01_13.png" alt="netty"></p>
-</li>
-<li><p>Active </p>
-<p>a. 服务端 NioServerSocketChannel 判断是否激活的标准为端口是否绑定成功。</p>
-<p>b. </p>
-   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">NioServerSocketChannel</span> <span class="keyword">extends</span> <span class="title class_">AbstractNioMessageChannel</span></span><br><span class="line">                             <span class="keyword">implements</span> <span class="title class_">io</span>.netty.channel.socket.ServerSocketChannel &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> isOpen() &amp;&amp; javaChannel().socket().isBound();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>c. 客户端<code>NioSocketChannel</code>判断是否激活的标准为是否处于<code>Connected状态</code>。</p>
-<p>d. </p>
-   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">SocketChannel</span> <span class="variable">ch</span> <span class="operator">=</span> javaChannel();</span><br><span class="line">    <span class="keyword">return</span> ch.isOpen() &amp;&amp; ch.isConnected();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p> e. 向后传播 active 事件<br> f. <code>readIfIsAutoRead</code></p>
-<blockquote>
-<p>如果开启了自动读（io.netty.channel.ChannelConfig#isAutoRead），则注册对应感兴趣的事件</p>
-</blockquote>
-<ul>
-<li>server 连接注册 OP_ACCEPT 事件</li>
-<li>client 连接注册 OP_READ 事件</li>
-</ul>
-</li>
-</ol>
-<h3 id="向底层-selector-注册"><a href="#向底层-selector-注册" class="headerlink" title="向底层 selector 注册"></a>向底层 selector 注册</h3><blockquote>
-<p>io.netty.channel.nio.AbstractNioChannel#doRegister</p>
-</blockquote>
-<p><img data-src="/images/netty_01_14.png" alt="netty"></p>
-<h3 id="NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"><a href="#NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行" class="headerlink" title="NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"></a>NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行</h3><p><img data-src="/images/netty_01_15.png" alt="netty"></p>
-<h3 id="事件在pipeline中的传播"><a href="#事件在pipeline中的传播" class="headerlink" title="事件在pipeline中的传播"></a>事件在<code>pipeline</code>中的传播</h3><ul>
-<li><code>inbound事件</code>从<code>HeadContext</code>开始逐个向后传播直到<code>TailContext</code></li>
-<li><code>outbound事件</code>则是反向传播，从<code>TailContext</code>开始反向向前传播直到<code>HeadContext</code></li>
-</ul>
-<p><img data-src="/images/netty_01_16.png" alt="netty"></p>
-<h3 id="服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？"><a href="#服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？" class="headerlink" title="服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？"></a>服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？</h3><ul>
-<li>注册感兴趣的事件触发时机都是<code>ChannelActive</code><ul>
-<li><img data-src="/images/netty_01_17.png" alt="netty"></li>
-<li>对于服务端 socket 来说，bind 成功后会传递 <code>channelActive</code>事件</li>
-<li>io.netty.channel.AbstractChannel.AbstractUnsafe#bind</li>
-<li><img data-src="/images/netty_01_18.png" alt="netty"></li>
-<li>对于客户端 socket 来说，register 成功后会传递 <code>channelActive</code>事件</li>
-<li>io.netty.channel.AbstractChannel.AbstractUnsafe#register0</li>
-<li><img data-src="/images/netty_01_19.png" alt="netty"></li>
-</ul>
-</li>
-<li>通过 <code>HeadContext#read</code> 方法进行感兴趣事件的注册</li>
-</ul>
-<blockquote>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</span><br></pre></td></tr></table></figure></blockquote>
-<p><img data-src="/images/netty_01_20.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
-</blockquote>
-<p><img data-src="/images/netty_01_21.png" alt="netty"></p>
-]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
       </tags>
   </entry>
   <entry>
@@ -896,48 +784,115 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>linux内核发送网络包</title>
-    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
-    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
-<ul>
-<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
-<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
-<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
-<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
-<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
-<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
-<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
-</ol>
-</li>
+    <title>Netty Reactor 启动流程-1</title>
+    <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
+<p><img data-src="/images/netty_01_01.png" alt="netty"></p>
+<h2 id="Netty-服务端的启动流程"><a href="#Netty-服务端的启动流程" class="headerlink" title="Netty 服务端的启动流程"></a>Netty 服务端的启动流程</h2><ul>
+<li>创建服务端<code>NioServerSocketChannel</code>并初始化</li>
+<li>将服务端<code>NioServerSocketChannel</code>注册到<code>主Reactor线程组</code>中</li>
+<li>注册成功后，开始初始化<code>NioServerSocketChannel</code>中的 pipeline，然后在 pipeline 中触发 channelRegister 事件。</li>
+<li>随后由<code>NioServerSocketChannel</code>绑定端口地址。</li>
+<li>绑定端口地址成功后，向<code>NioServerSocketChannel</code>对应的<code>Pipeline</code>中触发传播<code>ChannelActive事件</code>，在<code>ChannelActive事件回调</code>中向<code>Main Reactor</code>注册<code>OP_ACCEPT事件</code>，开始等待客户端连接。服务端启动完成。</li>
 </ul>
-</li>
-<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
-<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
-<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
-</ul>
-</li>
-<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
-<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
-<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
-</ul>
-</li>
-</ul>
-<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
-<p>指待发送数据的内存拷贝</p>
+<p><img data-src="/images/netty_01_02.png" alt="netty"></p>
+<h2 id="1-initAndRegister"><a href="#1-initAndRegister" class="headerlink" title="1. initAndRegister"></a>1. initAndRegister</h2><p><img data-src="/images/netty_01_03.png" alt="netty"></p>
+<p>开始注册</p>
+<p><img data-src="/images/netty_01_04.png" alt="netty"></p>
+<h2 id="2-Bind"><a href="#2-Bind" class="headerlink" title="2. Bind"></a>2. Bind</h2><p><code>bind事件</code>在 Netty 中被定义为<code>outbound事件</code>，所以它在<code>pipeline</code>中是反向传播。先从<code>TailContext</code>开始反向传播直到<code>HeadContext</code>；<code>bind</code>的核心逻辑也正是实现在<code>HeadContext</code>中</p>
+<blockquote>
+<p>headContext 中的绑定方法</p>
 </blockquote>
-<ol>
-<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
-<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
-<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
+<p><img data-src="/images/netty_01_05.png" alt="netty"></p>
+<blockquote>
+<p>NioServerSocketChannel 中的绑定动作</p>
+</blockquote>
+<p><img data-src="/images/netty_01_06.png" alt="netty"></p>
+<blockquote>
+<p>绑定完成后触发 active 操作 –&gt; HeadContext</p>
+</blockquote>
+<p><img data-src="/images/netty_01_07.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</p>
+</blockquote>
+<p><img data-src="/images/netty_01_08.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
+</blockquote>
+<p><img data-src="/images/netty_01_09.png" alt="netty"></p>
+<h2 id="细节点"><a href="#细节点" class="headerlink" title="细节点"></a>细节点</h2><h3 id="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"><a href="#Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的" class="headerlink" title="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"></a><code>Reactor线程</code>的启动是在向<code>Reactor</code>提交第一个异步任务的时候启动的</h3><blockquote>
+<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable, boolean)</p>
+</blockquote>
+<p><img data-src="/images/netty_01_10.png" alt="netty"></p>
+<h3 id="Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"><a href="#Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务" class="headerlink" title="Reactor线程的核心工作 轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"></a><code>Reactor</code>线程的核心工作 <code>轮询所有注册其上的Channel中的IO就绪事件</code>，<code>处理对应Channel上的IO事件</code>，<code>执行异步任务</code></h3><blockquote>
+<p>io.netty.channel.nio.NioEventLoop#run</p>
+</blockquote>
+<p><img data-src="/images/netty_01_11.png" alt="netty"></p>
+<h3 id="Channel-的各种事件触发顺序"><a href="#Channel-的各种事件触发顺序" class="headerlink" title="Channel 的各种事件触发顺序"></a>Channel 的各种事件触发顺序</h3><ol>
+<li><p>handlerAdded</p>
+<p> socket 向 jdk selector 注册后、在通知注册的 promise 完成之前（也就是 promise 回调之前）触发</p>
+<p> <img data-src="/images/netty_01_12.png" alt="netty"></p>
+</li>
+<li><p>channelRegistered</p>
+<p> 在通知 promise 完成后（也就是回调执行完成之后）会传播 Registered 事件</p>
+<p> <img data-src="/images/netty_01_13.png" alt="netty"></p>
+</li>
+<li><p>Active </p>
+<p>a. 服务端 NioServerSocketChannel 判断是否激活的标准为端口是否绑定成功。</p>
+<p>b. </p>
+   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">NioServerSocketChannel</span> <span class="keyword">extends</span> <span class="title class_">AbstractNioMessageChannel</span></span><br><span class="line">                             <span class="keyword">implements</span> <span class="title class_">io</span>.netty.channel.socket.ServerSocketChannel &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> isOpen() &amp;&amp; javaChannel().socket().isBound();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>c. 客户端<code>NioSocketChannel</code>判断是否激活的标准为是否处于<code>Connected状态</code>。</p>
+<p>d. </p>
+   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isActive</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">SocketChannel</span> <span class="variable">ch</span> <span class="operator">=</span> javaChannel();</span><br><span class="line">    <span class="keyword">return</span> ch.isOpen() &amp;&amp; ch.isConnected();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p> e. 向后传播 active 事件<br> f. <code>readIfIsAutoRead</code></p>
+<blockquote>
+<p>如果开启了自动读（io.netty.channel.ChannelConfig#isAutoRead），则注册对应感兴趣的事件</p>
+</blockquote>
+<ul>
+<li>server 连接注册 OP_ACCEPT 事件</li>
+<li>client 连接注册 OP_READ 事件</li>
+</ul>
+</li>
 </ol>
+<h3 id="向底层-selector-注册"><a href="#向底层-selector-注册" class="headerlink" title="向底层 selector 注册"></a>向底层 selector 注册</h3><blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doRegister</p>
+</blockquote>
+<p><img data-src="/images/netty_01_14.png" alt="netty"></p>
+<h3 id="NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"><a href="#NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行" class="headerlink" title="NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"></a>NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行</h3><p><img data-src="/images/netty_01_15.png" alt="netty"></p>
+<h3 id="事件在pipeline中的传播"><a href="#事件在pipeline中的传播" class="headerlink" title="事件在pipeline中的传播"></a>事件在<code>pipeline</code>中的传播</h3><ul>
+<li><code>inbound事件</code>从<code>HeadContext</code>开始逐个向后传播直到<code>TailContext</code></li>
+<li><code>outbound事件</code>则是反向传播，从<code>TailContext</code>开始反向向前传播直到<code>HeadContext</code></li>
+</ul>
+<p><img data-src="/images/netty_01_16.png" alt="netty"></p>
+<h3 id="服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？"><a href="#服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？" class="headerlink" title="服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？"></a>服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？</h3><ul>
+<li>注册感兴趣的事件触发时机都是<code>ChannelActive</code><ul>
+<li><img data-src="/images/netty_01_17.png" alt="netty"></li>
+<li>对于服务端 socket 来说，bind 成功后会传递 <code>channelActive</code>事件</li>
+<li>io.netty.channel.AbstractChannel.AbstractUnsafe#bind</li>
+<li><img data-src="/images/netty_01_18.png" alt="netty"></li>
+<li>对于客户端 socket 来说，register 成功后会传递 <code>channelActive</code>事件</li>
+<li>io.netty.channel.AbstractChannel.AbstractUnsafe#register0</li>
+<li><img data-src="/images/netty_01_19.png" alt="netty"></li>
+</ul>
+</li>
+<li>通过 <code>HeadContext#read</code> 方法进行感兴趣事件的注册</li>
+</ul>
+<blockquote>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</span><br></pre></td></tr></table></figure></blockquote>
+<p><img data-src="/images/netty_01_20.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
+</blockquote>
+<p><img data-src="/images/netty_01_21.png" alt="netty"></p>
 ]]></content>
       <categories>
-        <category>网络</category>
+        <category>Netty</category>
       </categories>
       <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>socket</tag>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
       </tags>
   </entry>
   <entry>
@@ -1045,6 +1000,51 @@ sequenceDiagram
         <tag>linux</tag>
         <tag>网络</tag>
         <tag>tcp</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>linux内核发送网络包</title>
+    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
+<ul>
+<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
+<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
+<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
+<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
+<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
+<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
+<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
+<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
+<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
+</ul>
+</li>
+<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
+<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
+<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
+</ul>
+</li>
+</ul>
+<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
+<p>指待发送数据的内存拷贝</p>
+</blockquote>
+<ol>
+<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
+<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
+<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
       </tags>
   </entry>
   <entry>
@@ -1413,6 +1413,144 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>kafka-producer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>acks</strong></td>
+<td align="left">1</td>
+<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retries</strong></td>
+<td align="left"></td>
+<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retry.backoff.ms</strong></td>
+<td align="left"></td>
+<td align="left">重试的时间间隔</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
+<td align="left">5</td>
+<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">linger.ms</td>
+<td align="left">0</td>
+<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">interceptor.classes</td>
+<td align="left"></td>
+<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left">buffer.memory</td>
+<td align="left">32 * 1024 * 1024</td>
+<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
+<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
+</tr>
+<tr>
+<td align="left">max.block.ms</td>
+<td align="left">60 * 1000</td>
+<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
+<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">batch.size</td>
+<td align="left">16 * 1024</td>
+<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">max.request.size</td>
+<td align="left">1024 * 1024</td>
+<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">compression.type</td>
+<td align="left">none</td>
+<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
+<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
+</ul>
+<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
+<ul>
+<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
+</ul>
+<p>NetworkClient:</p>
+<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
+<p>​      </p>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>kafka-consumer</title>
     <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
     <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
@@ -1560,144 +1698,6 @@ sequenceDiagram
 </ul>
 </li>
 </ul>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-producer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>acks</strong></td>
-<td align="left">1</td>
-<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retries</strong></td>
-<td align="left"></td>
-<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retry.backoff.ms</strong></td>
-<td align="left"></td>
-<td align="left">重试的时间间隔</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
-<td align="left">5</td>
-<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">linger.ms</td>
-<td align="left">0</td>
-<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">interceptor.classes</td>
-<td align="left"></td>
-<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left">buffer.memory</td>
-<td align="left">32 * 1024 * 1024</td>
-<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
-<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
-</tr>
-<tr>
-<td align="left">max.block.ms</td>
-<td align="left">60 * 1000</td>
-<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
-<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">batch.size</td>
-<td align="left">16 * 1024</td>
-<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">max.request.size</td>
-<td align="left">1024 * 1024</td>
-<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">compression.type</td>
-<td align="left">none</td>
-<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
-<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
-</ul>
-<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
-<ul>
-<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
-</ul>
-<p>NetworkClient:</p>
-<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
-<p>​      </p>
 ]]></content>
       <categories>
         <category>消息队列</category>
