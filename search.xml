@@ -488,52 +488,6 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       </tags>
   </entry>
   <entry>
-    <title>JVM重要参数</title>
-    <url>/2025/02/09/jvm-chong-yao-can-shu/posts/undefined/</url>
-    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
-<thead>
-<tr>
-<th align="left">参数</th>
-<th align="left">说明</th>
-<th align="left">备注</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left">-XX:+PrintFlagsFinal</td>
-<td align="left">启动时打印出所有JVM参数</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
-<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
-<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
-</tr>
-<tr>
-<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
-<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
-<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
-</tr>
-<tr>
-<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
-<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
-<td align="left">safepoint</td>
-<td align="left"></td>
-</tr>
-</tbody></table>
-]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>参数</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spring Cloud Gateway</title>
     <url>/2025/02/09/spring-cloud-gateway/posts/undefined/</url>
     <content><![CDATA[<h2 id="重要属性"><a href="#重要属性" class="headerlink" title="重要属性"></a>重要属性</h2><ol>
@@ -578,6 +532,52 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
         <tag>网关</tag>
         <tag>spring cloud gateway</tag>
         <tag>spring cloud</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM重要参数</title>
+    <url>/2025/02/09/jvm-chong-yao-can-shu/posts/undefined/</url>
+    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
+<thead>
+<tr>
+<th align="left">参数</th>
+<th align="left">说明</th>
+<th align="left">备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">-XX:+PrintFlagsFinal</td>
+<td align="left">启动时打印出所有JVM参数</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
+<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
+<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
+</tr>
+<tr>
+<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
+<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
+<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
+</tr>
+<tr>
+<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
+<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
+<td align="left">safepoint</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>参数</tag>
       </tags>
   </entry>
   <entry>
