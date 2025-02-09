@@ -21,6 +21,12 @@
   <entry>
     <title>my-first-post</title>
     <url>/2025/02/09/my-first-post/</url>
-    <content><![CDATA[]]></content>
+    <content><![CDATA[<h3 id="测试下文章"><a href="#测试下文章" class="headerlink" title="测试下文章"></a>测试下文章</h3>]]></content>
+      <categories>
+        <category>test</category>
+      </categories>
+      <tags>
+        <tag>test</tag>
+      </tags>
   </entry>
 </search>
