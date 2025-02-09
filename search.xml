@@ -535,6 +535,94 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       </tags>
   </entry>
   <entry>
+    <title>Socket</title>
+    <url>/2025/02/09/socket/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://zhuanlan.zhihu.com/p/455352339">聊聊Netty那些事儿之从内核角度看IO模型</a></li>
+</ul>
+<h3 id="Socket-数据接收到-Epoll-处理流程"><a href="#Socket-数据接收到-Epoll-处理流程" class="headerlink" title="Socket 数据接收到 Epoll 处理流程"></a>Socket 数据接收到 Epoll 处理流程</h3><pre>
+<code class="mermaid">
+
+sequenceDiagram
+    participant S as Socket
+    participant WQ as Wait Queue
+    participant CB as Callback (ep_poll_callback)
+    participant EP as eppoll_entry
+    participant EI as epitem
+    participant EPL as eventpoll
+
+    S-&gt;&gt;S: 接收数据
+    S-&gt;&gt;WQ: 触发等待队列
+    WQ-&gt;&gt;CB: 调用回调函数
+    CB-&gt;&gt;EP: container_of 找到 eppoll_entry
+    EP-&gt;&gt;EI: 访问 base 指针找到 epitem
+    EI-&gt;&gt;EPL: 将 epitem 加入活跃队列
+</code>
+</pre>
+
+
+<ol>
+<li><p>数据到达和初始处理： </p>
+<ul>
+<li>网卡接收数据，通过 DMA 将数据放入 Ring Buffer。</li>
+<li>触发软中断，内核将数据包（sk_buff）放入 socket 的接收队列。</li>
+</ul>
+</li>
+<li><p>Socket 唤醒等待队列： </p>
+<ul>
+<li>Socket 检测到有新数据，开始唤醒其等待队列（wait_queue）中的等待者。</li>
+<li>获取其中一个 wait_queue_entry_t，这里不获取全部一是避免惊群效应，二是 epoll 场景下一般也只会有一个 wait_queue_entry_t</li>
+</ul>
+</li>
+<li><p>回调函数触发： </p>
+<ul>
+<li>对于 epoll 添加的等待项，其 wait_queue_entry_t 的回调函数是 ep_poll_callback。</li>
+<li>内核调用这个回调函数，传入 wait_queue_entry_t 指针作为参数。</li>
+</ul>
+</li>
+<li><p>找到 eppoll_entry： </p>
+<ul>
+<li>在 ep_poll_callback 函数中，使用 container_of 宏。</li>
+<li>通过 wait_queue_entry_t 指针，找到包含它的 eppoll_entry 结构。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eppoll_entry</span> *<span class="title">pwq</span> =</span> container_of(wait, <span class="keyword">struct</span> eppoll_entry, wait);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>从 eppoll_entry 到 epitem： </p>
+<ul>
+<li>eppoll_entry 结构中有一个 base 指针，直接指向关联的 epitem。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epitem</span> *<span class="title">epi</span> =</span> pwq-&gt;base;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取 eventpoll 结构： </p>
+<ul>
+<li>epitem 结构中包含指向其关联的 eventpoll 结构的指针。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> *<span class="title">ep</span> =</span> epi-&gt;ep;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将 epitem 加入活跃队列： </p>
+<ul>
+<li>检查 epitem 是否已经在活跃队列中。</li>
+<li>如果不在，则将其添加到 eventpoll 的活跃队列（rdllist）中。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (!ep_is_linked(&amp;epi-&gt;rdllink))</span><br><span class="line">    list_add_tail(&amp;epi-&gt;rdllink, &amp;ep-&gt;rdllist);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>唤醒等待的进程： </p>
+<ul>
+<li>如果有进程正在等待 epoll 事件（通过 epoll_wait），唤醒它。</li>
+</ul>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Spring Cloud Gateway</title>
     <url>/2025/02/09/spring-cloud-gateway/posts/undefined/</url>
     <content><![CDATA[<h2 id="重要属性"><a href="#重要属性" class="headerlink" title="重要属性"></a>重要属性</h2><ol>
@@ -579,6 +667,225 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
         <tag>网关</tag>
         <tag>spring cloud gateway</tag>
         <tag>spring cloud</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>TCP 连接</title>
+    <url>/2025/02/09/tcp-lian-jie/posts/undefined/</url>
+    <content><![CDATA[<h3 id="TCP-状态转换图"><a href="#TCP-状态转换图" class="headerlink" title="TCP 状态转换图"></a>TCP 状态转换图</h3><p><img data-src="/images/tcp_01_01.png" alt="img"></p>
+<h3 id="TCP-连接的分组交换"><a href="#TCP-连接的分组交换" class="headerlink" title="TCP 连接的分组交换"></a>TCP 连接的分组交换</h3><p><img data-src="/images/tcp_01_02.png" alt="img"></p>
+<ul>
+<li>MSS（Maximum Segment Size）: 指定了 TCP 数据包中数据部分的最大长度<ul>
+<li>一般约定最小是 536，因为 IPv4 规范中建议的最小 MTU 是 576，减去 20 字节的标准 IPv4 头的长度，再减去 20 字节的标准 TCP 头的长度，得到 536 字节</li>
+<li>一般约定最大是 1460，因为 IPv4 规范中建议的最大 MTU 是 1500</li>
+</ul>
+</li>
+<li>MSS 以双方约定的最小值为准</li>
+<li>请求 ACK 是服务端对客户端发送过来的数据包的响应</li>
+<li>应答 ACK 是客户端对服务端发送过来的数据包的响应</li>
+<li>TIME_WAIT 状态<ul>
+<li>主动关闭的那端经历了这个状态</li>
+<li>此状态的持续时间最长是 2MSL，MSL 在 RFC 1122 的建议值是 2 分钟，在 Berkeley 修改为 30s，意味着 TIME_WAIT 状态的持续时间在 1 分钟到 4 分钟之间<ul>
+<li>MSL 是任何 IP 数据报能存活的最长时间，因为每个数据报都有跳限（hop limit），最大是 255 跳</li>
+</ul>
+</li>
+<li>此状态存在的理由<ul>
+<li>可靠的实现 TCP 全双工连接的终止</li>
+<li>被动终止的一方会发送最终的 FIN，因此此端必须维护状态信息，以允许此端重新发送最终的 ACK。如果此端不维护状态信息了，那么会响应一个 <strong>RST</strong>，会被对端解释为一个错误</li>
+<li>允许老的重复分节在网络中消逝</li>
+<li>假设某个连接关闭了，然后在相同的客户端、服务器之间建立的一个新的连接，这个连接的四元组与之前关闭的连接完全一致，后一个连接称为前一个连接的化身。TCP 必须防止来自某个连接的老的重复分组在该连接已终止后再现，从而被误解成属于同一个连接的某个新的化身。为了做到这一点，TCP 将不给处于 TIME_WAIT 状态的连接发起新的化身。又因为 TIME_WAIT 最长存活时间为 2MSL，此时间足够旧连接的数据包消逝了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Listen"><a href="#Listen" class="headerlink" title="Listen"></a>Listen</h3><blockquote>
+<p>最主要的工作就是<code>申请和初始化</code>接收队列，包括<code>全连接队列以及半连接队列</code></p>
+</blockquote>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// fd、backlog</span></span><br><span class="line">listen(fd, <span class="number">128</span>)</span><br></pre></td></tr></table></figure>
+
+<h4 id="全连接队列"><a href="#全连接队列" class="headerlink" title="全连接队列"></a>全连接队列</h4><blockquote>
+<p>全连接队列是一个链表，内核中使用链表的 head、tail，方便应用层直接根据头尾指针查找接入的连接</p>
+</blockquote>
+<h5 id="全连接队列的长度"><a href="#全连接队列的长度" class="headerlink" title="全连接队列的长度"></a>全连接队列的长度</h5><ul>
+<li>最大长度是 listen 传入的 backlog 和 net.core.somaxconn 之间较小的值。如果需要加大长度，需要调整这两个值。</li>
+<li>使用 <code>cat /proc/sys/net/core/somaxconn</code> 命令查看</li>
+<li>查看某个进程的全连接队列的长度，通过使用命令 **<code>ss -nlt</code>**进行查看，其中 <strong>Send-Q</strong> 表示全连接队列长度</li>
+</ul>
+<p><img data-src="/images/tcp_01_03.png" alt="img"></p>
+<h5 id="判断全连接队列是否溢出"><a href="#判断全连接队列是否溢出" class="headerlink" title="判断全连接队列是否溢出"></a>判断全连接队列是否溢出</h5><p><strong><code>watch &#39;netstat -s | grep overflowed&#39;</code></strong></p>
+<p>如果上述命令结果显示 <strong>xx times the listen queue of a socket overflowed</strong> 则说明有全连接队列溢出了</p>
+<h5 id="半连接队列的长度"><a href="#半连接队列的长度" class="headerlink" title="半连接队列的长度"></a>半连接队列的长度</h5><ul>
+<li>半连接队列的长度是 <em><strong>min（backlog，somaxconn，tcp_max_syn_backlog） + 1</strong></em> 再向上去整到 <strong>2</strong> 的 <em><strong>N</strong></em> 次幂，但最小不能小于 <strong>16</strong></li>
+<li><code>cat /proc/sys/net/ipv4/tcp_max_syn_backlog</code> 命令查看 tcp_max_syn_backlog</li>
+<li>假设某内核参数 net.core.somaxconn&#x3D;128，net.ipv4.tcp_max_syn_backlog&#x3D;8192，用户 backlog&#x3D;5，经过以下步骤计算得出为 16<ul>
+<li>min(backlog, somaxconn) &#x3D; min(5, 128) &#x3D; 5</li>
+<li>min(5, tcp_max_syn_backlog) &#x3D; min(5, 8192) &#x3D; 5</li>
+<li>max（5， 8） &#x3D; 8  这一步是内核为了避免传入一个太小的值导致无法接收连接，所以必须要&gt;&#x3D;8</li>
+<li>roundup_pow_of_two(8 + 1) &#x3D; 16</li>
+</ul>
+</li>
+<li>假设某内核参数 net.core.somaxconn&#x3D;128，net.ipv4.tcp_max_syn_backlog&#x3D;8192，用户 backlog&#x3D;512，经过以下步骤计算得出为 256<ul>
+<li>min(backlog, somaxconn) &#x3D; min(512, 128) &#x3D; 128</li>
+<li>min(128, tcp_max_syn_backlog) &#x3D; min(128, 8192) &#x3D; 128</li>
+<li>max(128, 8) &#x3D; 128  </li>
+<li>roundup_pow_of_two(128 + 1) &#x3D; 256</li>
+</ul>
+</li>
+</ul>
+<h5 id="判断半连接队列是否溢出？"><a href="#判断半连接队列是否溢出？" class="headerlink" title="判断半连接队列是否溢出？"></a>判断半连接队列是否溢出？</h5><ol>
+<li>计算办连接队列的长度</li>
+<li>查看当前SYN_RECV状态的连接数量</li>
+</ol>
+<p><strong><code>netstat -antp | grep SYN_RECV | wc -l</code></strong></p>
+<p>其实只需要保证 <strong><code>tcp_syncookies</code></strong> 这个内核参数是 <strong>1</strong> 就不会有半连接队列溢出的问题，👍🏻推荐开启此参数！！且开启此参数可以抵御 SYN flood 攻击</p>
+<p><strong><code>cat /proc/sys/net/ipv4/tcp_syncookies</code></strong> 通过此命令查看对应参数</p>
+<p><strong><code>echo 1 &gt; /proc/sys/net/ipv4/tcp_syncookies</code></strong> 此命令进行修改</p>
+<h3 id="Connect"><a href="#Connect" class="headerlink" title="Connect"></a>Connect</h3><p>客户端在执行 connect 函数的时候，把本地 socket 状态设置成了**<code>TCP_SYN_SENT</code>**，选了一个可用端口，接着发出 SYN 握手请求并启动重传定时器</p>
+<h4 id="选择可用端口"><a href="#选择可用端口" class="headerlink" title="选择可用端口"></a>选择可用端口</h4><ol>
+<li>如果调用过 bind，那么以 bind 定义的端口为准，否则需要按照以下规则寻找可用的端口</li>
+<li>可用的端口范围是根据内核参数 <strong><code>net.ipv4.ip_local_port_range</code></strong>，此参数的范围就是能选择的端口范围，可以使用命令 **<code>cat /proc/sys/net/ipv4/ip_local_port_range</code>**进行查看，下图表示能使用的范围是 32768-60999。注意这里查找端口是循环的，如果需要很多轮才查找到可用的端口，会导致 connect 系统调用的 cpu 升高<ul>
+<li><img data-src="/images/tcp_01_04.png" alt="img"></li>
+</ul>
+</li>
+<li>判断选择的端口是否在保留端口中，如果是则不能使用此端口。内核参数**<code>net.ipv4.ip_local_reserved_ports</code>** 表示保留端口，如果希望某些端口不被内核使用，将他们写到这个参数里面就可以。<strong><code>cat /proc/sys/net/ipv4/ip_local_reserved_ports</code></strong></li>
+<li>判断选择的端口是否已经使用过了，内核会维护一个使用过的端口的 hash 表，如果在 hash 表中没有找到，证明此端口是可用的，后面会在此 hash 表中记录端口已经被使用</li>
+<li>如果上面还是没有找到合适的端口，就会出现 <strong>Cannot assign requested address</strong> 这个错误</li>
+</ol>
+<h4 id="端口被使用过怎么办？"><a href="#端口被使用过怎么办？" class="headerlink" title="端口被使用过怎么办？"></a>端口被使用过怎么办？</h4><blockquote>
+<p>👆🏻选择可用端口的第四步判断端口是否已经使用过了，不是简单的判断端口是否使用过了，而是如果端口被使用过了，且<strong>四元组完全一致</strong>时才无法使用此端口，如果四元组有一个不一致，那么这个端口是可以使用的。</p>
+</blockquote>
+<h4 id="发起-sync-请求"><a href="#发起-sync-请求" class="headerlink" title="发起 sync 请求"></a>发起 sync 请求</h4><ol>
+<li>申请一个 skb，并将其设置为<code>SYN</code>包</li>
+<li>添加到发送队列 <code>sk_write_queue</code> </li>
+<li>调用<code>tcp_transmit_skb</code>将该包发出</li>
+<li>启动一个重传定时器，超时会重发。首次超时时间是在<code>TCP_TIMEOUT_INIT</code>宏中定义的</li>
+</ol>
+<h3 id="三次握手"><a href="#三次握手" class="headerlink" title="三次握手"></a>三次握手</h3><p><img data-src="/images/tcp_01_05.png" alt="img"></p>
+<ol>
+<li>第一次握手服务端只是创建了**<code>request sock</code>**，并加入到半连接队列中，并没有创建 socket，实际创建socket是在三次握手完成时。</li>
+<li>TCP 连接建立的网络耗时大约需要三次传输，再加上少许的双方 cpu 开销，总共大约比 <strong>1.5 倍 RTT</strong> 大一点点。不过从客户端角度来看，只要 ACK 包发出了，内核就认为连接建立成功可以开始发送数据了，所以如果在客户端进行打点统计 TCP 连接建立耗时只需要两次传输耗时——即一个 RTT 多一点的时间（服务端也是同理，从 SYN 包接收到开始算起，到 ACK 包接收完毕）</li>
+</ol>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>tcp</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>linux内核发送网络包</title>
+    <url>/2025/02/09/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
+<ul>
+<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
+<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
+<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
+<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
+<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
+<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
+<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
+<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
+<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
+</ul>
+</li>
+<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
+<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
+<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
+</ul>
+</li>
+</ul>
+<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
+<p>指待发送数据的内存拷贝</p>
+</blockquote>
+<ol>
+<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
+<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
+<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>linux内核接收网络包</title>
+    <url>/2025/02/09/linux-nei-he-jie-shou-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="RingBuffer"><a href="#RingBuffer" class="headerlink" title="RingBuffer"></a>RingBuffer</h3><h4 id="RingBuffer到底是什么"><a href="#RingBuffer到底是什么" class="headerlink" title="RingBuffer到底是什么?"></a>RingBuffer到底是什么?</h4><blockquote>
+<p>是内存中的一块特殊区域，环形队列是笼统的说法，实际上包括<code>igb_rx_buffer</code> 环形队列数组、<code>e1000_adv_rx_desc</code> 环形队列数组及众多的skb</p>
+</blockquote>
+<p><img data-src="/images/socket_02_01.png" alt="img"></p>
+<p>网卡在收到数据的时候以<code>DMA</code> 方式将包写到RingBuffer中。软中断收包的时候来这里将skb取走，并申请新的skb重新挂上去。</p>
+<p>RingBuffer内存是预先分配的还是动态分配的？</p>
+<p>指针数组是预先分配好的，而skb虽然也会预先分配好，但是在后面的收包过程中会不断的动态地分配申请</p>
+<h4 id="RingBuffer为什么会丢包？"><a href="#RingBuffer为什么会丢包？" class="headerlink" title="RingBuffer为什么会丢包？"></a>RingBuffer为什么会丢包？</h4><ul>
+<li>RingBuffer是有大小和长度限制的</li>
+<li>使用 <code>ethtool -g eth0</code> 命令查看长度，Pre-set maximums 指的是最大值，Current hardware settings 表示当前设置，下图表示最大允许1024，目前设置为1024</li>
+</ul>
+<p><img data-src="/images/socket_02_02.png" alt="img"></p>
+<ul>
+<li>查看是否有溢出情况发生  <code>ethtool -S eth0</code>，如果有溢出情况发生(ifconfig中体现为overruns指标增长)，表示有包因为RingBuffer装不下而被丢弃了，解决思路有两种<ul>
+<li>加大RingBuffer长度 <code>ethtool -G eth0 rx 4096 tx 4096</code> ，此种方式只是临时解决，治标不治本</li>
+<li>开启多队列提升网络性能，打散队列的亲核性</li>
+<li>现在主流网卡基本上都支持多队列，通过<code>ethtool -l eth0</code> 进行查看，下图表示当前网卡支持的最大队列数是2，当前开启的也是2，通过sysfs也可以看到真正生效的队列数量。</li>
+<li><img data-src="/images/socket_02_03.png" alt="img"></li>
+<li><img data-src="/images/socket_02_04.png" alt="img"></li>
+<li>加大队列数量，可以使用 <code>ethtool -L eth0 combined 32</code> </li>
+<li>如果发现某个cpu核心si特别高，可以考虑调整队列亲和的cpu核心<ul>
+<li><code>cat /proc/interrupts</code>查看队列的硬件硬中断，下图显示输入队列0的中断号是25，队列1的中断号是27，通过这个中断号对应的<code>smp_affinity</code>可以查看到亲和的cpu核是哪个。下图显示的2在二进制中代表第二位是1，所以表示第2个cpu核心——CPU2</li>
+<li><img data-src="/images/socket_02_05.png" alt="img"></li>
+<li><img data-src="/images/socket_02_06.png" alt="img"></li>
+<li>每个队列都会有独立的、不同的中断号。所以不同的队列在将数据收取到自己的RingBuffer后，可以分别向不同的CPU发起硬中断通知。而在硬中断的处理中，发起软中断是基于当前核心的，这意味着<strong>哪个核响应的硬中断，那么该硬中断发起的软中断任务就必然由这个核来处理</strong>。</li>
+<li>通过设置每个队列中断号上的<code>smp_affinity</code>，将各个队列的硬中断打散到不同的cpu上。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="网络相关的硬中断、软中断都是什么"><a href="#网络相关的硬中断、软中断都是什么" class="headerlink" title="网络相关的硬中断、软中断都是什么?"></a>网络相关的硬中断、软中断都是什么?</h3><p> 在网卡将数据放到<code>RingBuffer</code> 之后，接着就发起<code>硬中断</code>，通知cpu进行处理。不过在硬中断的上下文里做的工作很少，将传过来的<code>poll_list</code> 添加到每个cpu变量<code>softnet_data</code> 的 <code>poll_list</code> 里面，接着触发<code>软中断</code> <code>NET_RX_SOFTIRQ</code>。在软中断中对softnet_data的设备列表poll_list进行遍历，执行网卡驱动提供的poll来收取网络包。处理完成后会送到协议栈的ip_rcv、udp_rcv、tcp_rcv_v4等函数中</p>
+<p>poll_list 是个双向链表，存储待处理NAPI实例的链表。</p>
+<p>一个网卡驱动程序通常会注册一个NAPI结构(struct napi_struct)，这个结构基本约等于一个接收队列，目的是为了减少硬中断的次数。在高并发网络中，频繁的接收到网络包导致频繁触发硬中断，浪费了CPU性能，通过NAPI一个队列中接收到网络包后将此队列信息传递给软中断，软中断处理程序在处理的时候先停止触发硬中断，专注接收包的处理，处理完成后再打开硬中断触发，大大减少了硬中断的触发。</p>
+<h3 id="ksoftirqd内核线程是用来干嘛的"><a href="#ksoftirqd内核线程是用来干嘛的" class="headerlink" title="ksoftirqd内核线程是用来干嘛的?"></a>ksoftirqd内核线程是用来干嘛的?</h3><ul>
+<li>机器上有几核，内核就会创建几个ksoftirqd线程出来</li>
+<li>内核线程ksoftirqd包含了所有的软中断处理逻辑，软中断信息可以通过 <code>cat /proc/softirqs</code> 命令进行查看</li>
+</ul>
+<p><img data-src="/images/socket_02_07.png" alt="img"></p>
+<h3 id="tcpdump是如何工作的？"><a href="#tcpdump是如何工作的？" class="headerlink" title="tcpdump是如何工作的？"></a>tcpdump是如何工作的？</h3><blockquote>
+<p>tcpdump工作在设备层，是通过虚拟协议的方式工作的。通过调用packet_create将抓包函数以协议的形式挂到ptype_all上。这个函数会将包送到协议栈函数(ip_rcv、arp_rcv)之前，将包先送到ptype_all抓包点。</p>
+</blockquote>
+<ul>
+<li>iptable&#x2F;netfilter 主要是在IP、ARP等层实现的。如果配置过于复杂的规则，则会消耗过多的cpu，加大网络延迟</li>
+<li>tcpdump工作在设备层，将包送到ip层以前就能处理，而netfilter工作在IP、ARP等层，从下图来看，netfilter工作在tcpdump之后，所以iptable封禁规则不影响tcpdump抓包；但是发包过程恰恰相反，发包的时候netfilter先进行工作，在协议层就被过滤掉了，所以tcpdump什么都看不到。</li>
+</ul>
+<p><img data-src="/images/socket_02_08.png" alt="img"></p>
+<h3 id="网络接收过程中的CPU开销如何查看？"><a href="#网络接收过程中的CPU开销如何查看？" class="headerlink" title="网络接收过程中的CPU开销如何查看？"></a>网络接收过程中的CPU开销如何查看？</h3><blockquote>
+<p>在网络包的接收过程中，主要工作集中在硬中断和软中断上，二者的消耗可以通过top命令进行查看</p>
+</blockquote>
+<ul>
+<li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
+</ul>
+<p><img data-src="/images/socket_02_09.png" alt="img"></p>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
       </tags>
   </entry>
   <entry>
@@ -635,6 +942,112 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       <tags>
         <tag>JAVA</tag>
         <tag>多线程</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>抓包相关</title>
+    <url>/2025/02/09/zhua-bao-xiang-guan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li>查看路由表信息<ul>
+<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
+<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
+<li><code>ip route</code> linux下使用，替代 netstat -r</li>
+<li><code>ss</code>linux下使用，替代 netstat</li>
+</ul>
+</li>
+<li>确认号(ack)计算规则<ul>
+<li>普通数据包：ack &#x3D; 对方seq + len</li>
+<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
+<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
+</ul>
+</li>
+<li>seq <ul>
+<li>不是包的唯一标识，而是数据流的位置标记</li>
+<li>表示”我之后的数据会从这个位置开始发”</li>
+<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
+</ul>
+</li>
+<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
+<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
+</ul>
+</li>
+<li>LSO<ul>
+<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
+<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
+<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
+<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
+</ul>
+</li>
+<li>数据包分段<ul>
+<li>传输层分段(TCP分段)<ul>
+<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
+<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
+<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
+<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
+</ul>
+</li>
+<li>网络层分段(UDP)<ul>
+<li>ip层分片，丢失一个分片包就需要整个包重传</li>
+<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
+<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
+</ul>
+</li>
+<li>接收方如何重组分段包<ul>
+<li>将ID相同的分片按照off值（偏移量）进行重组</li>
+<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Windos Scale<ul>
+<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
+<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
+<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
+<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
+</ul>
+</li>
+<li>TTL(Time to Live)<ul>
+<li>TTL 初始值一般为64</li>
+<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
+<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
+<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
+</ol>
+<ul>
+<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
+<li>告知对方自己还能接收多少数据</li>
+<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
+</ul>
+<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
+<li>通过TCP头部Win字段告知对方</li>
+<li>反映接收方的处理能力</li>
+<li>防止接收方缓冲区溢出</li>
+<li>由应用程序处理速度决定</li>
+</ul>
+<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
+<p><img data-src="/images/socket_02_12.png" alt="img"></p>
+<ul>
+<li>发送方内部维护，不需要告知对方</li>
+<li>反映网络的承载能力</li>
+<li>防止网络拥塞</li>
+<li>由网络状况动态调整</li>
+<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
+</ul>
+<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
+<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>tcp</tag>
+        <tag>抓包</tag>
       </tags>
   </entry>
 </search>
