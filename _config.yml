@@ -149,3 +149,28 @@ excerpt:
   excerpt_excludes: []  # 不自动生成摘要的页面
   more_excludes: []     # 不显示 read more 的页面
   hideWholePostExcerpts: true  # 隐藏整篇文章的摘要
+
+
+
+related_posts:
+  enabled: true
+  display_in_home: false
+  display_in_post: false  # 添加这行来禁用文章页面中的相关文章 
+  filter_threshold: 0.3
+  related_count: 5
+  weight:
+    title: 0.5
+    categories: 0.3
+    tags: 0.2
+
+
+live2d:
+  enable: true
+  model:
+    use: live2d-widget-model-wanko  # 使用小狗模型
+  display:
+    position: right
+    width: 200
+    height: 200
+  mobile:
+    show: true

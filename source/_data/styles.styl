@@ -586,3 +586,55 @@ body::-webkit-scrollbar-track {
     transform: scaleY(1);
   }
 }
+
+// 相关文章样式
+.post-related {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  
+  h3 {
+    margin-bottom: 1rem;
+    font-size: 1.2em;
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.5rem;
+  }
+  
+  .popular-posts {
+    .popular-posts-item {
+      margin: 0.8rem 0;
+      padding: 0.5rem;
+      transition: all 0.2s ease;
+      border-radius: 4px;
+      
+      &:hover {
+        background: rgba(0,0,0,0.05);
+        transform: translateX(5px);
+      }
+    }
+    
+    .popular-posts-link {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #666;
+      text-decoration: none;
+      
+      &:hover {
+        color: #0066cc;
+      }
+    }
+    
+    .popular-posts-title {
+      flex: 1;
+    }
+    
+    .popular-posts-date {
+      font-size: 0.9em;
+      color: #999;
+      margin-left: 1rem;
+    }
+  }
+}
