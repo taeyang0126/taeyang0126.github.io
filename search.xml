@@ -1,6 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>多线程异常处理</title>
+    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
+</blockquote>
+<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
+<li>新起线程中抛出异常</li>
+</ul>
+<blockquote>
+<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>线程池中抛出的异常</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
+<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
+</blockquote>
+<ul>
+<li><p>Try catch 显示处理异常</p>
+</li>
+<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
+<ul>
+<li><p>线程处理</p>
+</li>
+<li><p>thread.setUncaughtExceptionHandler</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
+
+</li>
+<li><p>线程池处理</p>
+</li>
+<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<p>Hold on…..有人的地方就不存在信任这一说- -</p>
+<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
+<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
+</blockquote>
+<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>JAVA</category>
+      </categories>
+      <tags>
+        <tag>JAVA</tag>
+        <tag>多线程</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Arthas</title>
     <url>/2025/02/09/arthas/arthas/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -117,62 +173,6 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
       <tags>
         <tag>Arthas</tag>
         <tag>问题排查</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>多线程异常处理</title>
-    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
-</blockquote>
-<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
-<li>新起线程中抛出异常</li>
-</ul>
-<blockquote>
-<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>线程池中抛出的异常</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-
-<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
-<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
-</blockquote>
-<ul>
-<li><p>Try catch 显示处理异常</p>
-</li>
-<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
-<ul>
-<li><p>线程处理</p>
-</li>
-<li><p>thread.setUncaughtExceptionHandler</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
-
-</li>
-<li><p>线程池处理</p>
-</li>
-<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ul>
-<p>Hold on…..有人的地方就不存在信任这一说- -</p>
-<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
-<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
-</blockquote>
-<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>JAVA</category>
-      </categories>
-      <tags>
-        <tag>JAVA</tag>
-        <tag>多线程</tag>
       </tags>
   </entry>
   <entry>
@@ -833,51 +833,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>linux内核发送网络包</title>
-    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
-    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
-<ul>
-<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
-<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
-<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
-<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
-<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
-<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
-<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
-</ol>
-</li>
-</ul>
-</li>
-<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
-<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
-<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
-</ul>
-</li>
-<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
-<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
-<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
-</ul>
-</li>
-</ul>
-<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
-<p>指待发送数据的内存拷贝</p>
-</blockquote>
-<ol>
-<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
-<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
-<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>socket</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>linux内核接收网络包</title>
     <url>/2025/02/09/wang-luo/linux-nei-he-jie-shou-wang-luo-bao/posts/undefined/</url>
     <content><![CDATA[<h3 id="RingBuffer"><a href="#RingBuffer" class="headerlink" title="RingBuffer"></a>RingBuffer</h3><h4 id="RingBuffer到底是什么"><a href="#RingBuffer到底是什么" class="headerlink" title="RingBuffer到底是什么?"></a>RingBuffer到底是什么?</h4><blockquote>
@@ -934,6 +889,51 @@ sequenceDiagram
 <li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
 </ul>
 <p><img data-src="/images/socket_02_09.png" alt="img"></p>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>linux内核发送网络包</title>
+    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
+<ul>
+<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
+<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
+<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
+<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
+<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
+<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
+<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
+<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
+<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
+</ul>
+</li>
+<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
+<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
+<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
+</ul>
+</li>
+</ul>
+<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
+<p>指待发送数据的内存拷贝</p>
+</blockquote>
+<ol>
+<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
+<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
+<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
+</ol>
 ]]></content>
       <categories>
         <category>网络</category>

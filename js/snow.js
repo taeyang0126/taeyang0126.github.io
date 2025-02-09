@@ -1,0 +1,1 @@
+let snow={init:function(){let t=document.querySelector("body");setInterval(()=>{let e=document.createElement("span");e.className="snow",e.style.left=100*Math.random()+"%",e.style.animationDuration=3*Math.random()+2+"s",e.style.opacity=Math.random(),e.innerHTML="❅",t.appendChild(e),setTimeout(()=>e.remove(),5e3)},200)}};document.addEventListener("DOMContentLoaded",snow.init);

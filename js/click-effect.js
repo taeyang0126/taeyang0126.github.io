@@ -1,0 +1,1 @@
+let clickEffect={init:function(){document.addEventListener("click",function(e){let t=document.createElement("span");t.className="click-effect";var c=e.clientX,e=e.clientY;t.style.left=c-10+"px",t.style.top=e-10+"px",document.body.appendChild(t),setTimeout(()=>{t.remove()},1e3)})}};document.addEventListener("DOMContentLoaded",clickEffect.init);
