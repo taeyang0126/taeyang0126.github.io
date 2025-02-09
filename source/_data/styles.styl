@@ -178,3 +178,58 @@ body::-webkit-scrollbar-track {
     transform: scale(1.03);
   }
 }
+
+// 搜索弹窗样式
+.search-popup {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px);
+}
+
+// 搜索框样式
+.search-popup .search-input input {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 8px;
+  padding: 10px 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+// 搜索结果样式
+.search-result-list {
+  background: transparent !important;
+}
+
+.search-result-list li {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  margin: 10px 0;
+  padding: 15px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.search-result-list li:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+// 搜索结果高亮
+.search-result .search-keyword {
+  color: var(--link-color);
+  font-weight: bold;
+  background: rgba(0, 102, 204, 0.1);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+
+/* 标题悬浮效果 */
+.post-title {
+  transition: all 0.3s ease-in-out;
+}
+.post-title:hover {
+  transform: translateX(10px);
+}
