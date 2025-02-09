@@ -4,7 +4,7 @@
     <title>1. Netty Reactor 启动流程</title>
     <url>/2025/02/09/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=M2RkN2M3YjVjNDQ5ZDdkMGI0OGE2Y2MwMjY0MzQ4NTRfMlhkYk5KOEp5ZGxqT1lHeWphWWtjVzRCTGIzOGgyTjNfVG9rZW46WFZWQWJxR09EbzVMekh4NHdiNmNPT2JUbnZnXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_01.png" alt="netty"></p>
 <h2 id="Netty-服务端的启动流程"><a href="#Netty-服务端的启动流程" class="headerlink" title="Netty 服务端的启动流程"></a>Netty 服务端的启动流程</h2><ul>
 <li>创建服务端<code>NioServerSocketChannel</code>并初始化</li>
 <li>将服务端<code>NioServerSocketChannel</code>注册到<code>主Reactor线程组</code>中</li>
@@ -12,47 +12,47 @@
 <li>随后由<code>NioServerSocketChannel</code>绑定端口地址。</li>
 <li>绑定端口地址成功后，向<code>NioServerSocketChannel</code>对应的<code>Pipeline</code>中触发传播<code>ChannelActive事件</code>，在<code>ChannelActive事件回调</code>中向<code>Main Reactor</code>注册<code>OP_ACCEPT事件</code>，开始等待客户端连接。服务端启动完成。</li>
 </ul>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ODdjNjJhMmQwYmYzN2VmY2M4OTk4NTczZTA0ODZjMTBfd1kxMVl4ZWxiemtQcHIzRk01aDFxbHRaQU9Ud2hBZkhfVG9rZW46RGlVbGJaQUtGb2FtRkF4Zk1QbmNuaU85bmVlXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
-<h2 id="1-initAndRegister"><a href="#1-initAndRegister" class="headerlink" title="1. initAndRegister"></a>1. initAndRegister</h2><p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=NDNlYWMzY2YzYjBiZDBjZmU5MzU2ZTMzZTAwNWQwNDhfc2g0Z0dGR0RZRUl2S2FPalB3b3Q3VUFhRUhKVnRIT2pfVG9rZW46RlJEVGJhQ2k0b2RKWGV4c01kS2M3S3dxbkRmXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_02.png" alt="netty"></p>
+<h2 id="1-initAndRegister"><a href="#1-initAndRegister" class="headerlink" title="1. initAndRegister"></a>1. initAndRegister</h2><p><img data-src="/images/netty_01_03.png" alt="netty"></p>
 <p>开始注册</p>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=OWVlMmQyMWM0NzgzNThjYWMyNTYwMzZlZjc1NzM2MTFfQU9DaEFWNUJIeENxYnBZMVNUYmdLZFpLUDRhR1lGTHlfVG9rZW46V1JlTWJqSFhkb1FKR1N4OFI0S2NObWJqbnlkXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_04.png" alt="netty"></p>
 <h2 id="2-Bind"><a href="#2-Bind" class="headerlink" title="2. Bind"></a>2. Bind</h2><p><code>bind事件</code>在 Netty 中被定义为<code>outbound事件</code>，所以它在<code>pipeline</code>中是反向传播。先从<code>TailContext</code>开始反向传播直到<code>HeadContext</code>；<code>bind</code>的核心逻辑也正是实现在<code>HeadContext</code>中</p>
 <blockquote>
 <p>headContext 中的绑定方法</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ZGU2YWI1OWU2OGE5ZTRhMWY0ODEzYmI4ZTlmOGU3NGVfcE5lbkVzUU1lalNEWkZIUXQ1bzdvOGU3RFc2U05ZdW9fVG9rZW46RjhRSWIwR0xjbzl2RVh4TXNtMWM4WmpBbndjXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_05.png" alt="netty"></p>
 <blockquote>
 <p>NioServerSocketChannel 中的绑定动作</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=YWNjZGZhY2UxMmJiNDJkYmI3MzQxZjhjM2FmZWEzYmNfWTlwSWVSTmFtQWVERDQ2MXJ3eENPSGh0OW4yajJPdk9fVG9rZW46TEt1SmJTOWdxb1k3OXd4d0RZeWNKMmJRbklkXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_06.png" alt="netty"></p>
 <blockquote>
 <p>绑定完成后触发 active 操作 –&gt; HeadContext</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=MjBkYTExNDA4YTJlNDI1MjllM2NkNzg3MGIyZjMyODNfRGNVRzFIZmpkTUpzRnAxTGhnS3k0NUdYdHNNVFRTeUVfVG9rZW46TU5TamJMeUtWb2hRRlN4cEg3b2MwYmtQbmpkXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_07.png" alt="netty"></p>
 <blockquote>
 <p>io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=N2QxNjBkZGYzNDI3N2FjZThiY2ZhYmJkMjBmMGRmZmJfVTFwbkc4RGJrU1llcVN6QUlWVUc2MUlDRlV4Y3BwMTRfVG9rZW46U04yT2I3VjRsb01IN0d4VE1jd2M2Q241bjlnXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_08.png" alt="netty"></p>
 <blockquote>
 <p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=YTJmNDAxY2NmZjgxMzZiOGE3YzczZDhmYmRhMjNhMTBfeHU3dTl4SUdiQ0x1RUJ2OUNneDVoazNnYWpTMHBHNVdfVG9rZW46U0t3dWJXdzg5bzJKd2J4b3dUaGNtTXREbjliXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_09.png" alt="netty"></p>
 <h2 id="细节点"><a href="#细节点" class="headerlink" title="细节点"></a>细节点</h2><h3 id="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"><a href="#Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的" class="headerlink" title="Reactor线程的启动是在向Reactor提交第一个异步任务的时候启动的"></a><code>Reactor线程</code>的启动是在向<code>Reactor</code>提交第一个异步任务的时候启动的</h3><blockquote>
 <p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable, boolean)</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=NWFjYzZhNDgyMDk3YmU2Y2U3ZDJjMDk1YzE0MjE2YjBfOHBSQ0xRa1pyRUFId3gwNmNIYTRXWjFUTFVLZkI0b05fVG9rZW46SWM3V2JNcVdpb1JqY1h4SzV6d2NPZWpLbjNnXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_10.png" alt="netty"></p>
 <h3 id="Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"><a href="#Reactor线程的核心工作-轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务" class="headerlink" title="Reactor线程的核心工作 轮询所有注册其上的Channel中的IO就绪事件，处理对应Channel上的IO事件，执行异步任务"></a><code>Reactor</code>线程的核心工作 <code>轮询所有注册其上的Channel中的IO就绪事件</code>，<code>处理对应Channel上的IO事件</code>，<code>执行异步任务</code></h3><blockquote>
 <p>io.netty.channel.nio.NioEventLoop#run</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ZTc1ZjJiYjNiNzIyNTE4ZjJiNmQ3ZDE4MjliMDcwZWJfRmtZS0liRHp0ZGVNREFkZlVSRXBheTBLNWFNTU1aNGdfVG9rZW46R29RcmJIYlgxb043bEd4S0ZkTGNBN3VKbkRjXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_11.png" alt="netty"></p>
 <h3 id="Channel-的各种事件触发顺序"><a href="#Channel-的各种事件触发顺序" class="headerlink" title="Channel 的各种事件触发顺序"></a>Channel 的各种事件触发顺序</h3><ol>
 <li><p>handlerAdded</p>
 <p> socket 向 jdk selector 注册后、在通知注册的 promise 完成之前（也就是 promise 回调之前）触发</p>
-<p> <img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=M2E3NmM0N2QzM2MwNDExMDc4OWNiYTFjYzIyMzRmODNfSnhEUTdXTkpITHRxWWlMV0VZRGFUaTl3UzhrOVdFSE1fVG9rZW46RHMyamJJU0Z1b1FMQXJ4c2JBOWNpNUtybjliXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p> <img data-src="/images/netty_01_12.png" alt="netty"></p>
 </li>
 <li><p>channelRegistered</p>
 <p> 在通知 promise 完成后（也就是回调执行完成之后）会传播 Registered 事件</p>
-<p> <img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=MjA5MGIxYzk4NjcwNmU1NTVkZTE4MmQ4NjQ3YzA2ZjdfUEtkQ1czdGdKVnV5VTlpRXNwVTlUcVVrYkxQYjVRc0hfVG9rZW46QkdyTmJNS0ZPb3VWNFp4c2VHeWMyYVdNbkNiXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p> <img data-src="/images/netty_01_13.png" alt="netty"></p>
 </li>
 <li><p>Active </p>
 <p>a. 服务端 NioServerSocketChannel 判断是否激活的标准为端口是否绑定成功。</p>
@@ -76,33 +76,33 @@
 <h3 id="向底层-selector-注册"><a href="#向底层-selector-注册" class="headerlink" title="向底层 selector 注册"></a>向底层 selector 注册</h3><blockquote>
 <p>io.netty.channel.nio.AbstractNioChannel#doRegister</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ODE3MGZhZjAzZWE4ODE0ZjAzNjM2ZDY3MmM1NmY2MmRfOU1SUmU1WHVVbzFmVjg0RDNKYUcyZzZTdlBTaVpJakRfVG9rZW46SGtaSmJXSnpyb0xTQlp4aDZNb2NYMmlrbmdlXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
-<h3 id="NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"><a href="#NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行" class="headerlink" title="NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"></a>NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行</h3><p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=OTBiZTI4ZjgwMjBhNjZhZTUxZDk5YmY4NDAyZTFlNzdfaWl3RUNlVjM2VDlXV01rekEycnFRSGtZc3I0bHRuRkdfVG9rZW46TVBva2JmTVdYb0F6OWF4UUI1WWNsVE9EbkliXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_14.png" alt="netty"></p>
+<h3 id="NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"><a href="#NioServerSocketChannel-注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行" class="headerlink" title="NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行"></a>NioServerSocketChannel 注册成功后回调任务进行端口绑定，会将端口绑定封装为一个任务提交到队列中，而不是即刻执行</h3><p><img data-src="/images/netty_01_15.png" alt="netty"></p>
 <h3 id="事件在pipeline中的传播"><a href="#事件在pipeline中的传播" class="headerlink" title="事件在pipeline中的传播"></a>事件在<code>pipeline</code>中的传播</h3><ul>
 <li><code>inbound事件</code>从<code>HeadContext</code>开始逐个向后传播直到<code>TailContext</code></li>
 <li><code>outbound事件</code>则是反向传播，从<code>TailContext</code>开始反向向前传播直到<code>HeadContext</code></li>
 </ul>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=NzgwNDg4ZDkwMjViMDI3OGM3MzJjZWY4MTYwZmFjODNfZzAxVllzZ1ZWVzJtemJ5dENZdHowVnh6VkNtUnVuaTVfVG9rZW46T0xFYmJOU1Y0b3Fnekd4N3JnZGN2cDZPbkZkXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_16.png" alt="netty"></p>
 <h3 id="服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？"><a href="#服务端-Socket-和客户端-Socket-分别在何时向-seletor-注册感兴趣的事件？" class="headerlink" title="服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？"></a>服务端 Socket 和客户端 Socket 分别在何时向 seletor 注册感兴趣的事件？</h3><ul>
 <li>注册感兴趣的事件触发时机都是<code>ChannelActive</code><ul>
-<li><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=Y2I2ZjE5ZjU1MTM0MjdjZWI0NjNiZTFlYWViZjdjYmJfM28xa05jbEl5OFdHUnVLS3U5bnRtMzRtOTNid0E5YzFfVG9rZW46SmNma2JNT0dRb0FIQjF4VXRwTGNZMWZjbkxnXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></li>
+<li><img data-src="/images/netty_01_17.png" alt="netty"></li>
 <li>对于服务端 socket 来说，bind 成功后会传递 <code>channelActive</code>事件</li>
 <li>io.netty.channel.AbstractChannel.AbstractUnsafe#bind</li>
-<li><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=MjZkMzU1OGZjZGM5NWQxNzNjNzdjYjA5YjlhNzJiZDBfUEtDN3FpOXFtbzZXNTRKYWF6ZDU3Vmo0ampra3UzVUNfVG9rZW46WG1hRmJiYkxWb3M5Q0l4OEp6RGMxS003bnNmXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></li>
+<li><img data-src="/images/netty_01_18.png" alt="netty"></li>
 <li>对于客户端 socket 来说，register 成功后会传递 <code>channelActive</code>事件</li>
 <li>io.netty.channel.AbstractChannel.AbstractUnsafe#register0</li>
-<li><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ZjIyOGFiNmY3MGQwOGYwZTY0OWFhYjEwMDU2NzMxYjJfMjU2UEJpb3AwdDRXUUJmZVp4STRDVXdRSDRKQkh1MEFfVG9rZW46UmE0RmJkQ09ab1o1S0h4Wm95c2MyQ3hobndDXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></li>
+<li><img data-src="/images/netty_01_19.png" alt="netty"></li>
 </ul>
 </li>
 <li>通过 <code>HeadContext#read</code> 方法进行感兴趣事件的注册</li>
 </ul>
 <blockquote>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">io.netty.channel.AbstractChannel.AbstractUnsafe#beginRead</span><br></pre></td></tr></table></figure></blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=YTBlMzQ4NTJjNzFiM2ZiNDFkZDhlMDAyNjc1MDJjN2ZfZzl5N1NUTE5YVzhkak1tOEVvS1g3aVF0aWtMRjlXOFFfVG9rZW46VnczYWJESDBGb3RWakl4OWxtMGNaemRqbkxjXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_20.png" alt="netty"></p>
 <blockquote>
 <p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
 </blockquote>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=ZTA0MzgyZDc2NjY4YTY3N2NjNjgxMjRkYWNjN2NhYzZfaE8zOU1tWGhMSzRYWUlwdVR6Z3pZdHVjY2lUS0k1dWpfVG9rZW46Sm1ZNmI4TnFTb0VLZGp4YTVIQmNKS0NZbnlFXzE3MzkwODQ0MjY6MTczOTA4ODAyNl9WNA" alt="img"></p>
+<p><img data-src="/images/netty_01_21.png" alt="netty"></p>
 ]]></content>
       <categories>
         <category>Netty</category>
@@ -444,7 +444,7 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
 <li><p><a href="https://zhuanlan.zhihu.com/p/158592899">JIT相关jfr事件</a></p>
 </li>
 </ul>
-<p><img src="https://rq3nt70g815.feishu.cn/space/api/box/stream/download/asynccode/?code=MGQ5ZTQ4M2E5NTExOTI1MmQ2N2QyYjM2MTEyZjcxZDFfMk5FVW5iMXFUWXdjS1J5c2xXU21YOWJJZnBqT290QTZfVG9rZW46RldvTmIwOG1lbzBHRFd4U3pqcmNUYWdabmJiXzE3MzkwODE2OTc6MTczOTA4NTI5N19WNA" alt="img"></p>
+<p><img data-src="/images/jfr_01_01.png" alt="img"></p>
 ]]></content>
       <categories>
         <category>JFR</category>
@@ -458,7 +458,7 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
   <entry>
     <title>JVM内存相关的监控指标</title>
     <url>/2025/02/09/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img src="/images/jvm-memory.PNG" alt="jvm内存图片"></p>
+    <content><![CDATA[<p><img data-src="/images/jvm-memory.PNG" alt="jvm内存图片"></p>
 <h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
 <p>JVM Heap代表存放Java Objects的Heap</p>
 </blockquote>
@@ -524,6 +524,7 @@ tt -i 1000  -w &#39;target.getApplicationContext().getEnvironment().getProperty(
 <td align="left"></td>
 </tr>
 </tbody></table>
+<p><img data-src="data:image/jpeg;base64,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" alt="123"></p>
 ]]></content>
       <categories>
         <category>JVM</category>
