@@ -726,7 +726,7 @@ livere_uid: # <your_uid>
 # Gitalk
 # For more information: https://gitalk.github.io
 gitalk:
-  enable: true
+  enable: false
   github_id: taeyang0126 # GitHub repo owner
   repo: taeyang0126.github.io # Repository name to store issues
   client_id: Ov23liZjkJRxsFOQRffK # GitHub Application Client ID
