@@ -191,3 +191,9 @@ date: 2025-02-09 14:51:22
     ```Shell
     vmtool --action getInstances --className org.springframework.context.ConfigurableApplicationContext --express 'instances[0].getEnvironment().getProperty("server.port")'
     ```
+
+- 获取 spring Environment 配置
+    
+    ```Shell
+    vmtool -x 3 --action getInstances --className org.springframework.core.env.Environment  --express 'instances[0].getProperty("server.port")' -c 7b5a12ae
+    ```
