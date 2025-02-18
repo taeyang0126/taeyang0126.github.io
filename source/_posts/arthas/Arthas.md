@@ -28,18 +28,18 @@ date: 2025-02-09 14:51:22
 ### 2. 获取spring context 并执行某些操作
 
    > **前置** 使用tt记录请求，获取到上下文
-   >
-   > tt -t org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter invokeHandlerMethod -n 3
+   
+  - tt -t org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter invokeHandlerMethod -n 3
+  
+  - tt -i 1000 -w 'target.getApplicationContext().getBean("jdbcTemplate")'
 
-    tt -i 1000 -w 'target.getApplicationContext().getBean("jdbcTemplate")'
+  - tt -i 1000 -w 'target.getApplicationContext().getBean("jdbcTemplate").dataSource.ConnectionPool'
 
-    tt -i 1000 -w 'target.getApplicationContext().getBean("jdbcTemplate").dataSource.ConnectionPool'
+  - tt -i 1000 -w 'target.getApplicationContext().getBean("jdbcTemplate").getTargetSource().target'
 
-    tt -i 1000 -w 'target.getApplicationContext().getBean("jdbcTemplate").getTargetSource().target'
+  - tt -i 1000 -w 'target.getApplicationContext().getBean("jdbcTemplate").getTargetSource().target.cacheMap'
 
-    tt -i 1000 -w 'target.getApplicationContext().getBean("jdbcTemplate").getTargetSource().target.cacheMap'
-
-    tt -i 1000  -w 'target.getApplicationContext().getEnvironment().getProperty("spring.datasource.riskctrl.url")'
+  - tt -i 1000  -w 'target.getApplicationContext().getEnvironment().getProperty("spring.datasource.riskctrl.url")'
 
 ### 3. 使用[ognl](https://commons.apache.org/dormant/commons-ognl/language-guide.html)
 
