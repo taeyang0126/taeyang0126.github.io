@@ -713,7 +713,7 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/tags/index.html</loc>
+    <loc>https://taeyang0126.github.io/categories/index.html</loc>
     
     <lastmod>2024-02-09</lastmod>
     
@@ -722,7 +722,7 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/index.html</loc>
+    <loc>https://taeyang0126.github.io/tags/index.html</loc>
     
     <lastmod>2024-02-09</lastmod>
     
@@ -824,6 +824,13 @@
   </url>
   
   <url>
+    <loc>https://taeyang0126.github.io/tags/JFR/</loc>
+    <lastmod>2025-02-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
     <loc>https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
@@ -832,13 +839,6 @@
   
   <url>
     <loc>https://taeyang0126.github.io/tags/%E5%86%85%E5%AD%98/</loc>
-    <lastmod>2025-02-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>https://taeyang0126.github.io/tags/JFR/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -860,13 +860,6 @@
   
   <url>
     <loc>https://taeyang0126.github.io/tags/k8s/</loc>
-    <lastmod>2025-02-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>https://taeyang0126.github.io/tags/%E5%AE%B9%E5%99%A8/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -895,6 +888,13 @@
   
   <url>
     <loc>https://taeyang0126.github.io/tags/spring-boot/</loc>
+    <lastmod>2025-02-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://taeyang0126.github.io/tags/%E5%AE%B9%E5%99%A8/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -1055,14 +1055,14 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/tags/ES/</loc>
+    <loc>https://taeyang0126.github.io/tags/MySQL/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/tags/MySQL/</loc>
+    <loc>https://taeyang0126.github.io/tags/ES/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -1148,14 +1148,14 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/JVM/</loc>
+    <loc>https://taeyang0126.github.io/categories/JFR/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/JFR/</loc>
+    <loc>https://taeyang0126.github.io/categories/JVM/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -1239,14 +1239,14 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/ES/</loc>
+    <loc>https://taeyang0126.github.io/categories/MySQL/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/MySQL/</loc>
+    <loc>https://taeyang0126.github.io/categories/ES/</loc>
     <lastmod>2025-02-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>

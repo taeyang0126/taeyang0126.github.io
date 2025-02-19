@@ -466,38 +466,6 @@
       </tags>
   </entry>
   <entry>
-    <title>JVM内存相关的监控指标</title>
-    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
-<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
-<p>JVM Heap代表存放Java Objects的Heap</p>
-</blockquote>
-<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
-<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
-</blockquote>
-<ul>
-<li>CodeCache</li>
-<li>Metaspace</li>
-<li>CompressedClassSpace</li>
-<li>DirectBuffer</li>
-<li>Thread Stacks</li>
-</ul>
-<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
-<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
-<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
-]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>监控</tag>
-        <tag>内存</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>JFR</title>
     <url>/2025/02/09/jfr/jfr/posts/undefined/</url>
     <content><![CDATA[<h3 id="学习资料"><a href="#学习资料" class="headerlink" title="学习资料"></a>学习资料</h3><ul>
@@ -717,8 +685,40 @@
       </categories>
       <tags>
         <tag>JVM</tag>
-        <tag>监控</tag>
         <tag>JFR</tag>
+        <tag>监控</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM内存相关的监控指标</title>
+    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
+    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
+<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
+<p>JVM Heap代表存放Java Objects的Heap</p>
+</blockquote>
+<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
+<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+</blockquote>
+<ul>
+<li>CodeCache</li>
+<li>Metaspace</li>
+<li>CompressedClassSpace</li>
+<li>DirectBuffer</li>
+<li>Thread Stacks</li>
+</ul>
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
+<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
+<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>监控</tag>
+        <tag>内存</tag>
       </tags>
   </entry>
   <entry>
@@ -947,6 +947,68 @@
       </tags>
   </entry>
   <entry>
+    <title>loom-springboot</title>
+    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
+    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
+<li>jdk 22.0.1-graal</li>
+<li>maven 3.6.3</li>
+<li>内置容器 tomcat，最大线程数量 256</li>
+<li>Xms200M Xmx300M</li>
+<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
+<li>M1 max 64g</li>
+<li>SpringBoot 3.3.0</li>
+</ul>
+<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
+</ul>
+<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
+<ul>
+<li>内存、线程占用情况</li>
+</ul>
+<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
+<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
+</ul>
+<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
+<ul>
+<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
+</ul>
+<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
+<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
+<li>版本9.0.60</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
+<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
+<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
+</ul>
+<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
+<li>版本10.1.24</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
+<li>此版本下如何启用虚拟线程?<ol>
+<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
+<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
+</ol>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+        <tag>spring boot</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>容器内存</title>
     <url>/2025/02/10/k8s/rong-qi-nei-cun/posts/undefined/</url>
     <content><![CDATA[<h3 id="WorkingSet-与PageCache-监控"><a href="#WorkingSet-与PageCache-监控" class="headerlink" title="WorkingSet 与PageCache 监控"></a><a href="https://www.cnblogs.com/alisystemsoftware/p/18196395">WorkingSet 与PageCache 监控</a></h3><h3 id="K8s监控的内存指标"><a href="#K8s监控的内存指标" class="headerlink" title="K8s监控的内存指标"></a>K8s监控的内存指标</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">    memoryStats = &amp;statsapi.MemoryStats&#123;</span><br><span class="line">        Time:            metav1.NewTime(cstat.Timestamp),</span><br><span class="line">        UsageBytes:      &amp;cstat.Memory.Usage,</span><br><span class="line">        WorkingSetBytes: &amp;cstat.Memory.WorkingSet,</span><br><span class="line">        RSSBytes:        &amp;cstat.Memory.RSS,</span><br><span class="line">        PageFaults:      &amp;pageFaults,</span><br><span class="line">        MajorPageFaults: &amp;majorPageFaults,</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// availableBytes = memory limit (if known) - workingset</span></span><br><span class="line">    <span class="keyword">if</span> !isMemoryUnlimited(info.Spec.Memory.Limit) &#123;</span><br><span class="line">        availableBytes := info.Spec.Memory.Limit - cstat.Memory.WorkingSet</span><br><span class="line">        memoryStats.AvailableBytes = &amp;availableBytes</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">type MemoryStats struct &#123;</span><br><span class="line"><span class="comment">// Current memory usage, this includes all memory regardless of when it was</span></span><br><span class="line"><span class="comment">// accessed.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Usage uint64 `json:<span class="string">&quot;usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Maximum memory usage recorded.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">MaxUsage uint64 `json:<span class="string">&quot;max_usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Number of bytes of page cache memory.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Cache uint64 `json:<span class="string">&quot;cache&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of anonymous and swap cache memory (includes transparent</span></span><br><span class="line"><span class="comment">// hugepages).</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">RSS uint64 `json:<span class="string">&quot;rss&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of swap currently used by the processes in this cgroup</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Swap uint64 `json:<span class="string">&quot;swap&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of memory used for mapped files (includes tmpfs/shmem)</span></span><br><span class="line">MappedFile uint64 `json:<span class="string">&quot;mapped_file&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of working set memory, this includes recently accessed memory,</span></span><br><span class="line"><span class="comment">// dirty memory, and kernel memory. Working set is &lt;= &quot;usage&quot;.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">WorkingSet uint64 `json:<span class="string">&quot;working_set&quot;</span>`</span><br></pre></td></tr></table></figure>
@@ -1064,68 +1126,6 @@
         <tag>监控</tag>
         <tag>k8s</tag>
         <tag>容器</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>loom-springboot</title>
-    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
-    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
-<li>jdk 22.0.1-graal</li>
-<li>maven 3.6.3</li>
-<li>内置容器 tomcat，最大线程数量 256</li>
-<li>Xms200M Xmx300M</li>
-<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
-<li>M1 max 64g</li>
-<li>SpringBoot 3.3.0</li>
-</ul>
-<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
-</ul>
-<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
-<ul>
-<li>内存、线程占用情况</li>
-</ul>
-<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
-<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
-</ul>
-<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
-<ul>
-<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
-</ul>
-<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
-<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
-<li>版本9.0.60</li>
-<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
-<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
-<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
-</ul>
-<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
-<li>版本10.1.24</li>
-<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
-<li>此版本下如何启用虚拟线程?<ol>
-<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol start="2">
-<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
-<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
-</ol>
-</li>
-</ul>
-]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
-        <tag>spring boot</tag>
       </tags>
   </entry>
   <entry>
@@ -2031,6 +2031,51 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>linux内核发送网络包</title>
+    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
+<ul>
+<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
+<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
+<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
+<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
+<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
+<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
+<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
+<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
+<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
+</ul>
+</li>
+<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
+<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
+<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
+</ul>
+</li>
+</ul>
+<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
+<p>指待发送数据的内存拷贝</p>
+</blockquote>
+<ol>
+<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
+<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
+<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>TCP 连接</title>
     <url>/2025/02/09/wang-luo/tcp-lian-jie/posts/undefined/</url>
     <content><![CDATA[<h3 id="TCP-状态转换图"><a href="#TCP-状态转换图" class="headerlink" title="TCP 状态转换图"></a>TCP 状态转换图</h3><p><img data-src="/images/tcp_01_01.png" alt="img"></p>
@@ -2135,51 +2180,6 @@ sequenceDiagram
         <tag>linux</tag>
         <tag>网络</tag>
         <tag>tcp</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>linux内核发送网络包</title>
-    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
-    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
-<ul>
-<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
-<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
-<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
-<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
-<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
-<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
-<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
-</ol>
-</li>
-</ul>
-</li>
-<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
-<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
-<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
-</ul>
-</li>
-<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
-<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
-<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
-</ul>
-</li>
-</ul>
-<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
-<p>指待发送数据的内存拷贝</p>
-</blockquote>
-<ol>
-<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
-<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
-<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>socket</tag>
       </tags>
   </entry>
   <entry>
@@ -2545,102 +2545,6 @@ sequenceDiagram
         <tag>分布式</tag>
         <tag>算法</tag>
         <tag>raft</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ES</title>
-    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
-</ul>
-<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
-<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
-<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
-<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
-</ul>
-</li>
-<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
-<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
-<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
-</ul>
-</li>
-<li>最佳实践<ul>
-<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
-<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
-<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
-<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
-<li>作用：添加或替换文档。</li>
-<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
-<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
-<li>特点：不关心之前是否存在这本书。</li>
-</ul>
-<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
-<li>作用：仅添加新文档，如果文档已存在则失败。</li>
-<li>类比：只有当书架上没有这本书时，才能放上去。</li>
-<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
-<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
-</ul>
-<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
-<li>作用：修改现有文档的部分内容。</li>
-<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
-<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
-<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
-</ul>
-<ol>
-<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
-<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
-<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
-<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
-<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
-</ol>
-<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
-<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
-<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
-<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
-</blockquote>
-<ol>
-<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
-<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
-<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
-</blockquote>
-<ol>
-<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
-<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
-</blockquote>
-<ol>
-<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
-<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ol>
-<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
-<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>ES</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>ES</tag>
       </tags>
   </entry>
   <entry>
@@ -3827,6 +3731,102 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ES</title>
+    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
+</ul>
+<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
+<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
+<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
+<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
+</ul>
+</li>
+<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
+<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
+<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
+</ul>
+</li>
+<li>最佳实践<ul>
+<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
+<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
+<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
+<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
+<li>作用：添加或替换文档。</li>
+<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
+<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
+<li>特点：不关心之前是否存在这本书。</li>
+</ul>
+<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
+<li>作用：仅添加新文档，如果文档已存在则失败。</li>
+<li>类比：只有当书架上没有这本书时，才能放上去。</li>
+<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
+<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
+</ul>
+<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
+<li>作用：修改现有文档的部分内容。</li>
+<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
+<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
+<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
+</ul>
+<ol>
+<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
+<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
+<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
+<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
+<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
+</ol>
+<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
+<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
+<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
+<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
+</blockquote>
+<ol>
+<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
+<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
+<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
+</blockquote>
+<ol>
+<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
+<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
+</blockquote>
+<ol>
+<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
+<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
+<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>ES</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>ES</tag>
       </tags>
   </entry>
   <entry>
