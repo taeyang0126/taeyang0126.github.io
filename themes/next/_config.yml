@@ -384,6 +384,9 @@ codeblock:
   fold:
     enable: true
     height: 500
+  # Add copy button on plain text block
+  copy_button_for_plain: true
+  line_number: true    # 显示行号配置按需打开/关闭
 
 back2top:
   enable: true
