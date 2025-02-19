@@ -83,6 +83,38 @@
       </tags>
   </entry>
   <entry>
+    <title>dockerfile</title>
+    <url>/2025/02/10/docker/dockerfile/posts/undefined/</url>
+    <content><![CDATA[<h3 id="Dockerignore"><a href="#Dockerignore" class="headerlink" title="Dockerignore"></a>Dockerignore</h3><blockquote>
+<p>dockerfile中忽略特定的文件和目录</p>
+</blockquote>
+<ul>
+<li>示例表示忽略全部，除了一些必要的</li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line">*</span><br><span class="line">!pom.xml</span><br><span class="line">!sh</span><br><span class="line">!src</span><br></pre></td></tr></table></figure>
+
+<h3 id="DockerFile"><a href="#DockerFile" class="headerlink" title="DockerFile"></a>DockerFile</h3><blockquote>
+<p>构建java基础项目docker镜像</p>
+</blockquote>
+<ul>
+<li>提供 maven 编译构建 + 运行</li>
+<li><code>BASE_JAVA_IMAGE</code> 基础的java镜像，建议选择带有jre的基础java镜像</li>
+<li><code>MAVEN_IMAGE</code> maven编译的基础镜像，建议与java版本对应</li>
+<li>内置 <code>arthas</code></li>
+<li>内置运行脚本 <code>run.sh</code></li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Global ARGs (build-time variables)</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在 FROM 指令中是可以直接使用的</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在不同的构建阶段需要重新定义</span></span><br><span class="line"><span class="comment"># ARG 是构建时的变量，不能在容器中访问，而ENV是环境变量</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Base images</span></span><br><span class="line"><span class="keyword">ARG</span> BASE_JAVA_IMAGE=eclipse-temurin:<span class="number">8</span>-jdk-jammy</span><br><span class="line"><span class="keyword">ARG</span> MAVEN_IMAGE=maven:<span class="number">3</span>-eclipse-temurin-<span class="number">8</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Application info</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME=aws-starter</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION=<span class="number">1.0</span></span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span>=<span class="number">17674030991</span>@<span class="number">163</span>.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># Arthas</span></span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION=<span class="number">3.7</span>.<span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Directory structure</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME=/opt/deployments</span><br><span class="line"><span class="keyword">ARG</span> APP_USER=app</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP=app</span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 0 : Download Arthas</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> alpine:latest AS arthas-downloader</span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION</span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> apk add --no-cache wget unzip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">mkdir</span> -p /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    wget -q https://maven.aliyun.com/repository/public/com/taobao/arthas/arthas-packaging/<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>/arthas-packaging-<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>-bin.zip -O arthas-bin.zip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    unzip -q arthas-bin.zip -d /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">rm</span> -f arthas-bin.zip</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 1 : BUILD JAR</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;MAVEN_IMAGE&#125; AS maven-builder</span><br><span class="line"></span><br><span class="line"><span class="comment"># Maven configuration</span></span><br><span class="line"><span class="keyword">ENV</span> MAVEN_OPTS=<span class="string">&quot;-Dmaven.test.skip=true -Dmaven.compile.fork=true&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 自定义 settings.xml</span></span><br><span class="line"><span class="comment"># 使用 --build-arg 传入本地 settings.xml 的路径</span></span><br><span class="line"><span class="comment"># ARG MAVEN_SETTINGS</span></span><br><span class="line"><span class="comment"># COPY $&#123;MAVEN_SETTINGS&#125; /root/.m2/settings.xml</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 先复制 pom 文件以利用缓存</span></span><br><span class="line"><span class="comment"># pom 文件不变，依赖的下载就会使用缓存，源代码改变只会触发编译，不会重新下载依赖</span></span><br><span class="line"><span class="comment"># -B: 批处理模式</span></span><br><span class="line"><span class="comment"># dependency:resolve: 预下载声明在 pom.xml 中的依赖</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> pom.xml ./</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn dependency:resolve -B</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制源代码和其他文件</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> src ./src/</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> sh ./sh/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 构建应用</span></span><br><span class="line"><span class="comment"># -am 同时构建所列模块的依赖模块</span></span><br><span class="line"><span class="comment"># -B 以&quot;批处理模式&quot;运行 Maven，减少输出信息</span></span><br><span class="line"><span class="comment"># -DskipUTs 跳过单元测试</span></span><br><span class="line"><span class="comment"># -DskipITs 跳过集成测试</span></span><br><span class="line"><span class="comment"># --no-transfer-progress 不显示文件传输进度，减少输出</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn clean package -am -B -DskipUTs -DskipITs --no-transfer-progress</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 2: BUILD IMAGE</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;BASE_JAVA_IMAGE&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ARGs in LABEL</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> maintainer=<span class="string">&quot;<span class="variable">$&#123;MAINTAINER&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      version=<span class="string">&quot;<span class="variable">$&#123;APP_VERSION&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      description=<span class="string">&quot;<span class="variable">$&#123;APP_NAME&#125;</span>&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set environment variables</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME</span><br><span class="line"><span class="keyword">ARG</span> APP_USER</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> WORK_HOME=$&#123;WORK_HOME&#125;</span><br><span class="line"><span class="keyword">ENV</span> ARTHAS_OUTPUT_DIR=$&#123;WORK_HOME&#125;/arthas-output</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian 方式创建用户和目录</span></span><br><span class="line"><span class="comment"># install -d -m 避免 chown 命令导致镜像膨胀</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> groupadd --system <span class="variable">$&#123;APP_GROUP&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    useradd --system --gid <span class="variable">$&#123;APP_GROUP&#125;</span> --shell /bin/false <span class="variable">$&#123;APP_USER&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    install -d -m 755 -o <span class="variable">$&#123;APP_USER&#125;</span> -g <span class="variable">$&#123;APP_GROUP&#125;</span> <span class="variable">$&#123;WORK_HOME&#125;</span>/logs <span class="variable">$&#123;WORK_HOME&#125;</span>/arthas-output</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> <span class="variable">$&#123;WORK_HOME&#125;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy application files</span></span><br><span class="line"><span class="comment"># 这里使用 --chown=$&#123;APP_USER&#125;:$&#123;APP_GROUP&#125; 是为了避免单独使用chown -R $&#123;APP_USER&#125;:$&#123;APP_GROUP&#125;命令，导致镜像大小膨胀1倍</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> target/*-exec.jar ./app.jar</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> sh ./</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=arthas-downloader --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> /opt/arthas ./arthas/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">chmod</span> +x ./run.sh</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Switch to app user</span></span><br><span class="line"><span class="keyword">USER</span> $&#123;APP_USER&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;./run.sh&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>docker</category>
+      </categories>
+      <tags>
+        <tag>docker</tag>
+        <tag>dockerfile</tag>
+        <tag>基础镜像</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Arthas</title>
     <url>/2025/02/09/arthas/arthas/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -205,38 +237,6 @@
       <tags>
         <tag>Arthas</tag>
         <tag>问题排查</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>dockerfile</title>
-    <url>/2025/02/10/docker/dockerfile/posts/undefined/</url>
-    <content><![CDATA[<h3 id="Dockerignore"><a href="#Dockerignore" class="headerlink" title="Dockerignore"></a>Dockerignore</h3><blockquote>
-<p>dockerfile中忽略特定的文件和目录</p>
-</blockquote>
-<ul>
-<li>示例表示忽略全部，除了一些必要的</li>
-</ul>
-<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line">*</span><br><span class="line">!pom.xml</span><br><span class="line">!sh</span><br><span class="line">!src</span><br></pre></td></tr></table></figure>
-
-<h3 id="DockerFile"><a href="#DockerFile" class="headerlink" title="DockerFile"></a>DockerFile</h3><blockquote>
-<p>构建java基础项目docker镜像</p>
-</blockquote>
-<ul>
-<li>提供 maven 编译构建 + 运行</li>
-<li><code>BASE_JAVA_IMAGE</code> 基础的java镜像，建议选择带有jre的基础java镜像</li>
-<li><code>MAVEN_IMAGE</code> maven编译的基础镜像，建议与java版本对应</li>
-<li>内置 <code>arthas</code></li>
-<li>内置运行脚本 <code>run.sh</code></li>
-</ul>
-<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Global ARGs (build-time variables)</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在 FROM 指令中是可以直接使用的</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在不同的构建阶段需要重新定义</span></span><br><span class="line"><span class="comment"># ARG 是构建时的变量，不能在容器中访问，而ENV是环境变量</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Base images</span></span><br><span class="line"><span class="keyword">ARG</span> BASE_JAVA_IMAGE=eclipse-temurin:<span class="number">8</span>-jdk-jammy</span><br><span class="line"><span class="keyword">ARG</span> MAVEN_IMAGE=maven:<span class="number">3</span>-eclipse-temurin-<span class="number">8</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Application info</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME=aws-starter</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION=<span class="number">1.0</span></span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span>=<span class="number">17674030991</span>@<span class="number">163</span>.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># Arthas</span></span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION=<span class="number">3.7</span>.<span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Directory structure</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME=/opt/deployments</span><br><span class="line"><span class="keyword">ARG</span> APP_USER=app</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP=app</span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 0 : Download Arthas</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> alpine:latest AS arthas-downloader</span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION</span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> apk add --no-cache wget unzip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">mkdir</span> -p /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    wget -q https://maven.aliyun.com/repository/public/com/taobao/arthas/arthas-packaging/<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>/arthas-packaging-<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>-bin.zip -O arthas-bin.zip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    unzip -q arthas-bin.zip -d /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">rm</span> -f arthas-bin.zip</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 1 : BUILD JAR</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;MAVEN_IMAGE&#125; AS maven-builder</span><br><span class="line"></span><br><span class="line"><span class="comment"># Maven configuration</span></span><br><span class="line"><span class="keyword">ENV</span> MAVEN_OPTS=<span class="string">&quot;-Dmaven.test.skip=true -Dmaven.compile.fork=true&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 自定义 settings.xml</span></span><br><span class="line"><span class="comment"># 使用 --build-arg 传入本地 settings.xml 的路径</span></span><br><span class="line"><span class="comment"># ARG MAVEN_SETTINGS</span></span><br><span class="line"><span class="comment"># COPY $&#123;MAVEN_SETTINGS&#125; /root/.m2/settings.xml</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 先复制 pom 文件以利用缓存</span></span><br><span class="line"><span class="comment"># pom 文件不变，依赖的下载就会使用缓存，源代码改变只会触发编译，不会重新下载依赖</span></span><br><span class="line"><span class="comment"># -B: 批处理模式</span></span><br><span class="line"><span class="comment"># dependency:resolve: 预下载声明在 pom.xml 中的依赖</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> pom.xml ./</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn dependency:resolve -B</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制源代码和其他文件</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> src ./src/</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> sh ./sh/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 构建应用</span></span><br><span class="line"><span class="comment"># -am 同时构建所列模块的依赖模块</span></span><br><span class="line"><span class="comment"># -B 以&quot;批处理模式&quot;运行 Maven，减少输出信息</span></span><br><span class="line"><span class="comment"># -DskipUTs 跳过单元测试</span></span><br><span class="line"><span class="comment"># -DskipITs 跳过集成测试</span></span><br><span class="line"><span class="comment"># --no-transfer-progress 不显示文件传输进度，减少输出</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn clean package -am -B -DskipUTs -DskipITs --no-transfer-progress</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 2: BUILD IMAGE</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;BASE_JAVA_IMAGE&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ARGs in LABEL</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> maintainer=<span class="string">&quot;<span class="variable">$&#123;MAINTAINER&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      version=<span class="string">&quot;<span class="variable">$&#123;APP_VERSION&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      description=<span class="string">&quot;<span class="variable">$&#123;APP_NAME&#125;</span>&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set environment variables</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME</span><br><span class="line"><span class="keyword">ARG</span> APP_USER</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> WORK_HOME=$&#123;WORK_HOME&#125;</span><br><span class="line"><span class="keyword">ENV</span> ARTHAS_OUTPUT_DIR=$&#123;WORK_HOME&#125;/arthas-output</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian 方式创建用户和目录</span></span><br><span class="line"><span class="comment"># install -d -m 避免 chown 命令导致镜像膨胀</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> groupadd --system <span class="variable">$&#123;APP_GROUP&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    useradd --system --gid <span class="variable">$&#123;APP_GROUP&#125;</span> --shell /bin/false <span class="variable">$&#123;APP_USER&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    install -d -m 755 -o <span class="variable">$&#123;APP_USER&#125;</span> -g <span class="variable">$&#123;APP_GROUP&#125;</span> <span class="variable">$&#123;WORK_HOME&#125;</span>/logs <span class="variable">$&#123;WORK_HOME&#125;</span>/arthas-output</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> <span class="variable">$&#123;WORK_HOME&#125;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy application files</span></span><br><span class="line"><span class="comment"># 这里使用 --chown=$&#123;APP_USER&#125;:$&#123;APP_GROUP&#125; 是为了避免单独使用chown -R $&#123;APP_USER&#125;:$&#123;APP_GROUP&#125;命令，导致镜像大小膨胀1倍</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> target/*-exec.jar ./app.jar</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> sh ./</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=arthas-downloader --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> /opt/arthas ./arthas/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">chmod</span> +x ./run.sh</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Switch to app user</span></span><br><span class="line"><span class="keyword">USER</span> $&#123;APP_USER&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;./run.sh&quot;</span>]</span></span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>docker</category>
-      </categories>
-      <tags>
-        <tag>docker</tag>
-        <tag>dockerfile</tag>
-        <tag>基础镜像</tag>
       </tags>
   </entry>
   <entry>
@@ -722,53 +722,6 @@
       </tags>
   </entry>
   <entry>
-    <title>JVM重要参数</title>
-    <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
-    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
-<thead>
-<tr>
-<th align="left">参数</th>
-<th align="left">说明</th>
-<th align="left">备注</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left">-XX:+PrintFlagsFinal</td>
-<td align="left">启动时打印出所有JVM参数</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
-<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
-<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
-</tr>
-<tr>
-<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
-<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
-<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
-</tr>
-<tr>
-<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
-<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
-<td align="left">safepoint</td>
-<td align="left"></td>
-</tr>
-</tbody></table>
-<p><img data-src="data:image/jpeg;base64,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" alt="123"></p>
-]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>参数</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>jvm监控和故障处理工具</title>
     <url>/2025/02/19/jvm/jvm-jian-kong-he-gu-zhang-chu-li-gong-ju/posts/undefined/</url>
     <content><![CDATA[<h3 id="命令行处理工具"><a href="#命令行处理工具" class="headerlink" title="命令行处理工具"></a>命令行处理工具</h3><h4 id="1-jps"><a href="#1-jps" class="headerlink" title="1. jps"></a>1. jps</h4><blockquote>
@@ -888,6 +841,53 @@
         <tag>JVM</tag>
         <tag>监控</tag>
         <tag>工具</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM重要参数</title>
+    <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
+    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
+<thead>
+<tr>
+<th align="left">参数</th>
+<th align="left">说明</th>
+<th align="left">备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">-XX:+PrintFlagsFinal</td>
+<td align="left">启动时打印出所有JVM参数</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
+<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
+<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
+</tr>
+<tr>
+<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
+<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
+<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
+</tr>
+<tr>
+<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
+<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
+<td align="left">safepoint</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<p><img data-src="data:image/jpeg;base64,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" alt="123"></p>
+]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>参数</tag>
       </tags>
   </entry>
   <entry>
@@ -1178,89 +1178,6 @@
       </tags>
   </entry>
   <entry>
-    <title>2-Reactor线程运转架构</title>
-    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
-<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
-</ul>
-<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
-<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
-</blockquote>
-<ul>
-<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
-</ul>
-<p>轮询策略如下：</p>
-<ul>
-<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
-<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
-<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
-</ul>
-<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
-<ul>
-<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
-</ul>
-<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
-<ul>
-<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
-</ul>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
-<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
-<ol>
-<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
-<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
-<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
-<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
-</ol>
-<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
-<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
-</blockquote>
-<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
-<blockquote>
-<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
-</blockquote>
-<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
-<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
-<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
-<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
-<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
-<ol>
-<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
-</ol>
-<blockquote>
-<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
-</blockquote>
-<ul>
-<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
-<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<blockquote>
-<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
-</blockquote>
-<ul>
-<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
-<ul>
-<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
-</ul>
-<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
-]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>1-Netty Reactor启动流程</title>
     <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
@@ -1373,105 +1290,79 @@
       </tags>
   </entry>
   <entry>
-    <title>4-Netty对象池</title>
-    <url>/2025/02/12/netty/4.netty-dui-xiang-chi/posts/undefined/</url>
+    <title>2-Reactor线程运转架构</title>
+    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
-<li><a href="https://zhuanlan.zhihu.com/p/483115037">Recycler对象池的精妙设计与实现</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
 </ul>
-<h2 id="对象池-Recycler-的使用"><a href="#对象池-Recycler-的使用" class="headerlink" title="对象池 Recycler 的使用"></a>对象池 Recycler 的使用</h2><p><img data-src="/images/netty/04_01.png" alt="netty"></p>
-<blockquote>
-<h4 id="对象池在-PooledDirectByteBuf-类中的使用"><a href="#对象池在-PooledDirectByteBuf-类中的使用" class="headerlink" title="对象池在 PooledDirectByteBuf 类中的使用"></a>对象池在 PooledDirectByteBuf 类中的使用</h4></blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">PooledDirectByteBuf</span> <span class="keyword">extends</span> <span class="title class_">PooledByteBuf</span>&lt;ByteBuffer&gt; &#123;</span><br><span class="line">    <span class="comment">//创建对象池</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ObjectPool&lt;PooledDirectByteBuf&gt; RECYCLER = ObjectPool.newPool(</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">ObjectCreator</span>&lt;PooledDirectByteBuf&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> PooledDirectByteBuf <span class="title function_">newObject</span><span class="params">(Handle&lt;PooledDirectByteBuf&gt; handle)</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">PooledDirectByteBuf</span>(handle, <span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//对象在对象池中的回收句柄</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Handle&lt;PooledByteBuf&lt;T&gt;&gt; recyclerHandle;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> PooledDirectByteBuf <span class="title function_">newInstance</span><span class="params">(<span class="type">int</span> maxCapacity)</span> &#123;</span><br><span class="line">        <span class="comment">//从对象池中获取对象</span></span><br><span class="line">        <span class="type">PooledDirectByteBuf</span> <span class="variable">buf</span> <span class="operator">=</span> RECYCLER.get();</span><br><span class="line">        buf.reuse(maxCapacity);</span><br><span class="line">        <span class="keyword">return</span> buf;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">recycle</span><span class="params">()</span> &#123;</span><br><span class="line">         <span class="comment">//回收对象</span></span><br><span class="line">        recyclerHandle.recycle(<span class="built_in">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ................省略和对象池无关的代码..................</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<h4 id="对象池在-Channel-写入缓冲队列中的使用"><a href="#对象池在-Channel-写入缓冲队列中的使用" class="headerlink" title="对象池在 Channel 写入缓冲队列中的使用"></a>对象池在 Channel 写入缓冲队列中的使用</h4></blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">Entry</span> &#123;</span><br><span class="line"></span><br><span class="line">       <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ObjectPool&lt;Entry&gt; RECYCLER = ObjectPool.newPool(<span class="keyword">new</span> <span class="title class_">ObjectCreator</span>&lt;Entry&gt;() &#123;</span><br><span class="line">           <span class="meta">@Override</span></span><br><span class="line">           <span class="keyword">public</span> Entry <span class="title function_">newObject</span><span class="params">(Handle&lt;Entry&gt; handle)</span> &#123;</span><br><span class="line">               <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">Entry</span>(handle);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;);</span><br><span class="line"></span><br><span class="line">       <span class="comment">//recyclerHandle用于回收对象</span></span><br><span class="line">       <span class="keyword">private</span>  Handle&lt;Entry&gt; handle;</span><br><span class="line">       </span><br><span class="line">       <span class="keyword">private</span> <span class="title function_">Entry</span><span class="params">(Handle&lt;Entry&gt; handle)</span> &#123;</span><br><span class="line">           <span class="built_in">this</span>.handle = handle;</span><br><span class="line">       &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="Recycler-总体设计"><a href="#Recycler-总体设计" class="headerlink" title="Recycler 总体设计"></a>Recycler 总体设计</h2><p><img data-src="/images/netty/04_02.png" alt="netty"></p>
-<ul>
-<li>从创建线程视角来看<ul>
-<li>为了减少多线程从对象池获取对象时的并发操作，Recycle 使用了类似<code>TLAB</code>的分配方式；每个创建线程独立从<code>Stack</code>中分配对象</li>
-<li><img data-src="/images/netty/04_03.png" alt="netty"></li>
-<li>Stack 对象底层使用数组<code>DefaultHandle&lt;?&gt;[] elements</code>存储回收的池化对象</li>
-</ul>
-</li>
-<li>从回收线程视角来看<ul>
-<li><code>WeakOrderQueue</code> 表示回收线程存储待回收池化对象的地方（之所以这么设计还是为了无锁化的回收对象，避免多线程回收场景的同步竞争）</li>
-</ul>
-</li>
-</ul>
-<h3 id="Stack"><a href="#Stack" class="headerlink" title="Stack"></a>Stack</h3><blockquote>
-<p>Stack 中包含一个用数组实现的栈结构，这个栈结构正是对象池中真正用于存储池化对象的地方，每次从对象池中获取对象都会从这个栈结构中弹出栈顶元素。每次将使用完的对象归还到对象池中也是将对象压入这个栈结构中</p>
+<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
+<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
 </blockquote>
 <ul>
-<li>数组实现的栈结构用来存放对象池中的对象，每个线程绑定一个独立的 Stack 用来存储由该线程创建出来并回收到对象池中的对象。</li>
-<li>WeakOrderQueue 链表，head 指针指向 WeakOrderQueue 链表的头结点，cursor 指针指向链表的当前节点，prev 指针指向当前节点的前一个节点。WeakOrderQueue 链表是用来存储其他线程帮助本线程回收的对象（我们称之为待回收对象）。其中 WeakOrderQueue 链表中的每一个节点对应一个其他线程，这个其他线程为本线程回收的对象存储在对应的 WeakOrderQueue 节点中。</li>
-<li>当创建线程获取对象时，只会从 Stack 结构的数组栈中获取，因为是单线程操作数组栈，自然是不会存在同步竞争的。当 Stack 结构中的数组栈没有任何对象时，那么创建线程就会根据 cursor 指针遍历 Stack 结构中的 WeakOrderQueue 链表，将当前 WeakOrderQueue 节点存放的待回收对象转移至数组栈中。如果 WeakOrderQueue 链表中也没有任何待回收对象可以转移。那么创建线程在对象池中就直接创建一个对象出来返回。</li>
+<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
 </ul>
-<h3 id="WeakOrderQueue"><a href="#WeakOrderQueue" class="headerlink" title="WeakOrderQueue"></a>WeakOrderQueue</h3><p><img data-src="/images/netty/04_04.png" alt="netty"></p>
+<p>轮询策略如下：</p>
 <ul>
-<li>WeakOrderQueue 的结构其实是一个链表结构。其中包含了链表的头结点 Head，以及链表尾结点指针 Tail。</li>
-<li>链表中的元素类型为 Link 类型，Link 类型中包含了一个 elements 数组，该数组用来存放回收线程收集的待回收对象。</li>
-<li>Link 类型中还包含了 readIndex 用来指示当前 elements 数组中的读取位置。writeIndex 用来指示 elements 数组的写入位置。elements 数组中的容量默认为<code>16</code>，也就是说一个 Link 节点最多可以存放 16 个待回收对象。当回收线程收集的待回收对象超过 16 个时，就会新创建一个 Link 节点插入到 Link 链表的尾部。</li>
-<li>当需要将 WeakoOrderQueue 节点中所存放的待回收对象回收转移至其对应的 Stack 结构中的数组栈中时，创建线程会遍历当前 WeakOrderQueue 节点中的 Link 链表，然后从链表的 Head 节点开始，将 Head 节点中包裹的 Link 链表头结点中存放的待回收对象回收至创建线程对应的 Stack 中。一次最多转移一个 Link 大小的待回收对象（16 个）。</li>
-<li>当 Link 节点中的待回收对象全部转移至创建线程对应的 Stack 中时，会立马将这个 Link 节点从当前 WeakOrderQueue 节点中的 Link 链表里删除，随后 Head 节点向后移动指向下一个 Link 节点。</li>
-<li>head 指针始终指向第一个未被转移完毕的 Link 节点，创建线程从 head 节点处读取转移待回收对象，回收线程从 Tail 节点处插入待回收对象。这样转移操作和插入操作互不影响、没有同步的开销。</li>
+<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
+<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
+<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
 </ul>
-<h3 id="属性详解"><a href="#属性详解" class="headerlink" title="属性详解"></a>属性详解</h3><h4 id="对象池中的容量控制"><a href="#对象池中的容量控制" class="headerlink" title="对象池中的容量控制"></a>对象池中的容量控制</h4><p><img data-src="/images/netty/04_05.png" alt="netty"></p>
+<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
 <ul>
-<li><code>DEFAULT_INITIAL_MAX_CAPACITY_PER_THREAD</code>：定义每个创建线程对应的 Stack 结构中的数组栈初始默认的最大容量。默认为 4096 个。可由 JVM 启动参数 <code>-D io.netty.recycler.maxCapacity</code> 指定。</li>
-<li><code>DEFAULT_MAX_CAPACITY_PER_THREAD</code>：定义每个创建线程对应的 Stack 结构中的数组栈的最大容量。可由 JVM 启动参数 <code>-D io.netty.recycler.maxCapacityPerThread</code> 指定，如无特殊指定，即采用 DEFAULT_INITIAL_MAX_CAPACITY_PER_THREAD 的值，默认为 4096 个。</li>
-<li><code>INITIAL_CAPACITY </code>： 定义每个创建线程对应的 Stack 结构中的数组栈的初始容量。计算公式为<code>min(DEFAULT_MAX_CAPACITY_PER_THREAD, 256)</code>，默认为 256 个。当池化对象超过 256 个时，则对对象池进行扩容，但不能超过最大容量 DEFAULT_MAX_CAPACITY_PER_THREAD。</li>
+<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
 </ul>
-<h4 id="回收线程可回收对象的容量控制"><a href="#回收线程可回收对象的容量控制" class="headerlink" title="回收线程可回收对象的容量控制"></a>回收线程可回收对象的容量控制</h4><ul>
-<li><code>MAX_SHARED_CAPACITY_FACTOR</code> : 针对创建线程中的 Stack，其对应的所有回收线程总共可帮助其回收的对象总量计算因子。默认为 2。可通过 JVM 参数 <code>-D io.netty.recycler.maxSharedCapacityFactor</code> 指定，总共回收对象总量就是通过对象池的最大容量和该计算因子计算出来的。计算公式： <code>max(maxCapacity / maxSharedCapacityFactor, LINK_CAPACITY)</code> 。由此我们可以知道创建线程对应的所有回收线程总共可帮助其回收的对象总量默认为 2048 个，最小回收容量为 LINK_CAPACITY 默认为 16。</li>
-<li><code>MAX_DELAYED_QUEUES_PER_THREAD</code> : 该参数定义每个回收线程最多可帮助多少个创建线程回收对象。默认为：CPU 核数 * 2。可通过 JVM 参数 <code>-D io.netty.recycler.maxDelayedQueuesPerThread</code> 指定。注意：这里是站在回收线程的角度。</li>
-<li><code>LINK_CAPACITY </code>： 在创建线程对应的 Stack 结构中的 WeakOrderQueue 链表中，回收线程对应的 WeakOrderQueue 节点中的 Link 链表中的 Link 节点存储待回收对象的容量。默认为 16，可通过 JVM 参数 <code>-D io.netty.recycler.linkCapacity</code> 指定。</li>
-</ul>
-<h4 id="对象回收频率控制"><a href="#对象回收频率控制" class="headerlink" title="对象回收频率控制"></a>对象回收频率控制</h4><ul>
-<li><code>RATIO</code>： 创建线程回收对象时的回收比例，默认是 8，表示只回收 1&#x2F;8 的对象。也就是产生 8 个对象回收一个对象到对象池中。池化对象在创建线程中被创建出来后，一直在创建线程中被处理，处理完毕后由创建线程直接进行回收。而为了避免对象池不可控制地迅速膨胀，所以需要对创建线程回收对象的频率进行限制。这个回收频率由参数 RATIO 控制，默认为 8，可由 JVM 启动参数 <code>-D io.netty.recycler.ratio</code> 指定。表示创建线程只回收 1 &#x2F; 8 的对象，也就是每创建 8 个对象最后只回收 1 个对象。</li>
-<li><code>DELAYED_QUEUE_RATIO</code>：回收线程回收对象时的回收比例，默认也是 8，同样也是为了避免回收线程回收队列疯狂增长 回收比例也是 1&#x2F;8。池化对象在创建线程中被创建出来，但是业务的相关处理是在回收线程中，业务处理完毕后由回收线程负责回收。前边提到对象回收有一个基本原则就是对象是谁创建的，就要回收到创建线程对应的 Stack 中。所以回收线程就需要将池化对象回收至其创建线程对应的 Stack 中的 WeakOrderQueue 链表中。并等待创建线程将 WeakOrderQueue 链表中的待回收对象转移至 Stack 中的数组栈中。同样，回收线程也需要控制回收频率，由参数 DELAYED_QUEUE_RATIO 进行控制，默认也是 8，可由 JVM 启动参数 <code>-D io.netty.recycler.delayedQueue.ratio</code> 指定，表示回收线程每处理完 8 个对象才回收 1 个对象。</li>
-</ul>
-<h3 id="从对象池中获取对象"><a href="#从对象池中获取对象" class="headerlink" title="从对象池中获取对象"></a>从对象池中获取对象</h3><p><img data-src="/images/netty/04_06.png" alt="netty"></p>
-<h3 id="从Stack中获取池化对象"><a href="#从Stack中获取池化对象" class="headerlink" title="从Stack中获取池化对象"></a>从Stack中获取池化对象</h3><p><img data-src="/images/netty/04_07.png" alt="netty"></p>
-<h3 id="转移回收线程回收的对象到Stack中"><a href="#转移回收线程回收的对象到Stack中" class="headerlink" title="转移回收线程回收的对象到Stack中"></a>转移回收线程回收的对象到Stack中</h3><p><img data-src="/images/netty/04_08.png" alt="netty"></p>
-<p><img data-src="/images/netty/04_09.png" alt="netty"></p>
-<h3 id="从WeakOrderQueue中转移回收对象"><a href="#从WeakOrderQueue中转移回收对象" class="headerlink" title="从WeakOrderQueue中转移回收对象"></a>从WeakOrderQueue中转移回收对象</h3><p><img data-src="/images/netty/04_10.png" alt="netty"></p>
-]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Netty中的细节优化</title>
-    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
-    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
-<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
-<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
-</ul>
-<p><img data-src="/images/netty/01.png" alt="netty"></p>
+<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
 <ul>
-<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
+<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
 </ul>
-<p><img data-src="/images/netty/02.png" alt="netty"></p>
-<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
-<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
-</ul>
-<p><img data-src="/images/netty/03.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
+<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
+<ol>
+<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
+<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
+<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
+<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
+</ol>
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
+<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
+</blockquote>
+<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
+<blockquote>
+<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
+</blockquote>
+<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
+<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
+<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
+<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
+<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
+<ol>
+<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
+</ol>
+<blockquote>
+<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
+</blockquote>
 <ul>
-<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
+<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
+<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
 </ul>
-<p><img data-src="/images/netty/04.png" alt="netty"></p>
-<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
-<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
-<p><img data-src="/images/netty/05.png" alt="netty"></p>
-<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
-<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
+<blockquote>
+<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
+</blockquote>
+<ul>
+<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
 </ul>
+<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
+<ul>
+<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
+</ul>
+<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
 ]]></content>
       <categories>
         <category>Netty</category>
@@ -1581,6 +1472,115 @@
 </ul>
 <p><img data-src="/images/netty/03_07.png" alt="netty"></p>
 <p><img data-src="/images/netty/03_08.png" alt="netty"></p>
+]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>4-Netty对象池</title>
+    <url>/2025/02/12/netty/4.netty-dui-xiang-chi/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
+<li><a href="https://zhuanlan.zhihu.com/p/483115037">Recycler对象池的精妙设计与实现</a></li>
+</ul>
+<h2 id="对象池-Recycler-的使用"><a href="#对象池-Recycler-的使用" class="headerlink" title="对象池 Recycler 的使用"></a>对象池 Recycler 的使用</h2><p><img data-src="/images/netty/04_01.png" alt="netty"></p>
+<blockquote>
+<h4 id="对象池在-PooledDirectByteBuf-类中的使用"><a href="#对象池在-PooledDirectByteBuf-类中的使用" class="headerlink" title="对象池在 PooledDirectByteBuf 类中的使用"></a>对象池在 PooledDirectByteBuf 类中的使用</h4></blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">PooledDirectByteBuf</span> <span class="keyword">extends</span> <span class="title class_">PooledByteBuf</span>&lt;ByteBuffer&gt; &#123;</span><br><span class="line">    <span class="comment">//创建对象池</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ObjectPool&lt;PooledDirectByteBuf&gt; RECYCLER = ObjectPool.newPool(</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">ObjectCreator</span>&lt;PooledDirectByteBuf&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> PooledDirectByteBuf <span class="title function_">newObject</span><span class="params">(Handle&lt;PooledDirectByteBuf&gt; handle)</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">PooledDirectByteBuf</span>(handle, <span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//对象在对象池中的回收句柄</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Handle&lt;PooledByteBuf&lt;T&gt;&gt; recyclerHandle;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> PooledDirectByteBuf <span class="title function_">newInstance</span><span class="params">(<span class="type">int</span> maxCapacity)</span> &#123;</span><br><span class="line">        <span class="comment">//从对象池中获取对象</span></span><br><span class="line">        <span class="type">PooledDirectByteBuf</span> <span class="variable">buf</span> <span class="operator">=</span> RECYCLER.get();</span><br><span class="line">        buf.reuse(maxCapacity);</span><br><span class="line">        <span class="keyword">return</span> buf;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">recycle</span><span class="params">()</span> &#123;</span><br><span class="line">         <span class="comment">//回收对象</span></span><br><span class="line">        recyclerHandle.recycle(<span class="built_in">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ................省略和对象池无关的代码..................</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<h4 id="对象池在-Channel-写入缓冲队列中的使用"><a href="#对象池在-Channel-写入缓冲队列中的使用" class="headerlink" title="对象池在 Channel 写入缓冲队列中的使用"></a>对象池在 Channel 写入缓冲队列中的使用</h4></blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">Entry</span> &#123;</span><br><span class="line"></span><br><span class="line">       <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ObjectPool&lt;Entry&gt; RECYCLER = ObjectPool.newPool(<span class="keyword">new</span> <span class="title class_">ObjectCreator</span>&lt;Entry&gt;() &#123;</span><br><span class="line">           <span class="meta">@Override</span></span><br><span class="line">           <span class="keyword">public</span> Entry <span class="title function_">newObject</span><span class="params">(Handle&lt;Entry&gt; handle)</span> &#123;</span><br><span class="line">               <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">Entry</span>(handle);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;);</span><br><span class="line"></span><br><span class="line">       <span class="comment">//recyclerHandle用于回收对象</span></span><br><span class="line">       <span class="keyword">private</span>  Handle&lt;Entry&gt; handle;</span><br><span class="line">       </span><br><span class="line">       <span class="keyword">private</span> <span class="title function_">Entry</span><span class="params">(Handle&lt;Entry&gt; handle)</span> &#123;</span><br><span class="line">           <span class="built_in">this</span>.handle = handle;</span><br><span class="line">       &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Recycler-总体设计"><a href="#Recycler-总体设计" class="headerlink" title="Recycler 总体设计"></a>Recycler 总体设计</h2><p><img data-src="/images/netty/04_02.png" alt="netty"></p>
+<ul>
+<li>从创建线程视角来看<ul>
+<li>为了减少多线程从对象池获取对象时的并发操作，Recycle 使用了类似<code>TLAB</code>的分配方式；每个创建线程独立从<code>Stack</code>中分配对象</li>
+<li><img data-src="/images/netty/04_03.png" alt="netty"></li>
+<li>Stack 对象底层使用数组<code>DefaultHandle&lt;?&gt;[] elements</code>存储回收的池化对象</li>
+</ul>
+</li>
+<li>从回收线程视角来看<ul>
+<li><code>WeakOrderQueue</code> 表示回收线程存储待回收池化对象的地方（之所以这么设计还是为了无锁化的回收对象，避免多线程回收场景的同步竞争）</li>
+</ul>
+</li>
+</ul>
+<h3 id="Stack"><a href="#Stack" class="headerlink" title="Stack"></a>Stack</h3><blockquote>
+<p>Stack 中包含一个用数组实现的栈结构，这个栈结构正是对象池中真正用于存储池化对象的地方，每次从对象池中获取对象都会从这个栈结构中弹出栈顶元素。每次将使用完的对象归还到对象池中也是将对象压入这个栈结构中</p>
+</blockquote>
+<ul>
+<li>数组实现的栈结构用来存放对象池中的对象，每个线程绑定一个独立的 Stack 用来存储由该线程创建出来并回收到对象池中的对象。</li>
+<li>WeakOrderQueue 链表，head 指针指向 WeakOrderQueue 链表的头结点，cursor 指针指向链表的当前节点，prev 指针指向当前节点的前一个节点。WeakOrderQueue 链表是用来存储其他线程帮助本线程回收的对象（我们称之为待回收对象）。其中 WeakOrderQueue 链表中的每一个节点对应一个其他线程，这个其他线程为本线程回收的对象存储在对应的 WeakOrderQueue 节点中。</li>
+<li>当创建线程获取对象时，只会从 Stack 结构的数组栈中获取，因为是单线程操作数组栈，自然是不会存在同步竞争的。当 Stack 结构中的数组栈没有任何对象时，那么创建线程就会根据 cursor 指针遍历 Stack 结构中的 WeakOrderQueue 链表，将当前 WeakOrderQueue 节点存放的待回收对象转移至数组栈中。如果 WeakOrderQueue 链表中也没有任何待回收对象可以转移。那么创建线程在对象池中就直接创建一个对象出来返回。</li>
+</ul>
+<h3 id="WeakOrderQueue"><a href="#WeakOrderQueue" class="headerlink" title="WeakOrderQueue"></a>WeakOrderQueue</h3><p><img data-src="/images/netty/04_04.png" alt="netty"></p>
+<ul>
+<li>WeakOrderQueue 的结构其实是一个链表结构。其中包含了链表的头结点 Head，以及链表尾结点指针 Tail。</li>
+<li>链表中的元素类型为 Link 类型，Link 类型中包含了一个 elements 数组，该数组用来存放回收线程收集的待回收对象。</li>
+<li>Link 类型中还包含了 readIndex 用来指示当前 elements 数组中的读取位置。writeIndex 用来指示 elements 数组的写入位置。elements 数组中的容量默认为<code>16</code>，也就是说一个 Link 节点最多可以存放 16 个待回收对象。当回收线程收集的待回收对象超过 16 个时，就会新创建一个 Link 节点插入到 Link 链表的尾部。</li>
+<li>当需要将 WeakoOrderQueue 节点中所存放的待回收对象回收转移至其对应的 Stack 结构中的数组栈中时，创建线程会遍历当前 WeakOrderQueue 节点中的 Link 链表，然后从链表的 Head 节点开始，将 Head 节点中包裹的 Link 链表头结点中存放的待回收对象回收至创建线程对应的 Stack 中。一次最多转移一个 Link 大小的待回收对象（16 个）。</li>
+<li>当 Link 节点中的待回收对象全部转移至创建线程对应的 Stack 中时，会立马将这个 Link 节点从当前 WeakOrderQueue 节点中的 Link 链表里删除，随后 Head 节点向后移动指向下一个 Link 节点。</li>
+<li>head 指针始终指向第一个未被转移完毕的 Link 节点，创建线程从 head 节点处读取转移待回收对象，回收线程从 Tail 节点处插入待回收对象。这样转移操作和插入操作互不影响、没有同步的开销。</li>
+</ul>
+<h3 id="属性详解"><a href="#属性详解" class="headerlink" title="属性详解"></a>属性详解</h3><h4 id="对象池中的容量控制"><a href="#对象池中的容量控制" class="headerlink" title="对象池中的容量控制"></a>对象池中的容量控制</h4><p><img data-src="/images/netty/04_05.png" alt="netty"></p>
+<ul>
+<li><code>DEFAULT_INITIAL_MAX_CAPACITY_PER_THREAD</code>：定义每个创建线程对应的 Stack 结构中的数组栈初始默认的最大容量。默认为 4096 个。可由 JVM 启动参数 <code>-D io.netty.recycler.maxCapacity</code> 指定。</li>
+<li><code>DEFAULT_MAX_CAPACITY_PER_THREAD</code>：定义每个创建线程对应的 Stack 结构中的数组栈的最大容量。可由 JVM 启动参数 <code>-D io.netty.recycler.maxCapacityPerThread</code> 指定，如无特殊指定，即采用 DEFAULT_INITIAL_MAX_CAPACITY_PER_THREAD 的值，默认为 4096 个。</li>
+<li><code>INITIAL_CAPACITY </code>： 定义每个创建线程对应的 Stack 结构中的数组栈的初始容量。计算公式为<code>min(DEFAULT_MAX_CAPACITY_PER_THREAD, 256)</code>，默认为 256 个。当池化对象超过 256 个时，则对对象池进行扩容，但不能超过最大容量 DEFAULT_MAX_CAPACITY_PER_THREAD。</li>
+</ul>
+<h4 id="回收线程可回收对象的容量控制"><a href="#回收线程可回收对象的容量控制" class="headerlink" title="回收线程可回收对象的容量控制"></a>回收线程可回收对象的容量控制</h4><ul>
+<li><code>MAX_SHARED_CAPACITY_FACTOR</code> : 针对创建线程中的 Stack，其对应的所有回收线程总共可帮助其回收的对象总量计算因子。默认为 2。可通过 JVM 参数 <code>-D io.netty.recycler.maxSharedCapacityFactor</code> 指定，总共回收对象总量就是通过对象池的最大容量和该计算因子计算出来的。计算公式： <code>max(maxCapacity / maxSharedCapacityFactor, LINK_CAPACITY)</code> 。由此我们可以知道创建线程对应的所有回收线程总共可帮助其回收的对象总量默认为 2048 个，最小回收容量为 LINK_CAPACITY 默认为 16。</li>
+<li><code>MAX_DELAYED_QUEUES_PER_THREAD</code> : 该参数定义每个回收线程最多可帮助多少个创建线程回收对象。默认为：CPU 核数 * 2。可通过 JVM 参数 <code>-D io.netty.recycler.maxDelayedQueuesPerThread</code> 指定。注意：这里是站在回收线程的角度。</li>
+<li><code>LINK_CAPACITY </code>： 在创建线程对应的 Stack 结构中的 WeakOrderQueue 链表中，回收线程对应的 WeakOrderQueue 节点中的 Link 链表中的 Link 节点存储待回收对象的容量。默认为 16，可通过 JVM 参数 <code>-D io.netty.recycler.linkCapacity</code> 指定。</li>
+</ul>
+<h4 id="对象回收频率控制"><a href="#对象回收频率控制" class="headerlink" title="对象回收频率控制"></a>对象回收频率控制</h4><ul>
+<li><code>RATIO</code>： 创建线程回收对象时的回收比例，默认是 8，表示只回收 1&#x2F;8 的对象。也就是产生 8 个对象回收一个对象到对象池中。池化对象在创建线程中被创建出来后，一直在创建线程中被处理，处理完毕后由创建线程直接进行回收。而为了避免对象池不可控制地迅速膨胀，所以需要对创建线程回收对象的频率进行限制。这个回收频率由参数 RATIO 控制，默认为 8，可由 JVM 启动参数 <code>-D io.netty.recycler.ratio</code> 指定。表示创建线程只回收 1 &#x2F; 8 的对象，也就是每创建 8 个对象最后只回收 1 个对象。</li>
+<li><code>DELAYED_QUEUE_RATIO</code>：回收线程回收对象时的回收比例，默认也是 8，同样也是为了避免回收线程回收队列疯狂增长 回收比例也是 1&#x2F;8。池化对象在创建线程中被创建出来，但是业务的相关处理是在回收线程中，业务处理完毕后由回收线程负责回收。前边提到对象回收有一个基本原则就是对象是谁创建的，就要回收到创建线程对应的 Stack 中。所以回收线程就需要将池化对象回收至其创建线程对应的 Stack 中的 WeakOrderQueue 链表中。并等待创建线程将 WeakOrderQueue 链表中的待回收对象转移至 Stack 中的数组栈中。同样，回收线程也需要控制回收频率，由参数 DELAYED_QUEUE_RATIO 进行控制，默认也是 8，可由 JVM 启动参数 <code>-D io.netty.recycler.delayedQueue.ratio</code> 指定，表示回收线程每处理完 8 个对象才回收 1 个对象。</li>
+</ul>
+<h3 id="从对象池中获取对象"><a href="#从对象池中获取对象" class="headerlink" title="从对象池中获取对象"></a>从对象池中获取对象</h3><p><img data-src="/images/netty/04_06.png" alt="netty"></p>
+<h3 id="从Stack中获取池化对象"><a href="#从Stack中获取池化对象" class="headerlink" title="从Stack中获取池化对象"></a>从Stack中获取池化对象</h3><p><img data-src="/images/netty/04_07.png" alt="netty"></p>
+<h3 id="转移回收线程回收的对象到Stack中"><a href="#转移回收线程回收的对象到Stack中" class="headerlink" title="转移回收线程回收的对象到Stack中"></a>转移回收线程回收的对象到Stack中</h3><p><img data-src="/images/netty/04_08.png" alt="netty"></p>
+<p><img data-src="/images/netty/04_09.png" alt="netty"></p>
+<h3 id="从WeakOrderQueue中转移回收对象"><a href="#从WeakOrderQueue中转移回收对象" class="headerlink" title="从WeakOrderQueue中转移回收对象"></a>从WeakOrderQueue中转移回收对象</h3><p><img data-src="/images/netty/04_10.png" alt="netty"></p>
+]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Netty中的细节优化</title>
+    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
+    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
+<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
+<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
+</ul>
+<p><img data-src="/images/netty/01.png" alt="netty"></p>
+<ul>
+<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
+</ul>
+<p><img data-src="/images/netty/02.png" alt="netty"></p>
+<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
+<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
+</ul>
+<p><img data-src="/images/netty/03.png" alt="netty"></p>
+<ul>
+<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
+</ul>
+<p><img data-src="/images/netty/04.png" alt="netty"></p>
+<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
+<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
+<p><img data-src="/images/netty/05.png" alt="netty"></p>
+<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
+<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
+</ul>
 ]]></content>
       <categories>
         <category>Netty</category>
