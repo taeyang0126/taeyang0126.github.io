@@ -29,7 +29,7 @@ jps -v
 | 选项              | 作用                               | 例子                                                       |
 |-----------------|----------------------------------|----------------------------------------------------------|
 | -class          | 监视类装载、卸载数量、总空间以及类装载所耗费的时间        | ![img.png](/images/jvm/img.png)                               |
-| -gc             | 监视java堆状况                        | ![img.png](assets/img2.png)  ![img.png](/images/jvm/img3.png) |
+| -gc             | 监视java堆状况                        | ![img.png](/images/jvm/img2.png)  ![img.png](/images/jvm/img3.png) |
 | -gccapacity     | 与-gc基本相同，主要关注堆各个区域使用到的最大最小空间     | ![img.png](/images/jvm/img4.png)                              |
 | -gcutil         | 与-gc基本相同，主要关注已使用空间占总空间的百分比       | ![img.png](/images/jvm/img5.png)                              |
 | -gccause        | 与-gcutil基本相同，但是会额外输出导致上一次GC产生的原因 | LGCC: 上一次垃圾收集的原因 GCC: 触发垃圾收集的原因                          |
