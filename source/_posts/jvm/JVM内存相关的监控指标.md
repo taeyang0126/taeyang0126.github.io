@@ -9,7 +9,7 @@ keywords: [JVM, 内存监控]
 
 
 
-![jvm内存图片](/images/jvm-memory.PNG)
+![jvm内存图片](/images/jvm/jvm-memory.PNG)
 
 ### Heap
 
