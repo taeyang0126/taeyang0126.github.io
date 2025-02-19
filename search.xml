@@ -690,38 +690,6 @@
       </tags>
   </entry>
   <entry>
-    <title>JVM内存相关的监控指标</title>
-    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
-<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
-<p>JVM Heap代表存放Java Objects的Heap</p>
-</blockquote>
-<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
-<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
-</blockquote>
-<ul>
-<li>CodeCache</li>
-<li>Metaspace</li>
-<li>CompressedClassSpace</li>
-<li>DirectBuffer</li>
-<li>Thread Stacks</li>
-</ul>
-<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
-<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
-<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
-]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>监控</tag>
-        <tag>内存</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>JVM重要参数</title>
     <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
     <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
@@ -766,6 +734,38 @@
       <tags>
         <tag>JVM</tag>
         <tag>参数</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM内存相关的监控指标</title>
+    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
+    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
+<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
+<p>JVM Heap代表存放Java Objects的Heap</p>
+</blockquote>
+<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
+<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+</blockquote>
+<ul>
+<li>CodeCache</li>
+<li>Metaspace</li>
+<li>CompressedClassSpace</li>
+<li>DirectBuffer</li>
+<li>Thread Stacks</li>
+</ul>
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
+<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
+<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>监控</tag>
+        <tag>内存</tag>
       </tags>
   </entry>
   <entry>
@@ -944,6 +944,126 @@
       <tags>
         <tag>监控</tag>
         <tag>k8s</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>容器内存</title>
+    <url>/2025/02/10/k8s/rong-qi-nei-cun/posts/undefined/</url>
+    <content><![CDATA[<h3 id="WorkingSet-与PageCache-监控"><a href="#WorkingSet-与PageCache-监控" class="headerlink" title="WorkingSet 与PageCache 监控"></a><a href="https://www.cnblogs.com/alisystemsoftware/p/18196395">WorkingSet 与PageCache 监控</a></h3><h3 id="K8s监控的内存指标"><a href="#K8s监控的内存指标" class="headerlink" title="K8s监控的内存指标"></a>K8s监控的内存指标</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">    memoryStats = &amp;statsapi.MemoryStats&#123;</span><br><span class="line">        Time:            metav1.NewTime(cstat.Timestamp),</span><br><span class="line">        UsageBytes:      &amp;cstat.Memory.Usage,</span><br><span class="line">        WorkingSetBytes: &amp;cstat.Memory.WorkingSet,</span><br><span class="line">        RSSBytes:        &amp;cstat.Memory.RSS,</span><br><span class="line">        PageFaults:      &amp;pageFaults,</span><br><span class="line">        MajorPageFaults: &amp;majorPageFaults,</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// availableBytes = memory limit (if known) - workingset</span></span><br><span class="line">    <span class="keyword">if</span> !isMemoryUnlimited(info.Spec.Memory.Limit) &#123;</span><br><span class="line">        availableBytes := info.Spec.Memory.Limit - cstat.Memory.WorkingSet</span><br><span class="line">        memoryStats.AvailableBytes = &amp;availableBytes</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">type MemoryStats struct &#123;</span><br><span class="line"><span class="comment">// Current memory usage, this includes all memory regardless of when it was</span></span><br><span class="line"><span class="comment">// accessed.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Usage uint64 `json:<span class="string">&quot;usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Maximum memory usage recorded.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">MaxUsage uint64 `json:<span class="string">&quot;max_usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Number of bytes of page cache memory.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Cache uint64 `json:<span class="string">&quot;cache&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of anonymous and swap cache memory (includes transparent</span></span><br><span class="line"><span class="comment">// hugepages).</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">RSS uint64 `json:<span class="string">&quot;rss&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of swap currently used by the processes in this cgroup</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Swap uint64 `json:<span class="string">&quot;swap&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of memory used for mapped files (includes tmpfs/shmem)</span></span><br><span class="line">MappedFile uint64 `json:<span class="string">&quot;mapped_file&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of working set memory, this includes recently accessed memory,</span></span><br><span class="line"><span class="comment">// dirty memory, and kernel memory. Working set is &lt;= &quot;usage&quot;.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">WorkingSet uint64 `json:<span class="string">&quot;working_set&quot;</span>`</span><br></pre></td></tr></table></figure>
+
+<h4 id="OOM的判断"><a href="#OOM的判断" class="headerlink" title="OOM的判断"></a>OOM的判断</h4><blockquote>
+<p>availableBytes &#x3D; memory limit (if known) - workingset</p>
+</blockquote>
+<p>working_set这个指标是否逼近MemoryLimit的值，可以有助于我们判断容器是否在未来发生OOM。</p>
+<h4 id="指标"><a href="#指标" class="headerlink" title="指标"></a>指标</h4><table>
+<thead>
+<tr>
+<th>指标名称</th>
+<th>定义</th>
+<th>特点</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内存使用量 (Usage)</td>
+<td>容器当前使用的总内存量</td>
+<td>包括应用程序内存、缓存等</td>
+<td>反映总体内存占用</td>
+</tr>
+<tr>
+<td>工作集 (Working Set)</td>
+<td>容器活跃使用的内存集合</td>
+<td>≈ Usage - Cache</td>
+<td>反映应用实际需要的内存</td>
+</tr>
+<tr>
+<td>RSS (Resident Set Size)</td>
+<td>进程实际占用的物理内存</td>
+<td>不包括已换出的内存</td>
+<td>反映实际物理内存使用</td>
+</tr>
+<tr>
+<td>缓存 (Cache)</td>
+<td>主要是页面缓存</td>
+<td>可被回收的内存</td>
+<td>提高文件I&#x2F;O性能</td>
+</tr>
+<tr>
+<td>内存限制 (Memory Limit)</td>
+<td>容器的内存使用上限</td>
+<td>硬性限制</td>
+<td>资源控制和OOM判定</td>
+</tr>
+<tr>
+<td>内存请求 (Memory Request)</td>
+<td>容器请求的最小内存量</td>
+<td>软性限制</td>
+<td>调度决策和资源分配</td>
+</tr>
+<tr>
+<td>可分配内存 (Allocatable)</td>
+<td>节点上可供Pod使用的内存</td>
+<td>总内存 - 系统预留 - Kube预留</td>
+<td>资源规划和调度</td>
+</tr>
+<tr>
+<td>OOM风险指标</td>
+<td>Memory Limit - Working Set</td>
+<td>值越小风险越高</td>
+<td>评估OOM风险</td>
+</tr>
+<tr>
+<td>内存利用率</td>
+<td>Usage &#x2F; Limit 或 Working Set &#x2F; Limit</td>
+<td>百分比表示</td>
+<td>评估内存使用效率</td>
+</tr>
+<tr>
+<td>匿名内存</td>
+<td>不与文件关联的内存</td>
+<td>如堆和栈</td>
+<td>反映核心内存使用</td>
+</tr>
+<tr>
+<td>活跃文件内存</td>
+<td>最近访问的文件缓存</td>
+<td>不易被回收</td>
+<td>评估热数据占用</td>
+</tr>
+<tr>
+<td>非活跃文件内存</td>
+<td>长时间未访问的文件缓存</td>
+<td>易被回收</td>
+<td>评估可回收内存</td>
+</tr>
+<tr>
+<td>共享内存</td>
+<td>多个进程共享的内存</td>
+<td>可能在RSS中重复计算</td>
+<td>评估内存共享情况</td>
+</tr>
+<tr>
+<td>Swap使用量 (如启用)</td>
+<td>使用的交换空间大小</td>
+<td>通常在容器中禁用</td>
+<td>性能评估（如启用）</td>
+</tr>
+</tbody></table>
+<ul>
+<li>Usage ≈ Working Set + Cache</li>
+<li>Working Set ≈ RSS + 一些可能被换出的匿名页面</li>
+<li>OOM风险 ∝ 1 &#x2F; (Memory Limit - Working Set)</li>
+</ul>
+<p>k8s底层的容器运行时，完全使用了linux内核OOMKiller的score机制，当容器的物理内存达到设置的memory limit时，score对应的权重，决定了容器被Kill的优先级。</p>
+<p>强烈建议在生产环境，把 <strong>memory limit</strong> 和 <strong>memory request</strong> 设置成<strong>相同的值</strong>，其实有一个重要原因，就是两者相同时，默认的score adj是-997，被Kill的优先级相对低。</p>
+]]></content>
+      <categories>
+        <category>k8s</category>
+      </categories>
+      <tags>
+        <tag>监控</tag>
+        <tag>k8s</tag>
+        <tag>容器</tag>
       </tags>
   </entry>
   <entry>
@@ -1142,126 +1262,6 @@
       </tags>
   </entry>
   <entry>
-    <title>容器内存</title>
-    <url>/2025/02/10/k8s/rong-qi-nei-cun/posts/undefined/</url>
-    <content><![CDATA[<h3 id="WorkingSet-与PageCache-监控"><a href="#WorkingSet-与PageCache-监控" class="headerlink" title="WorkingSet 与PageCache 监控"></a><a href="https://www.cnblogs.com/alisystemsoftware/p/18196395">WorkingSet 与PageCache 监控</a></h3><h3 id="K8s监控的内存指标"><a href="#K8s监控的内存指标" class="headerlink" title="K8s监控的内存指标"></a>K8s监控的内存指标</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">    memoryStats = &amp;statsapi.MemoryStats&#123;</span><br><span class="line">        Time:            metav1.NewTime(cstat.Timestamp),</span><br><span class="line">        UsageBytes:      &amp;cstat.Memory.Usage,</span><br><span class="line">        WorkingSetBytes: &amp;cstat.Memory.WorkingSet,</span><br><span class="line">        RSSBytes:        &amp;cstat.Memory.RSS,</span><br><span class="line">        PageFaults:      &amp;pageFaults,</span><br><span class="line">        MajorPageFaults: &amp;majorPageFaults,</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// availableBytes = memory limit (if known) - workingset</span></span><br><span class="line">    <span class="keyword">if</span> !isMemoryUnlimited(info.Spec.Memory.Limit) &#123;</span><br><span class="line">        availableBytes := info.Spec.Memory.Limit - cstat.Memory.WorkingSet</span><br><span class="line">        memoryStats.AvailableBytes = &amp;availableBytes</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">type MemoryStats struct &#123;</span><br><span class="line"><span class="comment">// Current memory usage, this includes all memory regardless of when it was</span></span><br><span class="line"><span class="comment">// accessed.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Usage uint64 `json:<span class="string">&quot;usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Maximum memory usage recorded.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">MaxUsage uint64 `json:<span class="string">&quot;max_usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Number of bytes of page cache memory.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Cache uint64 `json:<span class="string">&quot;cache&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of anonymous and swap cache memory (includes transparent</span></span><br><span class="line"><span class="comment">// hugepages).</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">RSS uint64 `json:<span class="string">&quot;rss&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of swap currently used by the processes in this cgroup</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Swap uint64 `json:<span class="string">&quot;swap&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of memory used for mapped files (includes tmpfs/shmem)</span></span><br><span class="line">MappedFile uint64 `json:<span class="string">&quot;mapped_file&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of working set memory, this includes recently accessed memory,</span></span><br><span class="line"><span class="comment">// dirty memory, and kernel memory. Working set is &lt;= &quot;usage&quot;.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">WorkingSet uint64 `json:<span class="string">&quot;working_set&quot;</span>`</span><br></pre></td></tr></table></figure>
-
-<h4 id="OOM的判断"><a href="#OOM的判断" class="headerlink" title="OOM的判断"></a>OOM的判断</h4><blockquote>
-<p>availableBytes &#x3D; memory limit (if known) - workingset</p>
-</blockquote>
-<p>working_set这个指标是否逼近MemoryLimit的值，可以有助于我们判断容器是否在未来发生OOM。</p>
-<h4 id="指标"><a href="#指标" class="headerlink" title="指标"></a>指标</h4><table>
-<thead>
-<tr>
-<th>指标名称</th>
-<th>定义</th>
-<th>特点</th>
-<th>用途</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>内存使用量 (Usage)</td>
-<td>容器当前使用的总内存量</td>
-<td>包括应用程序内存、缓存等</td>
-<td>反映总体内存占用</td>
-</tr>
-<tr>
-<td>工作集 (Working Set)</td>
-<td>容器活跃使用的内存集合</td>
-<td>≈ Usage - Cache</td>
-<td>反映应用实际需要的内存</td>
-</tr>
-<tr>
-<td>RSS (Resident Set Size)</td>
-<td>进程实际占用的物理内存</td>
-<td>不包括已换出的内存</td>
-<td>反映实际物理内存使用</td>
-</tr>
-<tr>
-<td>缓存 (Cache)</td>
-<td>主要是页面缓存</td>
-<td>可被回收的内存</td>
-<td>提高文件I&#x2F;O性能</td>
-</tr>
-<tr>
-<td>内存限制 (Memory Limit)</td>
-<td>容器的内存使用上限</td>
-<td>硬性限制</td>
-<td>资源控制和OOM判定</td>
-</tr>
-<tr>
-<td>内存请求 (Memory Request)</td>
-<td>容器请求的最小内存量</td>
-<td>软性限制</td>
-<td>调度决策和资源分配</td>
-</tr>
-<tr>
-<td>可分配内存 (Allocatable)</td>
-<td>节点上可供Pod使用的内存</td>
-<td>总内存 - 系统预留 - Kube预留</td>
-<td>资源规划和调度</td>
-</tr>
-<tr>
-<td>OOM风险指标</td>
-<td>Memory Limit - Working Set</td>
-<td>值越小风险越高</td>
-<td>评估OOM风险</td>
-</tr>
-<tr>
-<td>内存利用率</td>
-<td>Usage &#x2F; Limit 或 Working Set &#x2F; Limit</td>
-<td>百分比表示</td>
-<td>评估内存使用效率</td>
-</tr>
-<tr>
-<td>匿名内存</td>
-<td>不与文件关联的内存</td>
-<td>如堆和栈</td>
-<td>反映核心内存使用</td>
-</tr>
-<tr>
-<td>活跃文件内存</td>
-<td>最近访问的文件缓存</td>
-<td>不易被回收</td>
-<td>评估热数据占用</td>
-</tr>
-<tr>
-<td>非活跃文件内存</td>
-<td>长时间未访问的文件缓存</td>
-<td>易被回收</td>
-<td>评估可回收内存</td>
-</tr>
-<tr>
-<td>共享内存</td>
-<td>多个进程共享的内存</td>
-<td>可能在RSS中重复计算</td>
-<td>评估内存共享情况</td>
-</tr>
-<tr>
-<td>Swap使用量 (如启用)</td>
-<td>使用的交换空间大小</td>
-<td>通常在容器中禁用</td>
-<td>性能评估（如启用）</td>
-</tr>
-</tbody></table>
-<ul>
-<li>Usage ≈ Working Set + Cache</li>
-<li>Working Set ≈ RSS + 一些可能被换出的匿名页面</li>
-<li>OOM风险 ∝ 1 &#x2F; (Memory Limit - Working Set)</li>
-</ul>
-<p>k8s底层的容器运行时，完全使用了linux内核OOMKiller的score机制，当容器的物理内存达到设置的memory limit时，score对应的权重，决定了容器被Kill的优先级。</p>
-<p>强烈建议在生产环境，把 <strong>memory limit</strong> 和 <strong>memory request</strong> 设置成<strong>相同的值</strong>，其实有一个重要原因，就是两者相同时，默认的score adj是-997，被Kill的优先级相对低。</p>
-]]></content>
-      <categories>
-        <category>k8s</category>
-      </categories>
-      <tags>
-        <tag>监控</tag>
-        <tag>k8s</tag>
-        <tag>容器</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>3-Netty接收网络连接</title>
     <url>/2025/02/12/netty/3.netty-jie-shou-wang-luo-lian-jie/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
@@ -1371,41 +1371,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Netty中的细节优化</title>
-    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
-    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
-<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
-<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
-</ul>
-<p><img data-src="/images/netty/01.png" alt="netty"></p>
-<ul>
-<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
-</ul>
-<p><img data-src="/images/netty/02.png" alt="netty"></p>
-<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
-<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
-</ul>
-<p><img data-src="/images/netty/03.png" alt="netty"></p>
-<ul>
-<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
-</ul>
-<p><img data-src="/images/netty/04.png" alt="netty"></p>
-<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
-<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
-<p><img data-src="/images/netty/05.png" alt="netty"></p>
-<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
-<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
-</ul>
-]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>4-Netty对象池</title>
     <url>/2025/02/12/netty/4.netty-dui-xiang-chi/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
@@ -1470,6 +1435,41 @@
 <h3 id="转移回收线程回收的对象到Stack中"><a href="#转移回收线程回收的对象到Stack中" class="headerlink" title="转移回收线程回收的对象到Stack中"></a>转移回收线程回收的对象到Stack中</h3><p><img data-src="/images/netty/04_08.png" alt="netty"></p>
 <p><img data-src="/images/netty/04_09.png" alt="netty"></p>
 <h3 id="从WeakOrderQueue中转移回收对象"><a href="#从WeakOrderQueue中转移回收对象" class="headerlink" title="从WeakOrderQueue中转移回收对象"></a>从WeakOrderQueue中转移回收对象</h3><p><img data-src="/images/netty/04_10.png" alt="netty"></p>
+]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Netty中的细节优化</title>
+    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
+    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
+<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
+<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
+</ul>
+<p><img data-src="/images/netty/01.png" alt="netty"></p>
+<ul>
+<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
+</ul>
+<p><img data-src="/images/netty/02.png" alt="netty"></p>
+<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
+<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
+</ul>
+<p><img data-src="/images/netty/03.png" alt="netty"></p>
+<ul>
+<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
+</ul>
+<p><img data-src="/images/netty/04.png" alt="netty"></p>
+<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
+<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
+<p><img data-src="/images/netty/05.png" alt="netty"></p>
+<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
+<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
+</ul>
 ]]></content>
       <categories>
         <category>Netty</category>
