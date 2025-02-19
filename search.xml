@@ -83,6 +83,38 @@
       </tags>
   </entry>
   <entry>
+    <title>dockerfile</title>
+    <url>/2025/02/10/docker/dockerfile/posts/undefined/</url>
+    <content><![CDATA[<h3 id="Dockerignore"><a href="#Dockerignore" class="headerlink" title="Dockerignore"></a>Dockerignore</h3><blockquote>
+<p>dockerfile中忽略特定的文件和目录</p>
+</blockquote>
+<ul>
+<li>示例表示忽略全部，除了一些必要的</li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line">*</span><br><span class="line">!pom.xml</span><br><span class="line">!sh</span><br><span class="line">!src</span><br></pre></td></tr></table></figure>
+
+<h3 id="DockerFile"><a href="#DockerFile" class="headerlink" title="DockerFile"></a>DockerFile</h3><blockquote>
+<p>构建java基础项目docker镜像</p>
+</blockquote>
+<ul>
+<li>提供 maven 编译构建 + 运行</li>
+<li><code>BASE_JAVA_IMAGE</code> 基础的java镜像，建议选择带有jre的基础java镜像</li>
+<li><code>MAVEN_IMAGE</code> maven编译的基础镜像，建议与java版本对应</li>
+<li>内置 <code>arthas</code></li>
+<li>内置运行脚本 <code>run.sh</code></li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Global ARGs (build-time variables)</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在 FROM 指令中是可以直接使用的</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在不同的构建阶段需要重新定义</span></span><br><span class="line"><span class="comment"># ARG 是构建时的变量，不能在容器中访问，而ENV是环境变量</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Base images</span></span><br><span class="line"><span class="keyword">ARG</span> BASE_JAVA_IMAGE=eclipse-temurin:<span class="number">8</span>-jdk-jammy</span><br><span class="line"><span class="keyword">ARG</span> MAVEN_IMAGE=maven:<span class="number">3</span>-eclipse-temurin-<span class="number">8</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Application info</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME=aws-starter</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION=<span class="number">1.0</span></span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span>=<span class="number">17674030991</span>@<span class="number">163</span>.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># Arthas</span></span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION=<span class="number">3.7</span>.<span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Directory structure</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME=/opt/deployments</span><br><span class="line"><span class="keyword">ARG</span> APP_USER=app</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP=app</span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 0 : Download Arthas</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> alpine:latest AS arthas-downloader</span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION</span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> apk add --no-cache wget unzip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">mkdir</span> -p /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    wget -q https://maven.aliyun.com/repository/public/com/taobao/arthas/arthas-packaging/<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>/arthas-packaging-<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>-bin.zip -O arthas-bin.zip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    unzip -q arthas-bin.zip -d /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">rm</span> -f arthas-bin.zip</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 1 : BUILD JAR</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;MAVEN_IMAGE&#125; AS maven-builder</span><br><span class="line"></span><br><span class="line"><span class="comment"># Maven configuration</span></span><br><span class="line"><span class="keyword">ENV</span> MAVEN_OPTS=<span class="string">&quot;-Dmaven.test.skip=true -Dmaven.compile.fork=true&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 自定义 settings.xml</span></span><br><span class="line"><span class="comment"># 使用 --build-arg 传入本地 settings.xml 的路径</span></span><br><span class="line"><span class="comment"># ARG MAVEN_SETTINGS</span></span><br><span class="line"><span class="comment"># COPY $&#123;MAVEN_SETTINGS&#125; /root/.m2/settings.xml</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 先复制 pom 文件以利用缓存</span></span><br><span class="line"><span class="comment"># pom 文件不变，依赖的下载就会使用缓存，源代码改变只会触发编译，不会重新下载依赖</span></span><br><span class="line"><span class="comment"># -B: 批处理模式</span></span><br><span class="line"><span class="comment"># dependency:resolve: 预下载声明在 pom.xml 中的依赖</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> pom.xml ./</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn dependency:resolve -B</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制源代码和其他文件</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> src ./src/</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> sh ./sh/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 构建应用</span></span><br><span class="line"><span class="comment"># -am 同时构建所列模块的依赖模块</span></span><br><span class="line"><span class="comment"># -B 以&quot;批处理模式&quot;运行 Maven，减少输出信息</span></span><br><span class="line"><span class="comment"># -DskipUTs 跳过单元测试</span></span><br><span class="line"><span class="comment"># -DskipITs 跳过集成测试</span></span><br><span class="line"><span class="comment"># --no-transfer-progress 不显示文件传输进度，减少输出</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn clean package -am -B -DskipUTs -DskipITs --no-transfer-progress</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 2: BUILD IMAGE</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;BASE_JAVA_IMAGE&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ARGs in LABEL</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> maintainer=<span class="string">&quot;<span class="variable">$&#123;MAINTAINER&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      version=<span class="string">&quot;<span class="variable">$&#123;APP_VERSION&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      description=<span class="string">&quot;<span class="variable">$&#123;APP_NAME&#125;</span>&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set environment variables</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME</span><br><span class="line"><span class="keyword">ARG</span> APP_USER</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> WORK_HOME=$&#123;WORK_HOME&#125;</span><br><span class="line"><span class="keyword">ENV</span> ARTHAS_OUTPUT_DIR=$&#123;WORK_HOME&#125;/arthas-output</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian 方式创建用户和目录</span></span><br><span class="line"><span class="comment"># install -d -m 避免 chown 命令导致镜像膨胀</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> groupadd --system <span class="variable">$&#123;APP_GROUP&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    useradd --system --gid <span class="variable">$&#123;APP_GROUP&#125;</span> --shell /bin/false <span class="variable">$&#123;APP_USER&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    install -d -m 755 -o <span class="variable">$&#123;APP_USER&#125;</span> -g <span class="variable">$&#123;APP_GROUP&#125;</span> <span class="variable">$&#123;WORK_HOME&#125;</span>/logs <span class="variable">$&#123;WORK_HOME&#125;</span>/arthas-output</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> <span class="variable">$&#123;WORK_HOME&#125;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy application files</span></span><br><span class="line"><span class="comment"># 这里使用 --chown=$&#123;APP_USER&#125;:$&#123;APP_GROUP&#125; 是为了避免单独使用chown -R $&#123;APP_USER&#125;:$&#123;APP_GROUP&#125;命令，导致镜像大小膨胀1倍</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> target/*-exec.jar ./app.jar</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> sh ./</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=arthas-downloader --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> /opt/arthas ./arthas/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">chmod</span> +x ./run.sh</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Switch to app user</span></span><br><span class="line"><span class="keyword">USER</span> $&#123;APP_USER&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;./run.sh&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>docker</category>
+      </categories>
+      <tags>
+        <tag>docker</tag>
+        <tag>dockerfile</tag>
+        <tag>基础镜像</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Arthas</title>
     <url>/2025/02/09/arthas/arthas/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -208,35 +240,59 @@
       </tags>
   </entry>
   <entry>
-    <title>dockerfile</title>
-    <url>/2025/02/10/docker/dockerfile/posts/undefined/</url>
-    <content><![CDATA[<h3 id="Dockerignore"><a href="#Dockerignore" class="headerlink" title="Dockerignore"></a>Dockerignore</h3><blockquote>
-<p>dockerfile中忽略特定的文件和目录</p>
+    <title>多线程异常处理</title>
+    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
 </blockquote>
-<ul>
-<li>示例表示忽略全部，除了一些必要的</li>
+<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
+<li>新起线程中抛出异常</li>
 </ul>
-<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line">*</span><br><span class="line">!pom.xml</span><br><span class="line">!sh</span><br><span class="line">!src</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
 
-<h3 id="DockerFile"><a href="#DockerFile" class="headerlink" title="DockerFile"></a>DockerFile</h3><blockquote>
-<p>构建java基础项目docker镜像</p>
+<ul>
+<li>线程池中抛出的异常</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
+<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
 </blockquote>
 <ul>
-<li>提供 maven 编译构建 + 运行</li>
-<li><code>BASE_JAVA_IMAGE</code> 基础的java镜像，建议选择带有jre的基础java镜像</li>
-<li><code>MAVEN_IMAGE</code> maven编译的基础镜像，建议与java版本对应</li>
-<li>内置 <code>arthas</code></li>
-<li>内置运行脚本 <code>run.sh</code></li>
+<li><p>Try catch 显示处理异常</p>
+</li>
+<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
+<ul>
+<li><p>线程处理</p>
+</li>
+<li><p>thread.setUncaughtExceptionHandler</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
+
+</li>
+<li><p>线程池处理</p>
+</li>
+<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
 </ul>
-<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Global ARGs (build-time variables)</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在 FROM 指令中是可以直接使用的</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在不同的构建阶段需要重新定义</span></span><br><span class="line"><span class="comment"># ARG 是构建时的变量，不能在容器中访问，而ENV是环境变量</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Base images</span></span><br><span class="line"><span class="keyword">ARG</span> BASE_JAVA_IMAGE=eclipse-temurin:<span class="number">8</span>-jdk-jammy</span><br><span class="line"><span class="keyword">ARG</span> MAVEN_IMAGE=maven:<span class="number">3</span>-eclipse-temurin-<span class="number">8</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Application info</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME=aws-starter</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION=<span class="number">1.0</span></span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span>=<span class="number">17674030991</span>@<span class="number">163</span>.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># Arthas</span></span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION=<span class="number">3.7</span>.<span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Directory structure</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME=/opt/deployments</span><br><span class="line"><span class="keyword">ARG</span> APP_USER=app</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP=app</span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 0 : Download Arthas</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> alpine:latest AS arthas-downloader</span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION</span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> apk add --no-cache wget unzip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">mkdir</span> -p /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    wget -q https://maven.aliyun.com/repository/public/com/taobao/arthas/arthas-packaging/<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>/arthas-packaging-<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>-bin.zip -O arthas-bin.zip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    unzip -q arthas-bin.zip -d /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">rm</span> -f arthas-bin.zip</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 1 : BUILD JAR</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;MAVEN_IMAGE&#125; AS maven-builder</span><br><span class="line"></span><br><span class="line"><span class="comment"># Maven configuration</span></span><br><span class="line"><span class="keyword">ENV</span> MAVEN_OPTS=<span class="string">&quot;-Dmaven.test.skip=true -Dmaven.compile.fork=true&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 自定义 settings.xml</span></span><br><span class="line"><span class="comment"># 使用 --build-arg 传入本地 settings.xml 的路径</span></span><br><span class="line"><span class="comment"># ARG MAVEN_SETTINGS</span></span><br><span class="line"><span class="comment"># COPY $&#123;MAVEN_SETTINGS&#125; /root/.m2/settings.xml</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 先复制 pom 文件以利用缓存</span></span><br><span class="line"><span class="comment"># pom 文件不变，依赖的下载就会使用缓存，源代码改变只会触发编译，不会重新下载依赖</span></span><br><span class="line"><span class="comment"># -B: 批处理模式</span></span><br><span class="line"><span class="comment"># dependency:resolve: 预下载声明在 pom.xml 中的依赖</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> pom.xml ./</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn dependency:resolve -B</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制源代码和其他文件</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> src ./src/</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> sh ./sh/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 构建应用</span></span><br><span class="line"><span class="comment"># -am 同时构建所列模块的依赖模块</span></span><br><span class="line"><span class="comment"># -B 以&quot;批处理模式&quot;运行 Maven，减少输出信息</span></span><br><span class="line"><span class="comment"># -DskipUTs 跳过单元测试</span></span><br><span class="line"><span class="comment"># -DskipITs 跳过集成测试</span></span><br><span class="line"><span class="comment"># --no-transfer-progress 不显示文件传输进度，减少输出</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn clean package -am -B -DskipUTs -DskipITs --no-transfer-progress</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 2: BUILD IMAGE</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;BASE_JAVA_IMAGE&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ARGs in LABEL</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> maintainer=<span class="string">&quot;<span class="variable">$&#123;MAINTAINER&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      version=<span class="string">&quot;<span class="variable">$&#123;APP_VERSION&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      description=<span class="string">&quot;<span class="variable">$&#123;APP_NAME&#125;</span>&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set environment variables</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME</span><br><span class="line"><span class="keyword">ARG</span> APP_USER</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> WORK_HOME=$&#123;WORK_HOME&#125;</span><br><span class="line"><span class="keyword">ENV</span> ARTHAS_OUTPUT_DIR=$&#123;WORK_HOME&#125;/arthas-output</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian 方式创建用户和目录</span></span><br><span class="line"><span class="comment"># install -d -m 避免 chown 命令导致镜像膨胀</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> groupadd --system <span class="variable">$&#123;APP_GROUP&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    useradd --system --gid <span class="variable">$&#123;APP_GROUP&#125;</span> --shell /bin/false <span class="variable">$&#123;APP_USER&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    install -d -m 755 -o <span class="variable">$&#123;APP_USER&#125;</span> -g <span class="variable">$&#123;APP_GROUP&#125;</span> <span class="variable">$&#123;WORK_HOME&#125;</span>/logs <span class="variable">$&#123;WORK_HOME&#125;</span>/arthas-output</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> <span class="variable">$&#123;WORK_HOME&#125;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy application files</span></span><br><span class="line"><span class="comment"># 这里使用 --chown=$&#123;APP_USER&#125;:$&#123;APP_GROUP&#125; 是为了避免单独使用chown -R $&#123;APP_USER&#125;:$&#123;APP_GROUP&#125;命令，导致镜像大小膨胀1倍</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> target/*-exec.jar ./app.jar</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> sh ./</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=arthas-downloader --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> /opt/arthas ./arthas/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">chmod</span> +x ./run.sh</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Switch to app user</span></span><br><span class="line"><span class="keyword">USER</span> $&#123;APP_USER&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;./run.sh&quot;</span>]</span></span><br></pre></td></tr></table></figure>
-]]></content>
+</li>
+</ul>
+<p>Hold on…..有人的地方就不存在信任这一说- -</p>
+<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
+<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
+</blockquote>
+<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
-        <category>docker</category>
+        <category>JAVA</category>
       </categories>
       <tags>
-        <tag>docker</tag>
-        <tag>dockerfile</tag>
-        <tag>基础镜像</tag>
+        <tag>JAVA</tag>
+        <tag>多线程</tag>
       </tags>
   </entry>
   <entry>
@@ -252,41 +308,6 @@
 <li>配置类装配 FeignClient bean</li>
 </ul>
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>feign</category>
-      </categories>
-      <tags>
-        <tag>feign</tag>
-        <tag>rpc</tag>
-        <tag>微服务</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>LoadBalancerClient 自定义</title>
-    <url>/2025/02/09/feign/loadbalancerclient-zi-ding-yi/posts/undefined/</url>
-    <content><![CDATA[<h2 id="自定义路由信息"><a href="#自定义路由信息" class="headerlink" title="自定义路由信息"></a>自定义路由信息</h2><blockquote>
-<p>日常开发中 loadBalancer 一般是基于服务发现，不需要我们显示的指定；某些场景下（比如单元测试、联调）需要我们自定义 LoadBalancerClient，不走默认的服务发现，而是自定义路由信息</p>
-</blockquote>
-<ul>
-<li><code>LoadBalancerClient</code> 默认的配置是 <code>LoadBalancerClientConfiguration</code></li>
-<li>仿造 <code>LoadBalancerClientConfiguration</code> 实现自己的配置</li>
-</ul>
-<blockquote>
-<p>由于<code>LoadBalancerClientConfiguration</code>也是基于 NamedContextFactory，所以我们只需要实现需要修改的配置，其他配置会默认读取<code>LoadBalancerClientConfiguration</code></p>
-<p>比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceLoadBalanceConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ReactorLoadBalancer&lt;ServiceInstance&gt; <span class="title function_">reactorServiceInstanceLoadBalancer</span><span class="params">(Environment environment,</span></span><br><span class="line"><span class="params">                                                                                   LoadBalancerClientFactory loadBalancerClientFactory)</span> &#123;</span><br><span class="line">        <span class="comment">// 获取当前 loadBalance 的 client name</span></span><br><span class="line">        <span class="comment">// 由于此配置用在 UserRegistrationService 上，所以这里默认 = user-service</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RoundRobinLoadBalancer</span>(</span><br><span class="line">                <span class="comment">// 这里相当于根据这个name，找到对应的子context，从里面获取到 ServiceInstanceListSupplier 对应的bean</span></span><br><span class="line">                <span class="comment">// 也就是相当于这个 UserRegistrationServiceLoadBalanceConfiguration 下配置的 ServiceInstanceListSupplier -&gt; 也就是 ServiceInstanceListSupplier</span></span><br><span class="line">                loadBalancerClientFactory.getLazyProvider(name, ServiceInstanceListSupplier.class),</span><br><span class="line">                name</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ServiceInstanceListSupplier <span class="title function_">userServiceClientServiceInstanceListSupplier</span><span class="params">(</span></span><br><span class="line"><span class="params">            ConfigurableApplicationContext context)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span>(context.getEnvironment());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span> <span class="keyword">implements</span> <span class="title class_">ServiceInstanceListSupplier</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Environment environment;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">UserServiceServiceInstanceListSupplier</span><span class="params">(Environment environment)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.environment = environment;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getServiceId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> environment.getProperty(<span class="string">&quot;user-service-name&quot;</span>, <span class="string">&quot;user-service&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Flux&lt;List&lt;ServiceInstance&gt;&gt; <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">DefaultServiceInstance</span> <span class="variable">defaultServiceInstance</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultServiceInstance</span>();</span><br><span class="line">        defaultServiceInstance.setServiceId(getServiceId());</span><br><span class="line">        defaultServiceInstance.setHost(environment.getProperty(<span class="string">&quot;user-service-host&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">        defaultServiceInstance.setPort(Integer.parseInt(environment.getProperty(<span class="string">&quot;user-service-port&quot;</span>, <span class="string">&quot;8080&quot;</span>)));</span><br><span class="line">        <span class="keyword">return</span> Flux.just(Arrays.asList(defaultServiceInstance));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>使用，注解上指定配置即可</li>
-</ul>
-<blockquote>
-<p>@LoadBalancerClient(name &#x3D; “user-service”, configuration &#x3D; UserServiceLoadBalanceConfiguration.class)</p>
-</blockquote>
-<ul>
-<li>以上就能实现自定义路由的功能</li>
-</ul>
 ]]></content>
       <categories>
         <category>feign</category>
@@ -410,59 +431,70 @@
       </tags>
   </entry>
   <entry>
-    <title>多线程异常处理</title>
-    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
+    <title>LoadBalancerClient 自定义</title>
+    <url>/2025/02/09/feign/loadbalancerclient-zi-ding-yi/posts/undefined/</url>
+    <content><![CDATA[<h2 id="自定义路由信息"><a href="#自定义路由信息" class="headerlink" title="自定义路由信息"></a>自定义路由信息</h2><blockquote>
+<p>日常开发中 loadBalancer 一般是基于服务发现，不需要我们显示的指定；某些场景下（比如单元测试、联调）需要我们自定义 LoadBalancerClient，不走默认的服务发现，而是自定义路由信息</p>
 </blockquote>
-<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
-<li>新起线程中抛出异常</li>
+<ul>
+<li><code>LoadBalancerClient</code> 默认的配置是 <code>LoadBalancerClientConfiguration</code></li>
+<li>仿造 <code>LoadBalancerClientConfiguration</code> 实现自己的配置</li>
 </ul>
 <blockquote>
-<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+<p>由于<code>LoadBalancerClientConfiguration</code>也是基于 NamedContextFactory，所以我们只需要实现需要修改的配置，其他配置会默认读取<code>LoadBalancerClientConfiguration</code></p>
+<p>比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息</p>
 </blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceLoadBalanceConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ReactorLoadBalancer&lt;ServiceInstance&gt; <span class="title function_">reactorServiceInstanceLoadBalancer</span><span class="params">(Environment environment,</span></span><br><span class="line"><span class="params">                                                                                   LoadBalancerClientFactory loadBalancerClientFactory)</span> &#123;</span><br><span class="line">        <span class="comment">// 获取当前 loadBalance 的 client name</span></span><br><span class="line">        <span class="comment">// 由于此配置用在 UserRegistrationService 上，所以这里默认 = user-service</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RoundRobinLoadBalancer</span>(</span><br><span class="line">                <span class="comment">// 这里相当于根据这个name，找到对应的子context，从里面获取到 ServiceInstanceListSupplier 对应的bean</span></span><br><span class="line">                <span class="comment">// 也就是相当于这个 UserRegistrationServiceLoadBalanceConfiguration 下配置的 ServiceInstanceListSupplier -&gt; 也就是 ServiceInstanceListSupplier</span></span><br><span class="line">                loadBalancerClientFactory.getLazyProvider(name, ServiceInstanceListSupplier.class),</span><br><span class="line">                name</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ServiceInstanceListSupplier <span class="title function_">userServiceClientServiceInstanceListSupplier</span><span class="params">(</span></span><br><span class="line"><span class="params">            ConfigurableApplicationContext context)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span>(context.getEnvironment());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span> <span class="keyword">implements</span> <span class="title class_">ServiceInstanceListSupplier</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Environment environment;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">UserServiceServiceInstanceListSupplier</span><span class="params">(Environment environment)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.environment = environment;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getServiceId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> environment.getProperty(<span class="string">&quot;user-service-name&quot;</span>, <span class="string">&quot;user-service&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Flux&lt;List&lt;ServiceInstance&gt;&gt; <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">DefaultServiceInstance</span> <span class="variable">defaultServiceInstance</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultServiceInstance</span>();</span><br><span class="line">        defaultServiceInstance.setServiceId(getServiceId());</span><br><span class="line">        defaultServiceInstance.setHost(environment.getProperty(<span class="string">&quot;user-service-host&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">        defaultServiceInstance.setPort(Integer.parseInt(environment.getProperty(<span class="string">&quot;user-service-port&quot;</span>, <span class="string">&quot;8080&quot;</span>)));</span><br><span class="line">        <span class="keyword">return</span> Flux.just(Arrays.asList(defaultServiceInstance));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <ul>
-<li>线程池中抛出的异常</li>
+<li>使用，注解上指定配置即可</li>
 </ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-
-<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
-<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
+<blockquote>
+<p>@LoadBalancerClient(name &#x3D; “user-service”, configuration &#x3D; UserServiceLoadBalanceConfiguration.class)</p>
 </blockquote>
 <ul>
-<li><p>Try catch 显示处理异常</p>
-</li>
-<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
-<ul>
-<li><p>线程处理</p>
-</li>
-<li><p>thread.setUncaughtExceptionHandler</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
-
-</li>
-<li><p>线程池处理</p>
-</li>
-<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
+<li>以上就能实现自定义路由的功能</li>
 </ul>
-</li>
-</ul>
-<p>Hold on…..有人的地方就不存在信任这一说- -</p>
-<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
-<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
-</blockquote>
-<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+]]></content>
       <categories>
-        <category>JAVA</category>
+        <category>feign</category>
       </categories>
       <tags>
-        <tag>JAVA</tag>
-        <tag>多线程</tag>
+        <tag>feign</tag>
+        <tag>rpc</tag>
+        <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM内存相关的监控指标</title>
+    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
+    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
+<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
+<p>JVM Heap代表存放Java Objects的Heap</p>
+</blockquote>
+<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
+<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+</blockquote>
+<ul>
+<li>CodeCache</li>
+<li>Metaspace</li>
+<li>CompressedClassSpace</li>
+<li>DirectBuffer</li>
+<li>Thread Stacks</li>
+</ul>
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
+<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
+<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>监控</tag>
+        <tag>内存</tag>
       </tags>
   </entry>
   <entry>
@@ -685,40 +717,55 @@
       </categories>
       <tags>
         <tag>JVM</tag>
-        <tag>JFR</tag>
         <tag>监控</tag>
+        <tag>JFR</tag>
       </tags>
   </entry>
   <entry>
-    <title>JVM内存相关的监控指标</title>
-    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
-<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
-<p>JVM Heap代表存放Java Objects的Heap</p>
-</blockquote>
-<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
-<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
-</blockquote>
-<ul>
-<li>CodeCache</li>
-<li>Metaspace</li>
-<li>CompressedClassSpace</li>
-<li>DirectBuffer</li>
-<li>Thread Stacks</li>
-</ul>
-<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
-<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
-<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+    <title>JVM重要参数</title>
+    <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
+    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
+<thead>
+<tr>
+<th align="left">参数</th>
+<th align="left">说明</th>
+<th align="left">备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">-XX:+PrintFlagsFinal</td>
+<td align="left">启动时打印出所有JVM参数</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
+<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
+<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
+</tr>
+<tr>
+<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
+<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
+<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
+</tr>
+<tr>
+<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
+<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
+<td align="left">safepoint</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<p><img data-src="data:image/jpeg;base64,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" alt="123"></p>
 ]]></content>
       <categories>
         <category>JVM</category>
       </categories>
       <tags>
         <tag>JVM</tag>
-        <tag>监控</tag>
-        <tag>内存</tag>
+        <tag>参数</tag>
       </tags>
   </entry>
   <entry>
@@ -844,6 +891,68 @@
       </tags>
   </entry>
   <entry>
+    <title>loom</title>
+    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
+    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
+<li>jdk 22.0.1-graal</li>
+<li>maven 3.6.3</li>
+<li>内置容器 tomcat，最大线程数量 256</li>
+<li>Xms200M Xmx300M</li>
+<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
+<li>M1 max 64g</li>
+<li>SpringBoot 3.3.0</li>
+</ul>
+<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
+</ul>
+<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
+<ul>
+<li>内存、线程占用情况</li>
+</ul>
+<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
+<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
+</ul>
+<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
+<ul>
+<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
+</ul>
+<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
+<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
+<li>版本9.0.60</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
+<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
+<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
+</ul>
+<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
+<li>版本10.1.24</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
+<li>此版本下如何启用虚拟线程?<ol>
+<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
+<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
+</ol>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+        <tag>spring boot</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>k8s监控</title>
     <url>/2025/02/10/k8s/k8s-jian-kong/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -900,50 +1009,52 @@
       </tags>
   </entry>
   <entry>
-    <title>JVM重要参数</title>
-    <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
-    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
-<thead>
-<tr>
-<th align="left">参数</th>
-<th align="left">说明</th>
-<th align="left">备注</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left">-XX:+PrintFlagsFinal</td>
-<td align="left">启动时打印出所有JVM参数</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
-<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
-<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
-</tr>
-<tr>
-<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
-<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
-<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
-</tr>
-<tr>
-<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
-<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
-<td align="left">safepoint</td>
-<td align="left"></td>
-</tr>
-</tbody></table>
-<p><img data-src="data:image/jpeg;base64,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" alt="123"></p>
+    <title>loom</title>
+    <url>/2025/02/19/loom/loom/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
+<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
+<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
+<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
+<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
+</ul>
+<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
+<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
+</blockquote>
+<ul>
+<li>Java 代码调用本地代码 (JNI)</li>
+<li>synchronized 块或方法</li>
+</ul>
+<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
+<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
+</ul>
+<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
+<li>Synchronization<ul>
+<li>synchronized最终会解决，但是JNI不会处理</li>
+<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
+</ul>
+</li>
+<li>I&#x2F;O<ul>
+<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
+<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
+<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
+<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
+</ul>
+</li>
+</ol>
 ]]></content>
       <categories>
-        <category>JVM</category>
+        <category>loom</category>
       </categories>
       <tags>
-        <tag>JVM</tag>
-        <tag>参数</tag>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
       </tags>
   </entry>
   <entry>
@@ -1480,6 +1591,92 @@
       </tags>
   </entry>
   <entry>
+    <title>panama</title>
+    <url>/2025/02/19/panama/panama/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://openjdk.org/jeps/454">JEP 454: Foreign Function &amp; Memory API</a></li>
+</ul>
+<h3 id="Summary"><a href="#Summary" class="headerlink" title="Summary"></a>Summary</h3><blockquote>
+<p>通过引入一个允许 Java 程序与 Java 运行时外部的代码和数据进行交互的 API，可以高效地调用外部函数（即，JVM 外部的代码）并安全地访问外部内存（即，不是由 JVM 管理的内存），从而使 Java 程序能够调用本机库并处理本机数据，而不会像 JNI 那样易碎和危险。</p>
+</blockquote>
+<h3 id="JNI"><a href="#JNI" class="headerlink" title="JNI"></a>JNI</h3><ul>
+<li>JNI 涉及几个繁琐的人工制品：一个 Java API（ native 方法）、一个从 Java API 派生的 C 头文件和一个调用目标原生库的 C 实现。Java 开发人员必须跨多个工具链工作以保持平台相关的人工制品同步，而这在原生库快速演化时尤其繁重。</li>
+<li>JNI 只能与用操作系统和 CPU 的调用约定编写的语言（通常是 C 和 C++）编写的库进行交互，这是 JVM 为其构建的。native 方法不能用于调用以使用不同约定的语言编写的函数。</li>
+<li>JNI 无法协调 Java 类型系统和 C 类型系统。Java 代码使用对象表示聚合数据，但 C 代码使用结构表示聚合数据，因此任何传递给 native 方法的 Java 对象都必须由本机代码费力地解包。例如，考虑一个 Java 记录类 Person ：将一个 Person 对象传递给 native 方法，要求本机代码使用 JNI 的 C API 从该对象中提取字段（例如， firstName 和 lastName ）。因此，Java 开发人员有时会将他们的数据展平到单个对象中（例如，字节数组或直接字节缓冲区），但更多情况下，由于通过 JNI 传递 Java 对象速度很慢，他们使用 Unsafe API 分配堆外内存并将其地址作为 long 传递给 native 方法 - 这使得 Java 代码非常不安全！</li>
+</ul>
+<h3 id="Features"><a href="#Features" class="headerlink" title="Features"></a>Features</h3><ol>
+<li>控制外内存的分配和释放</li>
+<li>操控和访问结构化的外部内存</li>
+<li>调用外部函数（ Linker 、 SymbolLookup 、 FunctionDescriptor 和 MethodHandle ）</li>
+</ol>
+<h3 id="Memory-segments-and-arenas"><a href="#Memory-segments-and-arenas" class="headerlink" title="Memory segments and arenas"></a>Memory segments and arenas</h3><ul>
+<li>内存段是一个由一块连续的内存区域支持的抽象概念，该区域可以位于堆外或堆上。<ol>
+<li>从非堆内存中从头分配的本机段（如同通过 malloc)</li>
+<li>映射段，围绕一块映射的非堆内存（如通过 mmap ）</li>
+<li>一个数组或缓冲区段，它被包装在一个与现有 Java 数组或字节缓冲区关联的堆上内存区域周围</li>
+</ol>
+</li>
+<li>所有内存段都提供空间和时间边界，这些边界确保内存访问操作是安全的。简而言之，这些边界保证不使用未分配的内存，也不进行释放后使用。</li>
+<li><code>global arena</code> 全局区域，它提供无限的生命周期：它始终保持活动状态，只有在JVM退出的时候才会被自动卸载</li>
+<li><code>Auto arena</code> 自动 arena 提供了有限的生命周期：由自动 arena 分配的段可以被访问，直到 JVM 的垃圾回收器检测到该内存段不可访问，此时该段背后的内存区域将被释放</li>
+<li><code>confined arena</code> 提供了一种有界限且确定性的生存期：从客户端打开区域到客户端关闭区域之间的这段时间它将一直存在。在受限区域中分配的内存段只能在关闭区域之前访问，在关闭区域时，支持该段的内存区域将被取消分配。在区域关闭后尝试访问内存段将失败并引发异常。!!只有一个线程可以访问</li>
+<li><code>shared arena</code> 在共享区域中分配的内存段可以被多个线程访问，并且任何线程——无论是否访问该区域——都可以关闭该区域以释放这些段。关闭区域会原子地使这些段无效，尽管支持这些段的内存区域的释放可能不会立即发生，因为需要昂贵的同步操作来检测和取消对这些段的挂起并发访问操作</li>
+</ul>
+<h3 id="Zero-length-memory-segments"><a href="#Zero-length-memory-segments" class="headerlink" title="Zero-length memory segments"></a>Zero-length memory segments</h3><ul>
+<li>FFM API 将外函数返回的指针表示为零长度的内存段。该段的地址是该指针的值，该段的大小为零。类似地，当客户端从内存段读取指针时，将返回一个零长度的内存段。</li>
+<li>任何 Address 布局返回的MemorySegment都是 Zero-length memory segments</li>
+<li>零长度段具有微不足道的空间边界，因此任何访问此类段的尝试都会失败，并带有 IndexOutOfBoundsException 。这是一个至关重要的安全特性：由于这些段与大小未知的内存区域相关联，因此涉及这些段的访问操作无法验证。实际上，零长度内存段封装了一个地址，在没有明确意图的情况下无法使用它。</li>
+<li>可以使用 MemorySegment::reinterpret 方法将零长度内存段转换为特定大小的本机段。 此方法将新的空间和时间边界附加到零长度内存段，以便允许解除引用操作。 此方法返回的内存段不安全：零长度内存段可能由 10 字节长的内存区域支持，但客户端可能会高估该区域的大小并使用 MemorySegment::reinterpret 获取 100 字节长的段。 稍后，这可能会导致尝试在该区域边界之外解除引用内存，从而可能导致 JVM 崩溃或更糟的情况，导致静默内存损坏。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>panama</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+        <tag>panama</tag>
+        <tag>ffi</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>protobuf</title>
+    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
+    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
+<li>所有字段都有默认值，比如string默认为空串</li>
+<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
+<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
+<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
+<li>对于较小范围的数字，用 int32 而不是 int64</li>
+<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
+<li>对于负数多的场景用 sint32&#x2F;sint64</li>
+<li>字段更新规则！！<ol>
+<li>添加新字段</li>
+<li>删除字段(但保留字段号)</li>
+<li>重命名字段(字段号不变)</li>
+<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
+</ol>
+</li>
+<li>字段不能做的更新规则！！<ol>
+<li>改变已有字段的类型</li>
+<li>复用已删除的字段号</li>
+<li>改变已有字段的编号</li>
+</ol>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>protobuf</category>
+      </categories>
+      <tags>
+        <tag>protobuf</tag>
+        <tag>序列化</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>接口安全</title>
     <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -1967,112 +2164,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>抓包相关</title>
-    <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li>查看路由表信息<ul>
-<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
-<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
-<li><code>ip route</code> linux下使用，替代 netstat -r</li>
-<li><code>ss</code>linux下使用，替代 netstat</li>
-</ul>
-</li>
-<li>确认号(ack)计算规则<ul>
-<li>普通数据包：ack &#x3D; 对方seq + len</li>
-<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
-<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
-</ul>
-</li>
-<li>seq <ul>
-<li>不是包的唯一标识，而是数据流的位置标记</li>
-<li>表示”我之后的数据会从这个位置开始发”</li>
-<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
-</ul>
-</li>
-<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
-<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
-</ul>
-</li>
-<li>LSO<ul>
-<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
-<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
-<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
-<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
-</ul>
-</li>
-<li>数据包分段<ul>
-<li>传输层分段(TCP分段)<ul>
-<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
-<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
-<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
-<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
-</ul>
-</li>
-<li>网络层分段(UDP)<ul>
-<li>ip层分片，丢失一个分片包就需要整个包重传</li>
-<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
-<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
-</ul>
-</li>
-<li>接收方如何重组分段包<ul>
-<li>将ID相同的分片按照off值（偏移量）进行重组</li>
-<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>Windos Scale<ul>
-<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
-<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
-<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
-<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
-</ul>
-</li>
-<li>TTL(Time to Live)<ul>
-<li>TTL 初始值一般为64</li>
-<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
-<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
-</ul>
-</li>
-</ul>
-<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
-<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
-</ol>
-<ul>
-<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
-<li>告知对方自己还能接收多少数据</li>
-<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
-</ul>
-<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
-<li>通过TCP头部Win字段告知对方</li>
-<li>反映接收方的处理能力</li>
-<li>防止接收方缓冲区溢出</li>
-<li>由应用程序处理速度决定</li>
-</ul>
-<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
-<p><img data-src="/images/socket_02_12.png" alt="img"></p>
-<ul>
-<li>发送方内部维护，不需要告知对方</li>
-<li>反映网络的承载能力</li>
-<li>防止网络拥塞</li>
-<li>由网络状况动态调整</li>
-<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
-</ul>
-<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
-<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>tcp</tag>
-        <tag>抓包</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>raft</title>
     <url>/2025/02/09/fen-bu-shi/suan-fa/raft/posts/undefined/</url>
     <content><![CDATA[<h2 id="Raft-的核心目标和基本工作原理"><a href="#Raft-的核心目标和基本工作原理" class="headerlink" title="Raft 的核心目标和基本工作原理"></a>Raft 的核心目标和基本工作原理</h2><p>核心目标：</p>
@@ -2265,6 +2356,112 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>抓包相关</title>
+    <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li>查看路由表信息<ul>
+<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
+<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
+<li><code>ip route</code> linux下使用，替代 netstat -r</li>
+<li><code>ss</code>linux下使用，替代 netstat</li>
+</ul>
+</li>
+<li>确认号(ack)计算规则<ul>
+<li>普通数据包：ack &#x3D; 对方seq + len</li>
+<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
+<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
+</ul>
+</li>
+<li>seq <ul>
+<li>不是包的唯一标识，而是数据流的位置标记</li>
+<li>表示”我之后的数据会从这个位置开始发”</li>
+<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
+</ul>
+</li>
+<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
+<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
+</ul>
+</li>
+<li>LSO<ul>
+<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
+<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
+<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
+<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
+</ul>
+</li>
+<li>数据包分段<ul>
+<li>传输层分段(TCP分段)<ul>
+<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
+<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
+<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
+<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
+</ul>
+</li>
+<li>网络层分段(UDP)<ul>
+<li>ip层分片，丢失一个分片包就需要整个包重传</li>
+<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
+<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
+</ul>
+</li>
+<li>接收方如何重组分段包<ul>
+<li>将ID相同的分片按照off值（偏移量）进行重组</li>
+<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Windos Scale<ul>
+<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
+<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
+<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
+<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
+</ul>
+</li>
+<li>TTL(Time to Live)<ul>
+<li>TTL 初始值一般为64</li>
+<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
+<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
+<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
+</ol>
+<ul>
+<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
+<li>告知对方自己还能接收多少数据</li>
+<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
+</ul>
+<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
+<li>通过TCP头部Win字段告知对方</li>
+<li>反映接收方的处理能力</li>
+<li>防止接收方缓冲区溢出</li>
+<li>由应用程序处理速度决定</li>
+</ul>
+<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
+<p><img data-src="/images/socket_02_12.png" alt="img"></p>
+<ul>
+<li>发送方内部维护，不需要告知对方</li>
+<li>反映网络的承载能力</li>
+<li>防止网络拥塞</li>
+<li>由网络状况动态调整</li>
+<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
+</ul>
+<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
+<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>tcp</tag>
+        <tag>抓包</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>ES</title>
     <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2358,6 +2555,521 @@ sequenceDiagram
       <tags>
         <tag>数据库</tag>
         <tag>ES</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>rocksdb</title>
+    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
+    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
+<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
+<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>属性名</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>总体统计</td>
+<td>rocksdb.stats</td>
+<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
+</tr>
+<tr>
+<td>数据库大小</td>
+<td>rocksdb.total-sst-files-size</td>
+<td>所有 SST 文件的总大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-table-readers-mem</td>
+<td>估计表读取器使用的内存</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-live-data-size</td>
+<td>估计的活跃数据大小</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>rocksdb.cur-size-all-mem-tables</td>
+<td>所有 MemTable 的当前大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.block-cache-usage</td>
+<td>块缓存的使用量</td>
+</tr>
+<tr>
+<td>压缩</td>
+<td>rocksdb.background-errors</td>
+<td>后台工作（如压缩）中的错误数</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.num-running-compactions</td>
+<td>当前运行的压缩任务数</td>
+</tr>
+<tr>
+<td>写入</td>
+<td>rocksdb.num-immutable-mem-table</td>
+<td>不可变 MemTable 的数量</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.mem-table-flush-pending</td>
+<td>是否有待处理的 MemTable 刷新</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.is-write-stopped</td>
+<td>写入是否已停止</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.actual-delayed-write-rate</td>
+<td>实际的延迟写入速率</td>
+</tr>
+<tr>
+<td>读取</td>
+<td>rocksdb.estimate-num-keys</td>
+<td>估计的键数量</td>
+</tr>
+<tr>
+<td>文件</td>
+<td>rocksdb.num-files-at-level<N></td>
+<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.live-sst-files-size</td>
+<td>活跃 SST 文件的大小</td>
+</tr>
+</tbody></table>
+<p>注意：</p>
+<ol>
+<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
+<li>某些属性可能会影响性能，应谨慎使用。</li>
+<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
+<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
+</ol>
+<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
+<li>为单个 key 提供并发控制<ol>
+<li>事务开始时获取逻辑锁</li>
+<li>提交时检查冲突</li>
+<li>避免显式锁定，提高并发性</li>
+<li>减少死锁风险</li>
+<li>计数器更新</li>
+<li>用户状态修改</li>
+</ol>
+</li>
+<li>确保多个 key 的一致性更新<ol>
+<li>将多个 key 操作组合为单一事务</li>
+<li>全部成功或全部失败</li>
+<li>维护相关数据的一致性</li>
+<li>简化复杂操作的实现</li>
+<li>用户注册（创建账户 + 初始化设置）</li>
+<li>订单处理（更新库存 + 记录订单）</li>
+</ol>
+</li>
+</ul>
+<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
+<li>触发时机：事务提交时</li>
+<li>检测对象：活跃事务之间的写集</li>
+<li>检测方式：<ol>
+<li>每个事务的 put 操作都会记录在写集中</li>
+<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
+<li>结果：如果发现冲突，后提交的事务通常会失败</li>
+</ol>
+</li>
+</ol>
+<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
+<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
+<li>检测对象：所有活跃事务的锁和写意图</li>
+<li>检测方式：<ol>
+<li>检查目标键是否被任何活跃事务锁定</li>
+<li>检查是否有活跃事务对该键有写意图</li>
+<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
+</ol>
+</li>
+</ol>
+<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
+<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
+<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
+<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
+<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
+<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
+</ol>
+<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
+<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
+<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
+<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
+<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
+<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
+<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
+<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全局序列号</td>
+<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
+</tr>
+<tr>
+<td>事务开始</td>
+<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
+</tr>
+<tr>
+<td>读操作</td>
+<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
+</tr>
+<tr>
+<td>写操作</td>
+<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
+</tr>
+<tr>
+<td>事务提交</td>
+<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
+</tr>
+<tr>
+<td>回滚处理</td>
+<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
+</tr>
+<tr>
+<td>冲突检测</td>
+<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
+</tr>
+<tr>
+<td>OptimisticTransactionDB</td>
+<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
+</tr>
+<tr>
+<td>TransactionDB</td>
+<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
+</tr>
+<tr>
+<td>隔离级别影响</td>
+<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
+</tr>
+<tr>
+<td>注意事项</td>
+<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
+</tr>
+</tbody></table>
+<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
+<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
+<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
+<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
+</ol>
+]]></content>
+      <categories>
+        <category>rocksdb</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>rocksdb</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-consumer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 反序列化 实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 反序列化实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>group.id</strong></td>
+<td align="left"></td>
+<td align="left">消费组 ID</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>enable.auto.commit</strong></td>
+<td align="left">true</td>
+<td align="left">是否开启自动提交默认为 true</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.commit.interval.ms</strong></td>
+<td align="left">5000</td>
+<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.offset.reset</strong></td>
+<td align="left">latest</td>
+<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.records</strong></td>
+<td align="left">500</td>
+<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.interval.ms</strong></td>
+<td align="left">5 * 60 * 1000</td>
+<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>heartbeat.interval.ms</strong></td>
+<td align="left">3 * 1000</td>
+<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>session.timeout.ms</strong></td>
+<td align="left">10 * 1000</td>
+<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">fetch.max.bytes</td>
+<td align="left">50 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">max.partition.fetch.bytes</td>
+<td align="left">1 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">receive.buffer.bytes</td>
+<td align="left">64 * 1024</td>
+<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
+<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
+<li>发生再平衡的场景<ul>
+<li>消费者加入或离开</li>
+<li>消费者遇到暂时故障或网络中断</li>
+<li>消费者闲置时间过长</li>
+<li>扩大了主题分区</li>
+</ul>
+</li>
+<li>再平衡的副作用<ul>
+<li>延迟增加</li>
+<li>吞吐量降低</li>
+<li>资源使用量增加</li>
+<li>潜在的数据重复和丢失</li>
+<li>复杂性增加</li>
+</ul>
+</li>
+<li>减少再平衡的措施<ul>
+<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
+<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
+<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
+<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
+</ul>
+</li>
+<li>增量合作再平衡<ul>
+<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
+<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
+<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
+</ul>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-producer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>acks</strong></td>
+<td align="left">1</td>
+<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retries</strong></td>
+<td align="left"></td>
+<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retry.backoff.ms</strong></td>
+<td align="left"></td>
+<td align="left">重试的时间间隔</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
+<td align="left">5</td>
+<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">linger.ms</td>
+<td align="left">0</td>
+<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">interceptor.classes</td>
+<td align="left"></td>
+<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left">buffer.memory</td>
+<td align="left">32 * 1024 * 1024</td>
+<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
+<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
+</tr>
+<tr>
+<td align="left">max.block.ms</td>
+<td align="left">60 * 1000</td>
+<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
+<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">batch.size</td>
+<td align="left">16 * 1024</td>
+<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">max.request.size</td>
+<td align="left">1024 * 1024</td>
+<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">compression.type</td>
+<td align="left">none</td>
+<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
+<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
+</ul>
+<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
+<ul>
+<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
+</ul>
+<p>NetworkClient:</p>
+<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
+<p>​      </p>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
@@ -3544,303 +4256,6 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-consumer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 反序列化 实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 反序列化实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>group.id</strong></td>
-<td align="left"></td>
-<td align="left">消费组 ID</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>enable.auto.commit</strong></td>
-<td align="left">true</td>
-<td align="left">是否开启自动提交默认为 true</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.commit.interval.ms</strong></td>
-<td align="left">5000</td>
-<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.offset.reset</strong></td>
-<td align="left">latest</td>
-<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.records</strong></td>
-<td align="left">500</td>
-<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.interval.ms</strong></td>
-<td align="left">5 * 60 * 1000</td>
-<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>heartbeat.interval.ms</strong></td>
-<td align="left">3 * 1000</td>
-<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>session.timeout.ms</strong></td>
-<td align="left">10 * 1000</td>
-<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">fetch.max.bytes</td>
-<td align="left">50 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">max.partition.fetch.bytes</td>
-<td align="left">1 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">receive.buffer.bytes</td>
-<td align="left">64 * 1024</td>
-<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
-<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
-<li>发生再平衡的场景<ul>
-<li>消费者加入或离开</li>
-<li>消费者遇到暂时故障或网络中断</li>
-<li>消费者闲置时间过长</li>
-<li>扩大了主题分区</li>
-</ul>
-</li>
-<li>再平衡的副作用<ul>
-<li>延迟增加</li>
-<li>吞吐量降低</li>
-<li>资源使用量增加</li>
-<li>潜在的数据重复和丢失</li>
-<li>复杂性增加</li>
-</ul>
-</li>
-<li>减少再平衡的措施<ul>
-<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
-<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
-<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
-<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
-</ul>
-</li>
-<li>增量合作再平衡<ul>
-<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
-<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
-<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
-</ul>
-</li>
-</ul>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-producer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>acks</strong></td>
-<td align="left">1</td>
-<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retries</strong></td>
-<td align="left"></td>
-<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retry.backoff.ms</strong></td>
-<td align="left"></td>
-<td align="left">重试的时间间隔</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
-<td align="left">5</td>
-<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">linger.ms</td>
-<td align="left">0</td>
-<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">interceptor.classes</td>
-<td align="left"></td>
-<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left">buffer.memory</td>
-<td align="left">32 * 1024 * 1024</td>
-<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
-<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
-</tr>
-<tr>
-<td align="left">max.block.ms</td>
-<td align="left">60 * 1000</td>
-<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
-<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">batch.size</td>
-<td align="left">16 * 1024</td>
-<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">max.request.size</td>
-<td align="left">1024 * 1024</td>
-<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">compression.type</td>
-<td align="left">none</td>
-<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
-<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
-</ul>
-<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
-<ul>
-<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
-</ul>
-<p>NetworkClient:</p>
-<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
-<p>​      </p>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
