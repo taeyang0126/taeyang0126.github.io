@@ -373,8 +373,11 @@ codeblock:
     light: a11y-dark
     dark: stackoverflow-dark
   prism:
+    enable: true
     light: prism
     dark: prism-dark
+    theme: tomorrow
+    line_number: true
   # Add copy button on codeblock
   copy_button:
     enable: true
