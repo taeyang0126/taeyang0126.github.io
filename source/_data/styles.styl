@@ -116,11 +116,24 @@ body::-webkit-scrollbar-track {
 
 // 代码块样式
 .highlight {
-  margin: 1em 0;
-  padding: 1em;
-  background: #f8f9fa;
-  border-radius: 4px;
+  margin: 1.5em 0;        // 增加上下间距
+  padding: 1.2em;         // 增加内部padding
+  background: #f2f2f2;    // 稍微深一点的背景色，提高对比度
+  border-radius: 8px;     // 增加圆角
   overflow-x: auto;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);  // 添加轻微阴影
+  border: 1px solid #eee;  // 添加边框
+
+  // 选中样式
+  *::selection {
+    background: #b3d4fc !important;
+    color: #000 !important;
+  }
+
+  *::-moz-selection {
+    background: #b3d4fc !important;
+    color: #000 !important;
+  }
 }
 
 // 相关文章样式
@@ -272,17 +285,4 @@ body::-webkit-scrollbar-track {
 // 搜索结果内容
 .local-search-result-content {
   color: #666;
-}
-
-// 代码块选中样式
-.highlight {
-  *::selection {
-    background: #b3d4fc !important;
-    color: #000 !important;
-  }
-
-  *::-moz-selection {
-    background: #b3d4fc !important;
-    color: #000 !important;
-  }
 }
