@@ -263,6 +263,41 @@
       </tags>
   </entry>
   <entry>
+    <title>LoadBalancerClient 自定义</title>
+    <url>/2025/02/09/feign/loadbalancerclient-zi-ding-yi/posts/undefined/</url>
+    <content><![CDATA[<h2 id="自定义路由信息"><a href="#自定义路由信息" class="headerlink" title="自定义路由信息"></a>自定义路由信息</h2><blockquote>
+<p>日常开发中 loadBalancer 一般是基于服务发现，不需要我们显示的指定；某些场景下（比如单元测试、联调）需要我们自定义 LoadBalancerClient，不走默认的服务发现，而是自定义路由信息</p>
+</blockquote>
+<ul>
+<li><code>LoadBalancerClient</code> 默认的配置是 <code>LoadBalancerClientConfiguration</code></li>
+<li>仿造 <code>LoadBalancerClientConfiguration</code> 实现自己的配置</li>
+</ul>
+<blockquote>
+<p>由于<code>LoadBalancerClientConfiguration</code>也是基于 NamedContextFactory，所以我们只需要实现需要修改的配置，其他配置会默认读取<code>LoadBalancerClientConfiguration</code></p>
+<p>比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceLoadBalanceConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ReactorLoadBalancer&lt;ServiceInstance&gt; <span class="title function_">reactorServiceInstanceLoadBalancer</span><span class="params">(Environment environment,</span></span><br><span class="line"><span class="params">                                                                                   LoadBalancerClientFactory loadBalancerClientFactory)</span> &#123;</span><br><span class="line">        <span class="comment">// 获取当前 loadBalance 的 client name</span></span><br><span class="line">        <span class="comment">// 由于此配置用在 UserRegistrationService 上，所以这里默认 = user-service</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RoundRobinLoadBalancer</span>(</span><br><span class="line">                <span class="comment">// 这里相当于根据这个name，找到对应的子context，从里面获取到 ServiceInstanceListSupplier 对应的bean</span></span><br><span class="line">                <span class="comment">// 也就是相当于这个 UserRegistrationServiceLoadBalanceConfiguration 下配置的 ServiceInstanceListSupplier -&gt; 也就是 ServiceInstanceListSupplier</span></span><br><span class="line">                loadBalancerClientFactory.getLazyProvider(name, ServiceInstanceListSupplier.class),</span><br><span class="line">                name</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ServiceInstanceListSupplier <span class="title function_">userServiceClientServiceInstanceListSupplier</span><span class="params">(</span></span><br><span class="line"><span class="params">            ConfigurableApplicationContext context)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span>(context.getEnvironment());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span> <span class="keyword">implements</span> <span class="title class_">ServiceInstanceListSupplier</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Environment environment;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">UserServiceServiceInstanceListSupplier</span><span class="params">(Environment environment)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.environment = environment;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getServiceId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> environment.getProperty(<span class="string">&quot;user-service-name&quot;</span>, <span class="string">&quot;user-service&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Flux&lt;List&lt;ServiceInstance&gt;&gt; <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">DefaultServiceInstance</span> <span class="variable">defaultServiceInstance</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultServiceInstance</span>();</span><br><span class="line">        defaultServiceInstance.setServiceId(getServiceId());</span><br><span class="line">        defaultServiceInstance.setHost(environment.getProperty(<span class="string">&quot;user-service-host&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">        defaultServiceInstance.setPort(Integer.parseInt(environment.getProperty(<span class="string">&quot;user-service-port&quot;</span>, <span class="string">&quot;8080&quot;</span>)));</span><br><span class="line">        <span class="keyword">return</span> Flux.just(Arrays.asList(defaultServiceInstance));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>使用，注解上指定配置即可</li>
+</ul>
+<blockquote>
+<p>@LoadBalancerClient(name &#x3D; “user-service”, configuration &#x3D; UserServiceLoadBalanceConfiguration.class)</p>
+</blockquote>
+<ul>
+<li>以上就能实现自定义路由的功能</li>
+</ul>
+]]></content>
+      <categories>
+        <category>feign</category>
+      </categories>
+      <tags>
+        <tag>feign</tag>
+        <tag>rpc</tag>
+        <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Feign、Hystrix、Ribbon 超时机制</title>
     <url>/2025/02/09/feign/feign-hystrix-ribbon-chao-shi-ji-zhi/posts/undefined/</url>
     <content><![CDATA[<h2 id="使用版本"><a href="#使用版本" class="headerlink" title="使用版本"></a>使用版本</h2><ul>
@@ -364,41 +399,6 @@
 <h3 id="注入-bean，覆盖默认的配置-FeignRibbonClientAutoConfiguration"><a href="#注入-bean，覆盖默认的配置-FeignRibbonClientAutoConfiguration" class="headerlink" title="注入 bean，覆盖默认的配置 FeignRibbonClientAutoConfiguration"></a>注入 bean，覆盖默认的配置 FeignRibbonClientAutoConfiguration</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LocalRibbonConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Value(&quot;$&#123;server.local.host:127.0.0.1&#125;&quot;)</span></span><br><span class="line">    <span class="keyword">private</span> String localHost;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Value(&quot;$&#123;server.local.port:8000&#125;&quot;)</span></span><br><span class="line">    <span class="keyword">private</span> Integer localPort;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> CachingSpringLoadBalancerFactory <span class="title function_">cachingLBClientFactory</span><span class="params">(</span></span><br><span class="line"><span class="params">            SpringClientFactory factory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LocalCachingSpringLoadBalancerFactory</span>(factory, localHost, localPort);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <h3 id="使用-BeanPostProcessor-修改-LoadBalancerFeignClient-中的-CachingSpringLoadBalancerFactory"><a href="#使用-BeanPostProcessor-修改-LoadBalancerFeignClient-中的-CachingSpringLoadBalancerFactory" class="headerlink" title="使用 BeanPostProcessor 修改 LoadBalancerFeignClient 中的 CachingSpringLoadBalancerFactory"></a>使用 BeanPostProcessor 修改 LoadBalancerFeignClient 中的 CachingSpringLoadBalancerFactory</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LocalCachingSpringLoadBalancerFactoryBeanPostProcessor</span> <span class="keyword">implements</span> <span class="title class_">BeanPostProcessor</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String localHost;</span><br><span class="line">    <span class="keyword">private</span> Integer localPort;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">LocalCachingSpringLoadBalancerFactoryBeanPostProcessor</span><span class="params">(String localHost, Integer localPort)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.localHost = localHost;</span><br><span class="line">        <span class="built_in">this</span>.localPort = localPort;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Object <span class="title function_">postProcessAfterInitialization</span><span class="params">(Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (bean <span class="keyword">instanceof</span> LoadBalancerFeignClient) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="type">var</span> <span class="variable">loadBalancerFeignClient</span> <span class="operator">=</span> (LoadBalancerFeignClient) bean;</span><br><span class="line">                <span class="type">Field</span> <span class="variable">lbClientFactory</span> <span class="operator">=</span> FieldUtils.getDeclaredField(LoadBalancerFeignClient.class, <span class="string">&quot;lbClientFactory&quot;</span>, <span class="literal">true</span>);</span><br><span class="line">                lbClientFactory.setAccessible(<span class="literal">true</span>);</span><br><span class="line">                <span class="type">var</span> <span class="variable">clientFactory</span> <span class="operator">=</span> FieldUtils.getDeclaredField(LoadBalancerFeignClient.class, <span class="string">&quot;clientFactory&quot;</span>, <span class="literal">true</span>);</span><br><span class="line">                clientFactory.setAccessible(<span class="literal">true</span>);</span><br><span class="line">                <span class="comment">// 获取到 springClientFactory</span></span><br><span class="line">                <span class="type">var</span> <span class="variable">springClientFactory</span> <span class="operator">=</span> (SpringClientFactory) clientFactory.get(loadBalancerFeignClient);</span><br><span class="line">                <span class="comment">// 构建local</span></span><br><span class="line">                <span class="type">LocalCachingSpringLoadBalancerFactory</span> <span class="variable">cachingSpringLoadBalancerFactory</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LocalCachingSpringLoadBalancerFactory</span>(springClientFactory, localHost, localPort);</span><br><span class="line">                <span class="comment">// 设置到值里面</span></span><br><span class="line">                lbClientFactory.set(loadBalancerFeignClient, cachingSpringLoadBalancerFactory);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (IllegalAccessException e) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> bean;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>feign</category>
-      </categories>
-      <tags>
-        <tag>feign</tag>
-        <tag>rpc</tag>
-        <tag>微服务</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>LoadBalancerClient 自定义</title>
-    <url>/2025/02/09/feign/loadbalancerclient-zi-ding-yi/posts/undefined/</url>
-    <content><![CDATA[<h2 id="自定义路由信息"><a href="#自定义路由信息" class="headerlink" title="自定义路由信息"></a>自定义路由信息</h2><blockquote>
-<p>日常开发中 loadBalancer 一般是基于服务发现，不需要我们显示的指定；某些场景下（比如单元测试、联调）需要我们自定义 LoadBalancerClient，不走默认的服务发现，而是自定义路由信息</p>
-</blockquote>
-<ul>
-<li><code>LoadBalancerClient</code> 默认的配置是 <code>LoadBalancerClientConfiguration</code></li>
-<li>仿造 <code>LoadBalancerClientConfiguration</code> 实现自己的配置</li>
-</ul>
-<blockquote>
-<p>由于<code>LoadBalancerClientConfiguration</code>也是基于 NamedContextFactory，所以我们只需要实现需要修改的配置，其他配置会默认读取<code>LoadBalancerClientConfiguration</code></p>
-<p>比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceLoadBalanceConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ReactorLoadBalancer&lt;ServiceInstance&gt; <span class="title function_">reactorServiceInstanceLoadBalancer</span><span class="params">(Environment environment,</span></span><br><span class="line"><span class="params">                                                                                   LoadBalancerClientFactory loadBalancerClientFactory)</span> &#123;</span><br><span class="line">        <span class="comment">// 获取当前 loadBalance 的 client name</span></span><br><span class="line">        <span class="comment">// 由于此配置用在 UserRegistrationService 上，所以这里默认 = user-service</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RoundRobinLoadBalancer</span>(</span><br><span class="line">                <span class="comment">// 这里相当于根据这个name，找到对应的子context，从里面获取到 ServiceInstanceListSupplier 对应的bean</span></span><br><span class="line">                <span class="comment">// 也就是相当于这个 UserRegistrationServiceLoadBalanceConfiguration 下配置的 ServiceInstanceListSupplier -&gt; 也就是 ServiceInstanceListSupplier</span></span><br><span class="line">                loadBalancerClientFactory.getLazyProvider(name, ServiceInstanceListSupplier.class),</span><br><span class="line">                name</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ServiceInstanceListSupplier <span class="title function_">userServiceClientServiceInstanceListSupplier</span><span class="params">(</span></span><br><span class="line"><span class="params">            ConfigurableApplicationContext context)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span>(context.getEnvironment());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span> <span class="keyword">implements</span> <span class="title class_">ServiceInstanceListSupplier</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Environment environment;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">UserServiceServiceInstanceListSupplier</span><span class="params">(Environment environment)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.environment = environment;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getServiceId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> environment.getProperty(<span class="string">&quot;user-service-name&quot;</span>, <span class="string">&quot;user-service&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Flux&lt;List&lt;ServiceInstance&gt;&gt; <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">DefaultServiceInstance</span> <span class="variable">defaultServiceInstance</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultServiceInstance</span>();</span><br><span class="line">        defaultServiceInstance.setServiceId(getServiceId());</span><br><span class="line">        defaultServiceInstance.setHost(environment.getProperty(<span class="string">&quot;user-service-host&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">        defaultServiceInstance.setPort(Integer.parseInt(environment.getProperty(<span class="string">&quot;user-service-port&quot;</span>, <span class="string">&quot;8080&quot;</span>)));</span><br><span class="line">        <span class="keyword">return</span> Flux.just(Arrays.asList(defaultServiceInstance));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>使用，注解上指定配置即可</li>
-</ul>
-<blockquote>
-<p>@LoadBalancerClient(name &#x3D; “user-service”, configuration &#x3D; UserServiceLoadBalanceConfiguration.class)</p>
-</blockquote>
-<ul>
-<li>以上就能实现自定义路由的功能</li>
-</ul>
 ]]></content>
       <categories>
         <category>feign</category>
@@ -690,53 +690,6 @@
       </tags>
   </entry>
   <entry>
-    <title>JVM重要参数</title>
-    <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
-    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
-<thead>
-<tr>
-<th align="left">参数</th>
-<th align="left">说明</th>
-<th align="left">备注</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left">-XX:+PrintFlagsFinal</td>
-<td align="left">启动时打印出所有JVM参数</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
-<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
-<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
-</tr>
-<tr>
-<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
-<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
-<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
-</tr>
-<tr>
-<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
-<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
-<td align="left">safepoint</td>
-<td align="left"></td>
-</tr>
-</tbody></table>
-<p><img data-src="data:image/jpeg;base64,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" alt="123"></p>
-]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>参数</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>JVM内存相关的监控指标</title>
     <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
     <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
@@ -944,6 +897,53 @@
       <tags>
         <tag>监控</tag>
         <tag>k8s</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM重要参数</title>
+    <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
+    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
+<thead>
+<tr>
+<th align="left">参数</th>
+<th align="left">说明</th>
+<th align="left">备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">-XX:+PrintFlagsFinal</td>
+<td align="left">启动时打印出所有JVM参数</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
+<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
+<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
+</tr>
+<tr>
+<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
+<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
+<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
+</tr>
+<tr>
+<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
+<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
+<td align="left">safepoint</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<p><img data-src="data:image/jpeg;base64,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" alt="123"></p>
+]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>参数</tag>
       </tags>
   </entry>
   <entry>
