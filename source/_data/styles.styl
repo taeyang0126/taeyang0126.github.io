@@ -273,3 +273,16 @@ body::-webkit-scrollbar-track {
 .local-search-result-content {
   color: #666;
 }
+
+// 代码块选中样式
+.highlight {
+  *::selection {
+    background: #b3d4fc !important;
+    color: #000 !important;
+  }
+
+  *::-moz-selection {
+    background: #b3d4fc !important;
+    color: #000 !important;
+  }
+}
