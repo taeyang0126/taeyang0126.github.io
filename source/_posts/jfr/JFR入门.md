@@ -1,5 +1,5 @@
 ---
-title: JFR
+title: JFR入门
 abbrlink: 19346
 date: 2025-02-09 14:13:52
 tags: [JVM, JFR, 监控]
