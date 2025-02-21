@@ -141,7 +141,7 @@ JFR 配置限制
 ### Java Application/Object Allocation In New TLAB
 ![img](/images/jfr/04.png)
 ![img](/images/jfr/05.png)
-### 使用
+#### 使用
 - Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationInNewTLAB
 - Label(Event Type，用于显示): Object Allocation In New TLAB
 - Category(用于分类显示): Java Application
@@ -259,8 +259,8 @@ JFR 配置限制
     }
    }
    ```
-   
-### 为什么针对大部分应用不建议开启这个事件的采集?
+
+#### 为什么针对大部分应用不建议开启这个事件的采集?
 - `路径二分配一般不是核心问题点`
   - 分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配
   - 分配小对象，导致的内存泄漏，一般是将小对象放入类似于 `ConcurrentHashMap` 或者一个数组结构中导致的内存泄漏，`ConcurrentHashMap`在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。
@@ -272,7 +272,7 @@ JFR 配置限制
 - `性能损耗`
   - 这个事件的采集，会捕获堆栈信息，堆栈信息是比较耗性能的，如果开启这个事件的采集，会导致性能损耗比较大。并且这个事件的采集也相对频繁
 
-### 那种情况下才会考虑开启这个事件的采集?
+#### 那种情况下才会考虑开启这个事件的采集?
 - 正常的应用场景下，不需要调整TLAB的配置参数。一般情况下，JVM会根据应用的情况自动调整TLAB的大小
 - 如果确实怀疑TLAB的配置参数有问题，第一步是开启 Java Application -> Allocation In New TLAB(jdk.ObjectAllocationInNewTLAB) 和 Java Application ->  Allocation outside TLAB(jdk.ObjectAllocationOutsideTLAB)
 - 确认有大量的 Object Allocation Outside TLAB 事件发生（一般在应用稳定之后，如果很多线程的 Object Allocation Outside TLAB 相对于 Allocation In New TLAB 大于 5%以上就需要调整 TLAB 相关参数了），然后再考虑是否需要调整 TLAB 的配置参数。
