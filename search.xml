@@ -1,92 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>思维导图示例</title>
-    <url>/2024/02/20/test/posts/undefined/</url>
-    <content><![CDATA[<div class="markmap-wrap" id="m7esnwsg1jf">
-			<script type="application/json">{"content":"","children":[{"content":"links","children":[],"payload":{"tag":"li","lines":"0,1"}},{"content":"<strong>inline</strong> <s>text</s> <em>styles</em>","children":[],"payload":{"tag":"li","lines":"1,2"}},{"content":"multiline<br>\ntext","children":[],"payload":{"tag":"li","lines":"2,4"}},{"content":"<code>inline code</code>","children":[],"payload":{"tag":"li","lines":"4,5"}}],"payload":{"tag":"ul","lines":"0,5"}}</script>
-			<script type="application/json">undefined</script>
-		</div>
-
-
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css"><script src="https://cdn.jsdelivr.net/npm/d3@7"></script><script src="https://cdn.jsdelivr.net/npm/markmap-view"></script><script src="https://cdn.jsdelivr.net/npm/markmap-toolbar"></script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markmap-toolbar/dist/style.css"></link><style>undefined</style><style>
-  .markmap-wrap {
-    position: relative;
-    height: 500px;
-    width: 100%;
-    background: #FFFFFF;
-  }
-  
-  .dark .markmap-wrap {
-    background: #1a1a1a;
-  }
-  
-  .markmap-wrap > svg {
-    width: 100%;
-    height: 100%;
-  }
-  
-  .mm-toolbar {
-    position: absolute;
-    right: .5em;
-    bottom: .5em;
-  }
-  
-  .dark .markmap {
-    --markmap-code-bg: #1a1b26;
-    --markmap-code-color: #ddd;
-    --markmap-circle-open-bg: #444;
-    --markmap-text-color: #eee;
-  }
-  
-  .dark .mm-toolbar {
-    --un-border-opacity: 1;
-    border-color: rgb(82 82 91 / var(--un-border-opacity));
-    --un-bg-opacity: 1;
-    background-color: rgb(39 39 42 / var(--un-bg-opacity));
-    --un-text-opacity: 1;
-    color: rgb(161 161 170 / var(--un-text-opacity));
-  }
-  </style><script>(function default_1() {
-    const { Markmap, Toolbar, deriveOptions } = window.markmap;
-    const resize = {
-        event: new Event('resize'),
-        observer: new ResizeObserver((entries) => entries.forEach((entry) => entry.target.dispatchEvent(resize.event))),
-        observe: (el, func) => {
-            resize.observer.observe(el);
-            el.addEventListener('resize', func);
-        },
-    };
-    const debounce = (callback, wait) => {
-        let timeout;
-        return function (...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => callback.apply(this, args), wait);
-        };
-    };
-    const toolbar = (markmapInstance, { fullscreenElement }) => {
-        const toolbar = Toolbar.create(markmapInstance);
-        toolbar.setBrand(false);
-        toolbar.register({
-            id: 'fullScreen',
-            title: 'Full Screen View',
-            content: Toolbar.icon('M4 9v-4h4v2h-2v2zM4 11v4h4v-2h-2v-2zM16 9v-4h-4v2h2v2zM16 11v4h-4v-2h2v-2z'),
-            onClick: () => document.fullscreenElement ? document.exitFullscreen() : fullscreenElement.requestFullscreen()
-        });
-        toolbar.setItems([...toolbar.items, 'fullScreen']);
-        return toolbar.el;
-    };
-    document.querySelectorAll('.markmap-wrap').forEach((wrap) => {
-        const [root, jsonOptions] = [].slice.call(wrap.children).map(el => JSON.parse(el.innerHTML));
-        wrap.innerHTML = '<svg></svg>';
-        const svg = wrap.querySelector('svg');
-        const markmapInstance = Markmap.create(svg, deriveOptions(jsonOptions), root);
-        wrap.append(toolbar(markmapInstance, { fullscreenElement: wrap }));
-        resize.observe(wrap, debounce(() => markmapInstance.fit(), 100));
-    });
-})();</script>]]></content>
-  </entry>
-  <entry>
     <title>C语言基础知识</title>
     <url>/2025/02/10/c/c-yu-yan-ji-chu-zhi-shi/posts/undefined/</url>
     <content><![CDATA[<h3 id="指针"><a href="#指针" class="headerlink" title="指针"></a>指针</h3><ul>
@@ -1349,6 +1263,89 @@
       </tags>
   </entry>
   <entry>
+    <title>2-Reactor线程运转架构</title>
+    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
+<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
+</ul>
+<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
+<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
+</blockquote>
+<ul>
+<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
+</ul>
+<p>轮询策略如下：</p>
+<ul>
+<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
+<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
+<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
+</ul>
+<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
+<ul>
+<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
+</ul>
+<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
+<ul>
+<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
+</ul>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
+<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
+<ol>
+<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
+<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
+<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
+<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
+</ol>
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
+<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
+</blockquote>
+<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
+<blockquote>
+<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
+</blockquote>
+<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
+<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
+<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
+<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
+<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
+<ol>
+<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
+</ol>
+<blockquote>
+<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
+</blockquote>
+<ul>
+<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
+<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
+</ul>
+<blockquote>
+<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
+</blockquote>
+<ul>
+<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
+</ul>
+<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
+<ul>
+<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
+</ul>
+<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>1-Netty Reactor启动流程</title>
     <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
@@ -1461,79 +1458,31 @@
       </tags>
   </entry>
   <entry>
-    <title>2-Reactor线程运转架构</title>
-    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
-<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
+    <title>Netty中的细节优化</title>
+    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
+    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
+<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
+<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
 </ul>
-<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
-<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
-</blockquote>
+<p><img data-src="/images/netty/01.png" alt="netty"></p>
 <ul>
-<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
+<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
 </ul>
-<p>轮询策略如下：</p>
+<p><img data-src="/images/netty/02.png" alt="netty"></p>
+<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
+<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
+</ul>
+<p><img data-src="/images/netty/03.png" alt="netty"></p>
 <ul>
-<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
-<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
-<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
+<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
 </ul>
-<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
-<ul>
-<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
+<p><img data-src="/images/netty/04.png" alt="netty"></p>
+<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
+<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
+<p><img data-src="/images/netty/05.png" alt="netty"></p>
+<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
+<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
 </ul>
-<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
-<ul>
-<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
-</ul>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
-<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
-<ol>
-<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
-<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
-<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
-<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
-</ol>
-<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
-<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
-</blockquote>
-<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
-<blockquote>
-<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
-</blockquote>
-<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
-<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
-<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
-<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
-<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
-<ol>
-<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
-</ol>
-<blockquote>
-<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
-</blockquote>
-<ul>
-<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
-<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<blockquote>
-<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
-</blockquote>
-<ul>
-<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
-<ul>
-<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
-</ul>
-<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
@@ -1727,79 +1676,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Netty中的细节优化</title>
-    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
-    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
-<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
-<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
-</ul>
-<p><img data-src="/images/netty/01.png" alt="netty"></p>
-<ul>
-<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
-</ul>
-<p><img data-src="/images/netty/02.png" alt="netty"></p>
-<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
-<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
-</ul>
-<p><img data-src="/images/netty/03.png" alt="netty"></p>
-<ul>
-<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
-</ul>
-<p><img data-src="/images/netty/04.png" alt="netty"></p>
-<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
-<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
-<p><img data-src="/images/netty/05.png" alt="netty"></p>
-<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
-<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>protobuf</title>
-    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
-    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
-<li>所有字段都有默认值，比如string默认为空串</li>
-<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
-<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
-<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
-<li>对于较小范围的数字，用 int32 而不是 int64</li>
-<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
-<li>对于负数多的场景用 sint32&#x2F;sint64</li>
-<li>字段更新规则！！<ol>
-<li>添加新字段</li>
-<li>删除字段(但保留字段号)</li>
-<li>重命名字段(字段号不变)</li>
-<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
-</ol>
-</li>
-<li>字段不能做的更新规则！！<ol>
-<li>改变已有字段的类型</li>
-<li>复用已删除的字段号</li>
-<li>改变已有字段的编号</li>
-</ol>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>protobuf</category>
-      </categories>
-      <tags>
-        <tag>protobuf</tag>
-        <tag>序列化</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>panama</title>
     <url>/2025/02/19/panama/panama/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -1845,6 +1721,44 @@
         <tag>java</tag>
         <tag>panama</tag>
         <tag>ffi</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>protobuf</title>
+    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
+    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
+<li>所有字段都有默认值，比如string默认为空串</li>
+<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
+<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
+<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
+<li>对于较小范围的数字，用 int32 而不是 int64</li>
+<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
+<li>对于负数多的场景用 sint32&#x2F;sint64</li>
+<li>字段更新规则！！<ol>
+<li>添加新字段</li>
+<li>删除字段(但保留字段号)</li>
+<li>重命名字段(字段号不变)</li>
+<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
+</ol>
+</li>
+<li>字段不能做的更新规则！！<ol>
+<li>改变已有字段的类型</li>
+<li>复用已删除的字段号</li>
+<li>改变已有字段的编号</li>
+</ol>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>protobuf</category>
+      </categories>
+      <tags>
+        <tag>protobuf</tag>
+        <tag>序列化</tag>
       </tags>
   </entry>
   <entry>
@@ -2421,6 +2335,112 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>抓包相关</title>
+    <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li>查看路由表信息<ul>
+<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
+<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
+<li><code>ip route</code> linux下使用，替代 netstat -r</li>
+<li><code>ss</code>linux下使用，替代 netstat</li>
+</ul>
+</li>
+<li>确认号(ack)计算规则<ul>
+<li>普通数据包：ack &#x3D; 对方seq + len</li>
+<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
+<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
+</ul>
+</li>
+<li>seq <ul>
+<li>不是包的唯一标识，而是数据流的位置标记</li>
+<li>表示”我之后的数据会从这个位置开始发”</li>
+<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
+</ul>
+</li>
+<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
+<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
+</ul>
+</li>
+<li>LSO<ul>
+<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
+<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
+<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
+<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
+</ul>
+</li>
+<li>数据包分段<ul>
+<li>传输层分段(TCP分段)<ul>
+<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
+<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
+<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
+<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
+</ul>
+</li>
+<li>网络层分段(UDP)<ul>
+<li>ip层分片，丢失一个分片包就需要整个包重传</li>
+<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
+<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
+</ul>
+</li>
+<li>接收方如何重组分段包<ul>
+<li>将ID相同的分片按照off值（偏移量）进行重组</li>
+<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Windos Scale<ul>
+<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
+<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
+<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
+<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
+</ul>
+</li>
+<li>TTL(Time to Live)<ul>
+<li>TTL 初始值一般为64</li>
+<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
+<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
+<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
+</ol>
+<ul>
+<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
+<li>告知对方自己还能接收多少数据</li>
+<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
+</ul>
+<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
+<li>通过TCP头部Win字段告知对方</li>
+<li>反映接收方的处理能力</li>
+<li>防止接收方缓冲区溢出</li>
+<li>由应用程序处理速度决定</li>
+</ul>
+<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
+<p><img data-src="/images/socket_02_12.png" alt="img"></p>
+<ul>
+<li>发送方内部维护，不需要告知对方</li>
+<li>反映网络的承载能力</li>
+<li>防止网络拥塞</li>
+<li>由网络状况动态调整</li>
+<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
+</ul>
+<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
+<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
+</blockquote>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>tcp</tag>
+        <tag>抓包</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>raft</title>
     <url>/2025/02/09/fen-bu-shi/suan-fa/raft/posts/undefined/</url>
     <content><![CDATA[<h2 id="Raft-的核心目标和基本工作原理"><a href="#Raft-的核心目标和基本工作原理" class="headerlink" title="Raft 的核心目标和基本工作原理"></a>Raft 的核心目标和基本工作原理</h2><p>核心目标：</p>
@@ -2610,112 +2630,6 @@ sequenceDiagram
         <tag>分布式</tag>
         <tag>算法</tag>
         <tag>raft</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>抓包相关</title>
-    <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li>查看路由表信息<ul>
-<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
-<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
-<li><code>ip route</code> linux下使用，替代 netstat -r</li>
-<li><code>ss</code>linux下使用，替代 netstat</li>
-</ul>
-</li>
-<li>确认号(ack)计算规则<ul>
-<li>普通数据包：ack &#x3D; 对方seq + len</li>
-<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
-<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
-</ul>
-</li>
-<li>seq <ul>
-<li>不是包的唯一标识，而是数据流的位置标记</li>
-<li>表示”我之后的数据会从这个位置开始发”</li>
-<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
-</ul>
-</li>
-<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
-<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
-</ul>
-</li>
-<li>LSO<ul>
-<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
-<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
-<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
-<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
-</ul>
-</li>
-<li>数据包分段<ul>
-<li>传输层分段(TCP分段)<ul>
-<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
-<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
-<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
-<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
-</ul>
-</li>
-<li>网络层分段(UDP)<ul>
-<li>ip层分片，丢失一个分片包就需要整个包重传</li>
-<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
-<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
-</ul>
-</li>
-<li>接收方如何重组分段包<ul>
-<li>将ID相同的分片按照off值（偏移量）进行重组</li>
-<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>Windos Scale<ul>
-<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
-<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
-<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
-<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
-</ul>
-</li>
-<li>TTL(Time to Live)<ul>
-<li>TTL 初始值一般为64</li>
-<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
-<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
-</ul>
-</li>
-</ul>
-<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
-<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
-</ol>
-<ul>
-<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
-<li>告知对方自己还能接收多少数据</li>
-<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
-</ul>
-<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
-<li>通过TCP头部Win字段告知对方</li>
-<li>反映接收方的处理能力</li>
-<li>防止接收方缓冲区溢出</li>
-<li>由应用程序处理速度决定</li>
-</ul>
-<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
-<p><img data-src="/images/socket_02_12.png" alt="img"></p>
-<ul>
-<li>发送方内部维护，不需要告知对方</li>
-<li>反映网络的承载能力</li>
-<li>防止网络拥塞</li>
-<li>由网络状况动态调整</li>
-<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
-</ul>
-<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
-<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
-</blockquote>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>tcp</tag>
-        <tag>抓包</tag>
       </tags>
   </entry>
   <entry>
@@ -3180,144 +3094,6 @@ sequenceDiagram
 </ul>
 </li>
 </ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-producer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>acks</strong></td>
-<td align="left">1</td>
-<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retries</strong></td>
-<td align="left"></td>
-<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retry.backoff.ms</strong></td>
-<td align="left"></td>
-<td align="left">重试的时间间隔</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
-<td align="left">5</td>
-<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">linger.ms</td>
-<td align="left">0</td>
-<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">interceptor.classes</td>
-<td align="left"></td>
-<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left">buffer.memory</td>
-<td align="left">32 * 1024 * 1024</td>
-<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
-<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
-</tr>
-<tr>
-<td align="left">max.block.ms</td>
-<td align="left">60 * 1000</td>
-<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
-<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">batch.size</td>
-<td align="left">16 * 1024</td>
-<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">max.request.size</td>
-<td align="left">1024 * 1024</td>
-<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">compression.type</td>
-<td align="left">none</td>
-<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
-<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
-</ul>
-<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
-<ul>
-<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
-</ul>
-<p>NetworkClient:</p>
-<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
-<p>​      </p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>消息队列</category>
@@ -4516,46 +4292,132 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       </tags>
   </entry>
   <entry>
-    <title>pulsar-使用</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
-    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
-<li>docker 单机创建</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
+    <title>kafka-producer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>acks</strong></td>
+<td align="left">1</td>
+<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retries</strong></td>
+<td align="left"></td>
+<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retry.backoff.ms</strong></td>
+<td align="left"></td>
+<td align="left">重试的时间间隔</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
+<td align="left">5</td>
+<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">linger.ms</td>
+<td align="left">0</td>
+<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">interceptor.classes</td>
+<td align="left"></td>
+<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left">buffer.memory</td>
+<td align="left">32 * 1024 * 1024</td>
+<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
+<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
+</tr>
+<tr>
+<td align="left">max.block.ms</td>
+<td align="left">60 * 1000</td>
+<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
+<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">batch.size</td>
+<td align="left">16 * 1024</td>
+<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">max.request.size</td>
+<td align="left">1024 * 1024</td>
+<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">compression.type</td>
+<td align="left">none</td>
+<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<ul>
-<li>可视化 pulsar-manager</li>
+<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
+<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
 </ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
-
+<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
 <ul>
-<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
+<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
 </ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
-</ul>
-<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
-<ul>
-<li>创建租户</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 namespace</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>显示某个 namespace 下的 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
+<p>NetworkClient:</p>
+<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
+<p>​      </p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>消息队列</category>
@@ -4564,7 +4426,7 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
         <tag>分布式</tag>
         <tag>消息队列</tag>
         <tag>中间件</tag>
-        <tag>pulsar</tag>
+        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
@@ -4692,6 +4554,58 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
         <tag>中间件</tag>
         <tag>kafka</tag>
         <tag>spring</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>pulsar-使用</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
+    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
+<li>docker 单机创建</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>可视化 pulsar-manager</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
+</ul>
+<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
+<ul>
+<li>创建租户</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 namespace</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>显示某个 namespace 下的 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>pulsar</tag>
       </tags>
   </entry>
 </search>
