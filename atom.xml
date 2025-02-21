@@ -17,7 +17,7 @@
   <generator uri="https://hexo.io/">Hexo</generator>
   
   <entry>
-    <title>JFR详解</title>
+    <title>JFR详解-1</title>
     <link href="https://taeyang0126.github.io/2025/02/20/jfr/jfr-xiang-jie/posts/undefined/"/>
     <id>https://taeyang0126.github.io/2025/02/20/jfr/jfr-xiang-jie/posts/undefined/</id>
     <published>2025-02-20T06:13:52.000Z</published>
@@ -41,6 +41,10 @@
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
     
     <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
+    
+    <category term="OOM" scheme="https://taeyang0126.github.io/tags/OOM/"/>
+    
+    <category term="内存泄漏" scheme="https://taeyang0126.github.io/tags/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F/"/>
     
   </entry>
   
