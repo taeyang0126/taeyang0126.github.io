@@ -375,41 +375,6 @@
       </tags>
   </entry>
   <entry>
-    <title>LoadBalancerClient 自定义</title>
-    <url>/2025/02/09/feign/loadbalancerclient-zi-ding-yi/posts/undefined/</url>
-    <content><![CDATA[<h2 id="自定义路由信息"><a href="#自定义路由信息" class="headerlink" title="自定义路由信息"></a>自定义路由信息</h2><blockquote>
-<p>日常开发中 loadBalancer 一般是基于服务发现，不需要我们显示的指定；某些场景下（比如单元测试、联调）需要我们自定义 LoadBalancerClient，不走默认的服务发现，而是自定义路由信息</p>
-</blockquote>
-<ul>
-<li><code>LoadBalancerClient</code> 默认的配置是 <code>LoadBalancerClientConfiguration</code></li>
-<li>仿造 <code>LoadBalancerClientConfiguration</code> 实现自己的配置</li>
-</ul>
-<blockquote>
-<p>由于<code>LoadBalancerClientConfiguration</code>也是基于 NamedContextFactory，所以我们只需要实现需要修改的配置，其他配置会默认读取<code>LoadBalancerClientConfiguration</code></p>
-<p>比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceLoadBalanceConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ReactorLoadBalancer&lt;ServiceInstance&gt; <span class="title function_">reactorServiceInstanceLoadBalancer</span><span class="params">(Environment environment,</span></span><br><span class="line"><span class="params">                                                                                   LoadBalancerClientFactory loadBalancerClientFactory)</span> &#123;</span><br><span class="line">        <span class="comment">// 获取当前 loadBalance 的 client name</span></span><br><span class="line">        <span class="comment">// 由于此配置用在 UserRegistrationService 上，所以这里默认 = user-service</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RoundRobinLoadBalancer</span>(</span><br><span class="line">                <span class="comment">// 这里相当于根据这个name，找到对应的子context，从里面获取到 ServiceInstanceListSupplier 对应的bean</span></span><br><span class="line">                <span class="comment">// 也就是相当于这个 UserRegistrationServiceLoadBalanceConfiguration 下配置的 ServiceInstanceListSupplier -&gt; 也就是 ServiceInstanceListSupplier</span></span><br><span class="line">                loadBalancerClientFactory.getLazyProvider(name, ServiceInstanceListSupplier.class),</span><br><span class="line">                name</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ServiceInstanceListSupplier <span class="title function_">userServiceClientServiceInstanceListSupplier</span><span class="params">(</span></span><br><span class="line"><span class="params">            ConfigurableApplicationContext context)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span>(context.getEnvironment());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span> <span class="keyword">implements</span> <span class="title class_">ServiceInstanceListSupplier</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Environment environment;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">UserServiceServiceInstanceListSupplier</span><span class="params">(Environment environment)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.environment = environment;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getServiceId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> environment.getProperty(<span class="string">&quot;user-service-name&quot;</span>, <span class="string">&quot;user-service&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Flux&lt;List&lt;ServiceInstance&gt;&gt; <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">DefaultServiceInstance</span> <span class="variable">defaultServiceInstance</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultServiceInstance</span>();</span><br><span class="line">        defaultServiceInstance.setServiceId(getServiceId());</span><br><span class="line">        defaultServiceInstance.setHost(environment.getProperty(<span class="string">&quot;user-service-host&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">        defaultServiceInstance.setPort(Integer.parseInt(environment.getProperty(<span class="string">&quot;user-service-port&quot;</span>, <span class="string">&quot;8080&quot;</span>)));</span><br><span class="line">        <span class="keyword">return</span> Flux.just(Arrays.asList(defaultServiceInstance));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>使用，注解上指定配置即可</li>
-</ul>
-<blockquote>
-<p>@LoadBalancerClient(name &#x3D; “user-service”, configuration &#x3D; UserServiceLoadBalanceConfiguration.class)</p>
-</blockquote>
-<ul>
-<li>以上就能实现自定义路由的功能</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>feign</category>
-      </categories>
-      <tags>
-        <tag>feign</tag>
-        <tag>rpc</tag>
-        <tag>微服务</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>多线程异常处理</title>
     <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
     <content><![CDATA[<blockquote>
@@ -690,6 +655,73 @@
       </tags>
   </entry>
   <entry>
+    <title>LoadBalancerClient 自定义</title>
+    <url>/2025/02/09/feign/loadbalancerclient-zi-ding-yi/posts/undefined/</url>
+    <content><![CDATA[<h2 id="自定义路由信息"><a href="#自定义路由信息" class="headerlink" title="自定义路由信息"></a>自定义路由信息</h2><blockquote>
+<p>日常开发中 loadBalancer 一般是基于服务发现，不需要我们显示的指定；某些场景下（比如单元测试、联调）需要我们自定义 LoadBalancerClient，不走默认的服务发现，而是自定义路由信息</p>
+</blockquote>
+<ul>
+<li><code>LoadBalancerClient</code> 默认的配置是 <code>LoadBalancerClientConfiguration</code></li>
+<li>仿造 <code>LoadBalancerClientConfiguration</code> 实现自己的配置</li>
+</ul>
+<blockquote>
+<p>由于<code>LoadBalancerClientConfiguration</code>也是基于 NamedContextFactory，所以我们只需要实现需要修改的配置，其他配置会默认读取<code>LoadBalancerClientConfiguration</code></p>
+<p>比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceLoadBalanceConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ReactorLoadBalancer&lt;ServiceInstance&gt; <span class="title function_">reactorServiceInstanceLoadBalancer</span><span class="params">(Environment environment,</span></span><br><span class="line"><span class="params">                                                                                   LoadBalancerClientFactory loadBalancerClientFactory)</span> &#123;</span><br><span class="line">        <span class="comment">// 获取当前 loadBalance 的 client name</span></span><br><span class="line">        <span class="comment">// 由于此配置用在 UserRegistrationService 上，所以这里默认 = user-service</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RoundRobinLoadBalancer</span>(</span><br><span class="line">                <span class="comment">// 这里相当于根据这个name，找到对应的子context，从里面获取到 ServiceInstanceListSupplier 对应的bean</span></span><br><span class="line">                <span class="comment">// 也就是相当于这个 UserRegistrationServiceLoadBalanceConfiguration 下配置的 ServiceInstanceListSupplier -&gt; 也就是 ServiceInstanceListSupplier</span></span><br><span class="line">                loadBalancerClientFactory.getLazyProvider(name, ServiceInstanceListSupplier.class),</span><br><span class="line">                name</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ServiceInstanceListSupplier <span class="title function_">userServiceClientServiceInstanceListSupplier</span><span class="params">(</span></span><br><span class="line"><span class="params">            ConfigurableApplicationContext context)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span>(context.getEnvironment());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span> <span class="keyword">implements</span> <span class="title class_">ServiceInstanceListSupplier</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Environment environment;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">UserServiceServiceInstanceListSupplier</span><span class="params">(Environment environment)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.environment = environment;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getServiceId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> environment.getProperty(<span class="string">&quot;user-service-name&quot;</span>, <span class="string">&quot;user-service&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Flux&lt;List&lt;ServiceInstance&gt;&gt; <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">DefaultServiceInstance</span> <span class="variable">defaultServiceInstance</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultServiceInstance</span>();</span><br><span class="line">        defaultServiceInstance.setServiceId(getServiceId());</span><br><span class="line">        defaultServiceInstance.setHost(environment.getProperty(<span class="string">&quot;user-service-host&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">        defaultServiceInstance.setPort(Integer.parseInt(environment.getProperty(<span class="string">&quot;user-service-port&quot;</span>, <span class="string">&quot;8080&quot;</span>)));</span><br><span class="line">        <span class="keyword">return</span> Flux.just(Arrays.asList(defaultServiceInstance));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>使用，注解上指定配置即可</li>
+</ul>
+<blockquote>
+<p>@LoadBalancerClient(name &#x3D; “user-service”, configuration &#x3D; UserServiceLoadBalanceConfiguration.class)</p>
+</blockquote>
+<ul>
+<li>以上就能实现自定义路由的功能</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>feign</category>
+      </categories>
+      <tags>
+        <tag>feign</tag>
+        <tag>rpc</tag>
+        <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM内存相关的监控指标</title>
+    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
+    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
+<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
+<p>JVM Heap代表存放Java Objects的Heap</p>
+</blockquote>
+<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
+<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+</blockquote>
+<ul>
+<li>CodeCache</li>
+<li>Metaspace</li>
+<li>CompressedClassSpace</li>
+<li>DirectBuffer</li>
+<li>Thread Stacks</li>
+</ul>
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
+<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
+<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>监控</tag>
+        <tag>内存</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>JFR详解</title>
     <url>/2025/02/20/jfr/jfr-xiang-jie/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -764,7 +796,84 @@
 </ol>
 </li>
 </ul>
-<h2 id="JFR-事件"><a href="#JFR-事件" class="headerlink" title="JFR 事件"></a>JFR 事件</h2><h3 id="Java-Application-Object-Allocation-In-New-TLAB"><a href="#Java-Application-Object-Allocation-In-New-TLAB" class="headerlink" title="Java Application&#x2F;Object Allocation In New TLAB"></a>Java Application&#x2F;Object Allocation In New TLAB</h3><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+<h2 id="Java-对象分配过程"><a href="#Java-对象分配过程" class="headerlink" title="Java 对象分配过程"></a>Java 对象分配过程</h2><h3 id="路径一-TLAB-内分配"><a href="#路径一-TLAB-内分配" class="headerlink" title="路径一 TLAB 内分配"></a>路径一 TLAB 内分配</h3><ul>
+<li>需要分配的大小小于 TLAB (Thread Local Alloction Buffer) 的剩余空间，直接在 TLAB 中分配</li>
+<li>这是大多数对象的分配路径</li>
+</ul>
+<h3 id="路径二-申请新的-TLAB-分配"><a href="#路径二-申请新的-TLAB-分配" class="headerlink" title="路径二 申请新的 TLAB 分配"></a>路径二 申请新的 TLAB 分配</h3><ul>
+<li>需要分配的大小大于 TLAB 的剩余空间，TLAB 的当前剩余空间小于 TLAB 的最大浪费空间</li>
+<li>重新分配一个 TLAB，然后在新的 TLAB 中分配</li>
+</ul>
+<h3 id="路径三-TLAB-外分配"><a href="#路径三-TLAB-外分配" class="headerlink" title="路径三 TLAB 外分配"></a>路径三 TLAB 外分配</h3><ul>
+<li>需要分配的大小大于 TLAB 的剩余空间，TLAB 的当前剩余空间大于 TLAB 的最大浪费空间</li>
+<li>或者是申请新的 TLAB，TLAB 扩容也无法满足需要的大小</li>
+<li>或者是申请新的 TLAB，堆剩余空间不足以分配新的 TLAB，但是足够分配这个对象并且这个线程抢到了全局堆锁</li>
+<li>以上三种情况都会直接在堆上分配</li>
+</ul>
+<h3 id="路径四-分配前触发GC或者等待GC"><a href="#路径四-分配前触发GC或者等待GC" class="headerlink" title="路径四 分配前触发GC或者等待GC"></a>路径四 分配前触发GC或者等待GC</h3><ul>
+<li>路径二和路径三豆失败，即堆剩余空间不足导致申请TLAB失败，堆剩余空间也不足以分配这个对象或者没有抢到全局堆锁</li>
+<li>这种情况下，会触发 GC 或者等待 GC 释放对象</li>
+</ul>
+<h3 id="为什么有个最大浪费空间？？"><a href="#为什么有个最大浪费空间？？" class="headerlink" title="为什么有个最大浪费空间？？"></a>为什么有个最大浪费空间？？</h3><ul>
+<li>这是为了避免更有效的利用空间</li>
+<li>假设当前剩余12KB，最大浪费空间是10KB，有个对象需要分配20KB，因为TLAB剩余空间不够，这时候面临两个选择<ul>
+<li>丢弃掉当前这个TLAB，去申请一个新的</li>
+<li>不在当前这个TLAB上配置，去堆上分配</li>
+<li>最大浪费空间就是以上两种选择的决定者，假设剩余空间大于最大浪费空间，那么就保留当前这个TLAB，因为下次很可能在分配成功，所以要去堆上分配；假设剩余空间小于最大浪费空间，说明下次分配的可能性也不大了，可以丢弃掉当前TLAB去申请一个新的TLAB了</li>
+</ul>
+</li>
+</ul>
+<h2 id="JFR-事件"><a href="#JFR-事件" class="headerlink" title="JFR 事件"></a>JFR 事件</h2><h3 id="Java-Application-Object-Allocation-In-New-TLAB"><a href="#Java-Application-Object-Allocation-In-New-TLAB" class="headerlink" title="Java Application&#x2F;Object Allocation In New TLAB"></a>Java Application&#x2F;Object Allocation In New TLAB</h3><p><img data-src="/images/jfr/04.png" alt="img"><br><img data-src="/images/jfr/05.png" alt="img"></p>
+<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul>
+<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationInNewTLAB</li>
+<li>Label(Event Type，用于显示): Object Allocation In New TLAB</li>
+<li>Category(用于分类显示): Java Application</li>
+<li>事件从哪个版本引入？<ul>
+<li>Java11：即一开始就存在</li>
+</ul>
+</li>
+<li>事件类型<ul>
+<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
+<li><code>JVM内部事件</code></li>
+</ul>
+</li>
+<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>此事件对应 <code>Java 对象分配过程</code> 中的路径二</li>
+<li>事件字段<ul>
+<li>Event Thread：发生路径二分配的线程的名称</li>
+<li>Allocation Size：触发路径二分配的对象大小（实际占用，考虑了对象对其）</li>
+<li>Object Class：触发路径二分配的对象类型</li>
+<li>TLAB Size：触发路径二分配，申请新的TLAB的大小</li>
+<li>线程栈：发生路径二的线程栈，默认是采集的<br><img data-src="/images/jfr/06.png" alt="img"></li>
+</ul>
+</li>
+<li>测试代码 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocInNewTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 对于字节数组对象头占用16字节</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">BYTE_ARRAY_OVERHEAD</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line">  <span class="comment">// 测试的对象大小是KB</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">OBJECT_SIZE</span> <span class="operator">=</span> <span class="number">1024</span>;</span><br><span class="line">  <span class="comment">// 字节数组对象名称</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">BYTE_ARRAY_CLASS_NAME</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">0</span>].getClass().getName();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 需要使用静态field，而不是方法内本地变量，否则编译后循环内的new byte[] 会被全部省略，只剩最后一次的</span></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">byte</span>[] tmp;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小1KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">512</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 强制 fullgc 回收所以 TLAB</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小100KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">200</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE * <span class="number">100</span> - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">      <span class="comment">// 统计事件类型</span></span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf1KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf100KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="comment">// 读取文件中的所有 JFR 事件</span></span><br><span class="line">      <span class="keyword">for</span> (RecordedEvent event : RecordingFile.readAllEvents(path)) &#123;</span><br><span class="line">          <span class="comment">// 获取分配的对象类型</span></span><br><span class="line">          <span class="type">String</span> <span class="variable">className</span> <span class="operator">=</span> event.getString(<span class="string">&quot;objectClass.name&quot;</span>);</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 确保分配类型是byte</span></span><br><span class="line">          <span class="keyword">if</span> (BYTE_ARRAY_CLASS_NAME.equals(className)) &#123;</span><br><span class="line">              <span class="type">RecordedFrame</span> <span class="variable">recordedFrame</span> <span class="operator">=</span> event.getStackTrace().getFrames().get(<span class="number">0</span>);</span><br><span class="line">              <span class="comment">// 同时必须是main方法分配的对象，并且是java堆栈中的main方法</span></span><br><span class="line">              <span class="keyword">if</span> (</span><br><span class="line">                      recordedFrame.isJavaFrame()</span><br><span class="line">                              &amp;&amp; <span class="string">&quot;main&quot;</span>.equalsIgnoreCase(recordedFrame.getMethod().getName())</span><br><span class="line">              ) &#123;</span><br><span class="line">                  <span class="comment">// 获取分配对象大小</span></span><br><span class="line">                  <span class="type">long</span> <span class="variable">allocationSize</span> <span class="operator">=</span> event.getLong(<span class="string">&quot;allocationSize&quot;</span>);</span><br><span class="line">                  <span class="keyword">if</span> (EVENT_TYPE.equalsIgnoreCase(event.getEventType().getName())) &#123;</span><br><span class="line">                      <span class="keyword">if</span> (allocationSize == OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf1KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (allocationSize == <span class="number">100</span> * OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf100KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125;</span><br><span class="line"></span><br><span class="line">                  &#125;</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Exception</span>(<span class="string">&quot;unexpected size of TLAB event&quot;</span>);</span><br><span class="line">              &#125;</span><br><span class="line">              System.out.println(event);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      System.out.println(<span class="string">&quot;countOf1KBObjectAllocationInNewTLAB: &quot;</span> + countOf1KBObjectAllocationInNewTLAB);</span><br><span class="line">      System.out.println(<span class="string">&quot;countOf100KBObjectAllocationInNewTLAB: &quot;</span> + countOf100KBObjectAllocationInNewTLAB);</span><br><span class="line">  &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="为什么针对大部分应用不建议开启这个事件的采集"><a href="#为什么针对大部分应用不建议开启这个事件的采集" class="headerlink" title="为什么针对大部分应用不建议开启这个事件的采集?"></a>为什么针对大部分应用不建议开启这个事件的采集?</h3><ul>
+<li><code>路径二分配一般不是核心问题点</code><ul>
+<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
+<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
+</ul>
+</li>
+<li><code>对于大部分应用，没有啥必要性</code><ul>
+<li>重新申请 TLAB 分配，对于热点线程来说，虽然不如TLAB内分配那么多，但是也是比较频繁的</li>
+<li>如果重新申请 TLAB 分配的次数，和 TLAB 内分配的次数差不多，这才会是问题</li>
+<li>但是 TLAB 的大小是根据线程的分配情况动态调整的，所以 TLAB 内的分配的次数会比较多，而重新申请 TLAB 分配的次数会比较少</li>
+<li>所以这个事件的采集，对于大部分的应用来说，并不是很有必要</li>
+</ul>
+</li>
+<li><code>性能损耗</code><ul>
+<li>这个事件的采集，会捕获堆栈信息，堆栈信息是比较耗性能的，如果开启这个事件的采集，会导致性能损耗比较大。并且这个事件的采集也相对频繁</li>
+</ul>
+</li>
+</ul>
+<h3 id="那种情况下才会考虑开启这个事件的采集"><a href="#那种情况下才会考虑开启这个事件的采集" class="headerlink" title="那种情况下才会考虑开启这个事件的采集?"></a>那种情况下才会考虑开启这个事件的采集?</h3><ul>
+<li>正常的应用场景下，不需要调整TLAB的配置参数。一般情况下，JVM会根据应用的情况自动调整TLAB的大小</li>
+<li>如果确实怀疑TLAB的配置参数有问题，第一步是开启 Java Application -&gt; Allocation In New TLAB(jdk.ObjectAllocationInNewTLAB) 和 Java Application -&gt;  Allocation outside TLAB(jdk.ObjectAllocationOutsideTLAB)</li>
+<li>确认有大量的 Object Allocation Outside TLAB 事件发生（一般在应用稳定之后，如果很多线程的 Object Allocation Outside TLAB 相对于 Allocation In New TLAB 大于 5%以上就需要调整 TLAB 相关参数了），然后再考虑是否需要调整 TLAB 的配置参数。</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>JFR</category>
       </categories>
@@ -772,38 +881,6 @@
         <tag>JVM</tag>
         <tag>JFR</tag>
         <tag>监控</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>JVM内存相关的监控指标</title>
-    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
-<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
-<p>JVM Heap代表存放Java Objects的Heap</p>
-</blockquote>
-<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
-<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
-</blockquote>
-<ul>
-<li>CodeCache</li>
-<li>Metaspace</li>
-<li>CompressedClassSpace</li>
-<li>DirectBuffer</li>
-<li>Thread Stacks</li>
-</ul>
-<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
-<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
-<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>监控</tag>
-        <tag>内存</tag>
       </tags>
   </entry>
   <entry>
@@ -1263,89 +1340,6 @@
       </tags>
   </entry>
   <entry>
-    <title>2-Reactor线程运转架构</title>
-    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
-<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
-</ul>
-<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
-<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
-</blockquote>
-<ul>
-<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
-</ul>
-<p>轮询策略如下：</p>
-<ul>
-<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
-<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
-<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
-</ul>
-<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
-<ul>
-<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
-</ul>
-<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
-<ul>
-<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
-</ul>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
-<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
-<ol>
-<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
-<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
-<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
-<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
-</ol>
-<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
-<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
-</blockquote>
-<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
-<blockquote>
-<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
-</blockquote>
-<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
-<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
-<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
-<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
-<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
-<ol>
-<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
-</ol>
-<blockquote>
-<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
-</blockquote>
-<ul>
-<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
-<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<blockquote>
-<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
-</blockquote>
-<ul>
-<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
-<ul>
-<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
-</ul>
-<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>1-Netty Reactor启动流程</title>
     <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
@@ -1458,31 +1452,79 @@
       </tags>
   </entry>
   <entry>
-    <title>Netty中的细节优化</title>
-    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
-    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
-<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
-<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
+    <title>2-Reactor线程运转架构</title>
+    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
+<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
 </ul>
-<p><img data-src="/images/netty/01.png" alt="netty"></p>
+<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
+<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
+</blockquote>
 <ul>
-<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
+<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
 </ul>
-<p><img data-src="/images/netty/02.png" alt="netty"></p>
-<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
-<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
-</ul>
-<p><img data-src="/images/netty/03.png" alt="netty"></p>
+<p>轮询策略如下：</p>
 <ul>
-<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
+<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
+<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
+<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
 </ul>
-<p><img data-src="/images/netty/04.png" alt="netty"></p>
-<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
-<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
-<p><img data-src="/images/netty/05.png" alt="netty"></p>
-<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
-<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
+<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
+<ul>
+<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
 </ul>
+<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
+<ul>
+<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
+</ul>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
+<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
+<ol>
+<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
+<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
+<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
+<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
+</ol>
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
+<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
+</blockquote>
+<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
+<blockquote>
+<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
+</blockquote>
+<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
+<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
+<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
+<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
+<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
+<ol>
+<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
+</ol>
+<blockquote>
+<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
+</blockquote>
+<ul>
+<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
+<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
+</ul>
+<blockquote>
+<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
+</blockquote>
+<ul>
+<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
+</ul>
+<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
+<ul>
+<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
+</ul>
+<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
@@ -1666,6 +1708,41 @@
 <h3 id="转移回收线程回收的对象到Stack中"><a href="#转移回收线程回收的对象到Stack中" class="headerlink" title="转移回收线程回收的对象到Stack中"></a>转移回收线程回收的对象到Stack中</h3><p><img data-src="/images/netty/04_08.png" alt="netty"></p>
 <p><img data-src="/images/netty/04_09.png" alt="netty"></p>
 <h3 id="从WeakOrderQueue中转移回收对象"><a href="#从WeakOrderQueue中转移回收对象" class="headerlink" title="从WeakOrderQueue中转移回收对象"></a>从WeakOrderQueue中转移回收对象</h3><p><img data-src="/images/netty/04_10.png" alt="netty"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Netty中的细节优化</title>
+    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
+    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
+<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
+<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
+</ul>
+<p><img data-src="/images/netty/01.png" alt="netty"></p>
+<ul>
+<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
+</ul>
+<p><img data-src="/images/netty/02.png" alt="netty"></p>
+<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
+<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
+</ul>
+<p><img data-src="/images/netty/03.png" alt="netty"></p>
+<ul>
+<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
+</ul>
+<p><img data-src="/images/netty/04.png" alt="netty"></p>
+<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
+<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
+<p><img data-src="/images/netty/05.png" alt="netty"></p>
+<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
+<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
+</ul>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
@@ -2441,6 +2518,102 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>ES</title>
+    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
+</ul>
+<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
+<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
+<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
+<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
+</ul>
+</li>
+<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
+<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
+<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
+</ul>
+</li>
+<li>最佳实践<ul>
+<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
+<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
+<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
+<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
+<li>作用：添加或替换文档。</li>
+<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
+<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
+<li>特点：不关心之前是否存在这本书。</li>
+</ul>
+<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
+<li>作用：仅添加新文档，如果文档已存在则失败。</li>
+<li>类比：只有当书架上没有这本书时，才能放上去。</li>
+<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
+<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
+</ul>
+<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
+<li>作用：修改现有文档的部分内容。</li>
+<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
+<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
+<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
+</ul>
+<ol>
+<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
+<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
+<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
+<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
+<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
+</ol>
+<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
+<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
+<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
+<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
+</blockquote>
+<ol>
+<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
+<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
+<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
+</blockquote>
+<ol>
+<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
+<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
+</blockquote>
+<ol>
+<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
+<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
+<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>ES</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>ES</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>raft</title>
     <url>/2025/02/09/fen-bu-shi/suan-fa/raft/posts/undefined/</url>
     <content><![CDATA[<h2 id="Raft-的核心目标和基本工作原理"><a href="#Raft-的核心目标和基本工作原理" class="headerlink" title="Raft 的核心目标和基本工作原理"></a>Raft 的核心目标和基本工作原理</h2><p>核心目标：</p>
@@ -2630,479 +2803,6 @@ sequenceDiagram
         <tag>分布式</tag>
         <tag>算法</tag>
         <tag>raft</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ES</title>
-    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
-</ul>
-<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
-<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
-<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
-<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
-</ul>
-</li>
-<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
-<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
-<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
-</ul>
-</li>
-<li>最佳实践<ul>
-<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
-<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
-<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
-<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
-<li>作用：添加或替换文档。</li>
-<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
-<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
-<li>特点：不关心之前是否存在这本书。</li>
-</ul>
-<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
-<li>作用：仅添加新文档，如果文档已存在则失败。</li>
-<li>类比：只有当书架上没有这本书时，才能放上去。</li>
-<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
-<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
-</ul>
-<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
-<li>作用：修改现有文档的部分内容。</li>
-<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
-<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
-<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
-</ul>
-<ol>
-<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
-<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
-<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
-<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
-<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
-</ol>
-<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
-<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
-<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
-<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
-</blockquote>
-<ol>
-<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
-<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
-<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
-</blockquote>
-<ol>
-<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
-<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
-</blockquote>
-<ol>
-<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
-<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ol>
-<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
-<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>ES</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>ES</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>rocksdb</title>
-    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
-    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
-<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
-<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
-<thead>
-<tr>
-<th>类别</th>
-<th>属性名</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>总体统计</td>
-<td>rocksdb.stats</td>
-<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
-</tr>
-<tr>
-<td>数据库大小</td>
-<td>rocksdb.total-sst-files-size</td>
-<td>所有 SST 文件的总大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-table-readers-mem</td>
-<td>估计表读取器使用的内存</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-live-data-size</td>
-<td>估计的活跃数据大小</td>
-</tr>
-<tr>
-<td>内存使用</td>
-<td>rocksdb.cur-size-all-mem-tables</td>
-<td>所有 MemTable 的当前大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.block-cache-usage</td>
-<td>块缓存的使用量</td>
-</tr>
-<tr>
-<td>压缩</td>
-<td>rocksdb.background-errors</td>
-<td>后台工作（如压缩）中的错误数</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.num-running-compactions</td>
-<td>当前运行的压缩任务数</td>
-</tr>
-<tr>
-<td>写入</td>
-<td>rocksdb.num-immutable-mem-table</td>
-<td>不可变 MemTable 的数量</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.mem-table-flush-pending</td>
-<td>是否有待处理的 MemTable 刷新</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.is-write-stopped</td>
-<td>写入是否已停止</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.actual-delayed-write-rate</td>
-<td>实际的延迟写入速率</td>
-</tr>
-<tr>
-<td>读取</td>
-<td>rocksdb.estimate-num-keys</td>
-<td>估计的键数量</td>
-</tr>
-<tr>
-<td>文件</td>
-<td>rocksdb.num-files-at-level<N></td>
-<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.live-sst-files-size</td>
-<td>活跃 SST 文件的大小</td>
-</tr>
-</tbody></table>
-<p>注意：</p>
-<ol>
-<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
-<li>某些属性可能会影响性能，应谨慎使用。</li>
-<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
-<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
-</ol>
-<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
-<li>为单个 key 提供并发控制<ol>
-<li>事务开始时获取逻辑锁</li>
-<li>提交时检查冲突</li>
-<li>避免显式锁定，提高并发性</li>
-<li>减少死锁风险</li>
-<li>计数器更新</li>
-<li>用户状态修改</li>
-</ol>
-</li>
-<li>确保多个 key 的一致性更新<ol>
-<li>将多个 key 操作组合为单一事务</li>
-<li>全部成功或全部失败</li>
-<li>维护相关数据的一致性</li>
-<li>简化复杂操作的实现</li>
-<li>用户注册（创建账户 + 初始化设置）</li>
-<li>订单处理（更新库存 + 记录订单）</li>
-</ol>
-</li>
-</ul>
-<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
-<li>触发时机：事务提交时</li>
-<li>检测对象：活跃事务之间的写集</li>
-<li>检测方式：<ol>
-<li>每个事务的 put 操作都会记录在写集中</li>
-<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
-<li>结果：如果发现冲突，后提交的事务通常会失败</li>
-</ol>
-</li>
-</ol>
-<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
-<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
-<li>检测对象：所有活跃事务的锁和写意图</li>
-<li>检测方式：<ol>
-<li>检查目标键是否被任何活跃事务锁定</li>
-<li>检查是否有活跃事务对该键有写意图</li>
-<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
-</ol>
-</li>
-</ol>
-<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
-<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
-<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
-<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
-<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
-<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
-</ol>
-<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
-<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
-<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
-<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
-<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
-<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
-<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
-<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>方面</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>全局序列号</td>
-<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
-</tr>
-<tr>
-<td>事务开始</td>
-<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
-</tr>
-<tr>
-<td>读操作</td>
-<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
-</tr>
-<tr>
-<td>写操作</td>
-<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
-</tr>
-<tr>
-<td>事务提交</td>
-<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
-</tr>
-<tr>
-<td>回滚处理</td>
-<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
-</tr>
-<tr>
-<td>冲突检测</td>
-<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
-</tr>
-<tr>
-<td>OptimisticTransactionDB</td>
-<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
-</tr>
-<tr>
-<td>TransactionDB</td>
-<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
-</tr>
-<tr>
-<td>隔离级别影响</td>
-<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
-</tr>
-<tr>
-<td>注意事项</td>
-<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
-</tr>
-</tbody></table>
-<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
-<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
-<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
-<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>rocksdb</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>rocksdb</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-consumer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 反序列化 实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 反序列化实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>group.id</strong></td>
-<td align="left"></td>
-<td align="left">消费组 ID</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>enable.auto.commit</strong></td>
-<td align="left">true</td>
-<td align="left">是否开启自动提交默认为 true</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.commit.interval.ms</strong></td>
-<td align="left">5000</td>
-<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.offset.reset</strong></td>
-<td align="left">latest</td>
-<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.records</strong></td>
-<td align="left">500</td>
-<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.interval.ms</strong></td>
-<td align="left">5 * 60 * 1000</td>
-<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>heartbeat.interval.ms</strong></td>
-<td align="left">3 * 1000</td>
-<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>session.timeout.ms</strong></td>
-<td align="left">10 * 1000</td>
-<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">fetch.max.bytes</td>
-<td align="left">50 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">max.partition.fetch.bytes</td>
-<td align="left">1 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">receive.buffer.bytes</td>
-<td align="left">64 * 1024</td>
-<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
-<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
-<li>发生再平衡的场景<ul>
-<li>消费者加入或离开</li>
-<li>消费者遇到暂时故障或网络中断</li>
-<li>消费者闲置时间过长</li>
-<li>扩大了主题分区</li>
-</ul>
-</li>
-<li>再平衡的副作用<ul>
-<li>延迟增加</li>
-<li>吞吐量降低</li>
-<li>资源使用量增加</li>
-<li>潜在的数据重复和丢失</li>
-<li>复杂性增加</li>
-</ul>
-</li>
-<li>减少再平衡的措施<ul>
-<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
-<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
-<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
-<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
-</ul>
-</li>
-<li>增量合作再平衡<ul>
-<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
-<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
-<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
-</ul>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
@@ -4289,6 +3989,383 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>rocksdb</title>
+    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
+    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
+<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
+<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>属性名</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>总体统计</td>
+<td>rocksdb.stats</td>
+<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
+</tr>
+<tr>
+<td>数据库大小</td>
+<td>rocksdb.total-sst-files-size</td>
+<td>所有 SST 文件的总大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-table-readers-mem</td>
+<td>估计表读取器使用的内存</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-live-data-size</td>
+<td>估计的活跃数据大小</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>rocksdb.cur-size-all-mem-tables</td>
+<td>所有 MemTable 的当前大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.block-cache-usage</td>
+<td>块缓存的使用量</td>
+</tr>
+<tr>
+<td>压缩</td>
+<td>rocksdb.background-errors</td>
+<td>后台工作（如压缩）中的错误数</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.num-running-compactions</td>
+<td>当前运行的压缩任务数</td>
+</tr>
+<tr>
+<td>写入</td>
+<td>rocksdb.num-immutable-mem-table</td>
+<td>不可变 MemTable 的数量</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.mem-table-flush-pending</td>
+<td>是否有待处理的 MemTable 刷新</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.is-write-stopped</td>
+<td>写入是否已停止</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.actual-delayed-write-rate</td>
+<td>实际的延迟写入速率</td>
+</tr>
+<tr>
+<td>读取</td>
+<td>rocksdb.estimate-num-keys</td>
+<td>估计的键数量</td>
+</tr>
+<tr>
+<td>文件</td>
+<td>rocksdb.num-files-at-level<N></td>
+<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.live-sst-files-size</td>
+<td>活跃 SST 文件的大小</td>
+</tr>
+</tbody></table>
+<p>注意：</p>
+<ol>
+<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
+<li>某些属性可能会影响性能，应谨慎使用。</li>
+<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
+<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
+</ol>
+<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
+<li>为单个 key 提供并发控制<ol>
+<li>事务开始时获取逻辑锁</li>
+<li>提交时检查冲突</li>
+<li>避免显式锁定，提高并发性</li>
+<li>减少死锁风险</li>
+<li>计数器更新</li>
+<li>用户状态修改</li>
+</ol>
+</li>
+<li>确保多个 key 的一致性更新<ol>
+<li>将多个 key 操作组合为单一事务</li>
+<li>全部成功或全部失败</li>
+<li>维护相关数据的一致性</li>
+<li>简化复杂操作的实现</li>
+<li>用户注册（创建账户 + 初始化设置）</li>
+<li>订单处理（更新库存 + 记录订单）</li>
+</ol>
+</li>
+</ul>
+<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
+<li>触发时机：事务提交时</li>
+<li>检测对象：活跃事务之间的写集</li>
+<li>检测方式：<ol>
+<li>每个事务的 put 操作都会记录在写集中</li>
+<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
+<li>结果：如果发现冲突，后提交的事务通常会失败</li>
+</ol>
+</li>
+</ol>
+<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
+<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
+<li>检测对象：所有活跃事务的锁和写意图</li>
+<li>检测方式：<ol>
+<li>检查目标键是否被任何活跃事务锁定</li>
+<li>检查是否有活跃事务对该键有写意图</li>
+<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
+</ol>
+</li>
+</ol>
+<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
+<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
+<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
+<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
+<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
+<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
+</ol>
+<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
+<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
+<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
+<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
+<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
+<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
+<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
+<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全局序列号</td>
+<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
+</tr>
+<tr>
+<td>事务开始</td>
+<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
+</tr>
+<tr>
+<td>读操作</td>
+<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
+</tr>
+<tr>
+<td>写操作</td>
+<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
+</tr>
+<tr>
+<td>事务提交</td>
+<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
+</tr>
+<tr>
+<td>回滚处理</td>
+<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
+</tr>
+<tr>
+<td>冲突检测</td>
+<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
+</tr>
+<tr>
+<td>OptimisticTransactionDB</td>
+<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
+</tr>
+<tr>
+<td>TransactionDB</td>
+<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
+</tr>
+<tr>
+<td>隔离级别影响</td>
+<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
+</tr>
+<tr>
+<td>注意事项</td>
+<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
+</tr>
+</tbody></table>
+<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
+<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
+<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
+<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>rocksdb</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>rocksdb</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-consumer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 反序列化 实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 反序列化实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>group.id</strong></td>
+<td align="left"></td>
+<td align="left">消费组 ID</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>enable.auto.commit</strong></td>
+<td align="left">true</td>
+<td align="left">是否开启自动提交默认为 true</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.commit.interval.ms</strong></td>
+<td align="left">5000</td>
+<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.offset.reset</strong></td>
+<td align="left">latest</td>
+<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.records</strong></td>
+<td align="left">500</td>
+<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.interval.ms</strong></td>
+<td align="left">5 * 60 * 1000</td>
+<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>heartbeat.interval.ms</strong></td>
+<td align="left">3 * 1000</td>
+<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>session.timeout.ms</strong></td>
+<td align="left">10 * 1000</td>
+<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">fetch.max.bytes</td>
+<td align="left">50 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">max.partition.fetch.bytes</td>
+<td align="left">1 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">receive.buffer.bytes</td>
+<td align="left">64 * 1024</td>
+<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
+<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
+<li>发生再平衡的场景<ul>
+<li>消费者加入或离开</li>
+<li>消费者遇到暂时故障或网络中断</li>
+<li>消费者闲置时间过长</li>
+<li>扩大了主题分区</li>
+</ul>
+</li>
+<li>再平衡的副作用<ul>
+<li>延迟增加</li>
+<li>吞吐量降低</li>
+<li>资源使用量增加</li>
+<li>潜在的数据重复和丢失</li>
+<li>复杂性增加</li>
+</ul>
+</li>
+<li>减少再平衡的措施<ul>
+<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
+<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
+<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
+<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
+</ul>
+</li>
+<li>增量合作再平衡<ul>
+<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
+<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
+<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
+</ul>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
