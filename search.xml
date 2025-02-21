@@ -3,34 +3,20 @@
   <entry>
     <title>思维导图示例</title>
     <url>/2024/02/20/test/posts/undefined/</url>
-    <content><![CDATA[<div class="markmap">
-# Redis
-  ## String类型
-    ### 命令
-      - SET
-      - GET
-      - INCR
-    ### 应用
-      - 计数器
-      - 缓存
-  ## Hash类型
-    ### 命令
-      - HSET
-      - HGET
-      - HDEL
-    ### 应用
-      - 用户信息
-      - 商品属性
-  ## List类型
-    ### 命令
-      - LPUSH
-      - RPUSH
-      - LRANGE
-    ### 应用
-      - 消息队列
-      - 最新动态
-</div>
-]]></content>
+    <content><![CDATA[<blockquote class="pullquote mindmap mindmap-md"><ul>
+<li>在 Hexo 中使用思维导图<ul>
+<li>前言</li>
+<li>操作指南<ul>
+<li>准备需要的文件</li>
+<li>为主题添加 CSS&#x2F;JS 文件</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>使用方法</li>
+</ul>
+</blockquote>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
   </entry>
   <entry>
     <title>C语言基础知识</title>
@@ -106,7 +92,7 @@
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 存储在栈中, 内存地址从大到小</span></span><br><span class="line">    <span class="type">int</span> a = <span class="number">10</span>;</span><br><span class="line">    <span class="type">int</span> b = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;a = %p\n&quot;</span>, &amp;a); <span class="comment">// &amp;a = 0x16b90eb68</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;b = %p\n&quot;</span>, &amp;b); <span class="comment">// &amp;b = 0x16b90eb64</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 存储在栈中, 内存地址从小到大</span></span><br><span class="line">    <span class="type">int</span>* p1 = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    *p1 = <span class="number">10</span>;</span><br><span class="line">    <span class="type">int</span>* p2 = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    *p2 = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p1 = %p\n&quot;</span>, p1); <span class="comment">//  p1 = 00762F48</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p2 = %p\n&quot;</span>, p2); <span class="comment">// p2 = 00762F58</span></span><br><span class="line">    <span class="built_in">free</span>(p1);</span><br><span class="line">    <span class="built_in">free</span>(p2);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// malloc 所在文件:stdlib.h</span></span><br><span class="line">    <span class="comment">// 申请堆内存空间并返回,所申请的空间并未初始化。</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * malloc</span></span><br><span class="line"><span class="comment">     * 第一个参数: 需要申请多少个字节空间</span></span><br><span class="line"><span class="comment">     * 返回值类型: void *</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">int</span>* p = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p); <span class="comment">// *p可能是垃圾数据</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 第一个参数: 需要初始化的内存地址</span></span><br><span class="line"><span class="comment">     * 第二个初始: 需要初始化的值</span></span><br><span class="line"><span class="comment">     * 第三个参数: 需要初始化对少个字节</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="built_in">memset</span>(p, <span class="number">0</span>, <span class="keyword">sizeof</span>(<span class="type">int</span>)); <span class="comment">// 对申请的内存空间进行初始化</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p); <span class="comment">// 初始化为0</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;p = %p\n&quot;</span>, p);</span><br><span class="line">    *p = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// realloc 扩容/缩容</span></span><br><span class="line">    <span class="comment">// 返回的指针，可能与 ptr 的值相同，也有可能不同。</span></span><br><span class="line">    <span class="comment">// 若相同，则说明在原空间后面申请，否则，则可能后续空间不足，重新申请的新的连续空间，原数据拷贝到新空间， 原有空间自动释放</span></span><br><span class="line">    p = <span class="built_in">realloc</span>(p, <span class="keyword">sizeof</span>(<span class="type">int</span>) * <span class="number">2</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;p = %p\n&quot;</span>, p);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// free stdlib.h</span></span><br><span class="line">    <span class="comment">// 通过malloc申请的存储空间一定要释放, 所以malloc和free函数总是成对出现</span></span><br><span class="line">    <span class="comment">// 释放申请的堆内存</span></span><br><span class="line">    <span class="built_in">free</span>(p);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <h3 id="链表实现"><a href="#链表实现" class="headerlink" title="链表实现"></a>链表实现</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">node</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">int</span> data;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">node</span>* <span class="title">next</span>;</span></span><br><span class="line">&#125; Node;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NODE_SIZE sizeof(Node)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建一个空链表，包含一个头结点</span></span><br><span class="line">Node* <span class="title function_">createNodeList</span><span class="params">()</span>;</span><br><span class="line"><span class="comment">// 尾插法</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertTail</span><span class="params">(Node* head, <span class="type">int</span> data)</span>;</span><br><span class="line"><span class="comment">// 头插法</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertHead</span><span class="params">(Node* head, <span class="type">int</span> data)</span>;</span><br><span class="line"><span class="comment">// 打印链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">printNodeList</span><span class="params">(Node* node)</span>;</span><br><span class="line"><span class="comment">// 释放一个链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">freeNode</span><span class="params">(Node* head)</span>;</span><br><span class="line"><span class="comment">// 计算链表长度</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">listLength</span><span class="params">(<span class="type">const</span> Node* head)</span>;</span><br><span class="line"><span class="comment">// 链表查找</span></span><br><span class="line">Node* <span class="title function_">searchList</span><span class="params">(Node* head, <span class="type">int</span> key)</span>;</span><br><span class="line"><span class="comment">// 链表删除</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">deleteNodeList</span><span class="params">(Node* head, Node* find)</span>;</span><br><span class="line"><span class="comment">// 反转链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">reverseList</span><span class="params">(Node* head)</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = createNodeList();</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    insertHead(head, <span class="number">1</span>);</span><br><span class="line">    insertHead(head, <span class="number">2</span>);</span><br><span class="line">    insertTail(head, <span class="number">3</span>);</span><br><span class="line">    insertTail(head, <span class="number">4</span>);</span><br><span class="line">    printNodeList(head);</span><br><span class="line">    reverseList(head);</span><br><span class="line">    printNodeList(head);</span><br><span class="line">    <span class="type">int</span> length = listLength(head);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;链表长度: %i\n&quot;</span>, length);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (searchList(head, <span class="number">4</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;找到了值为%i的节点\n&quot;</span>, <span class="number">4</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (searchList(head, <span class="number">2</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;找到了值为%i的节点\n&quot;</span>, <span class="number">2</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!searchList(head, <span class="number">100</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;没找到值为%i的节点\n&quot;</span>, <span class="number">100</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    deleteNodeList(head, searchList(head, <span class="number">4</span>));</span><br><span class="line">    deleteNodeList(head, searchList(head, <span class="number">2</span>));</span><br><span class="line"></span><br><span class="line">    printNodeList(head);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">free</span>(head);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Node* <span class="title function_">createNodeList</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    head-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">return</span> head;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertTail</span><span class="params">(Node* head, <span class="type">int</span> data)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 找到尾结点</span></span><br><span class="line">    Node* pre = head;</span><br><span class="line">    <span class="keyword">while</span> (pre != <span class="literal">NULL</span> &amp;&amp; pre-&gt;next != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        pre = pre-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (pre == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Node* node = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    node-&gt;data = data;</span><br><span class="line">    node-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    pre-&gt;next = node;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertHead</span><span class="params">(Node* head, <span class="type">int</span> data)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* node = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    node-&gt;data = data;</span><br><span class="line">    node-&gt;next = head-&gt;next;</span><br><span class="line">    head-&gt;next = node;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">printNodeList</span><span class="params">(Node* node)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = node-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">int</span> currentData = head-&gt;data;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;currentData = %i\n&quot;</span>, currentData);</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">freeNode</span><span class="params">(Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Node* cur = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">while</span> (head != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        cur = head-&gt;next;</span><br><span class="line">        <span class="built_in">free</span>(head);</span><br><span class="line">        head = cur;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// const Node* head 表示指针指向的内容不能修改</span></span><br><span class="line"><span class="comment">// Node* const head 表示这个指针不能修改</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">listLength</span><span class="params">(<span class="type">const</span> Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span> count = <span class="number">0</span>;</span><br><span class="line">    head = head-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        count++;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> count;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Node* <span class="title function_">searchList</span><span class="params">(Node* head, <span class="type">int</span> key)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    head = head-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (key == head-&gt;data)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> head;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">deleteNodeList</span><span class="params">(Node* head, Node* find)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">while</span> (head-&gt;next != find)</span><br><span class="line">    &#123;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        head-&gt;next = find-&gt;next;</span><br><span class="line">        <span class="built_in">free</span>(find);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">reverseList</span><span class="params">(Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node *pre, *cur;</span><br><span class="line">    pre = head-&gt;next;</span><br><span class="line">    <span class="comment">// 把head置为一个空链表</span></span><br><span class="line">    head-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">while</span> (pre)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 反转链表，相当于头插法</span></span><br><span class="line">        cur = pre-&gt;next;</span><br><span class="line">        pre-&gt;next = head-&gt;next;</span><br><span class="line">        head-&gt;next = pre;</span><br><span class="line">        pre = cur;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>C</category>
       </categories>
@@ -230,7 +216,7 @@
 <li><p>获取 spring Environment 配置</p>
   <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 3 --action getInstances --className org.springframework.core.env.Environment  --express &#x27;instances[0].getProperty(&quot;server.port&quot;)&#x27; -c 7b5a12ae</span><br></pre></td></tr></table></figure></li>
 </ul>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Arthas</category>
       </categories>
@@ -261,7 +247,7 @@
 <li>内置运行脚本 <code>run.sh</code></li>
 </ul>
 <figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Global ARGs (build-time variables)</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在 FROM 指令中是可以直接使用的</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在不同的构建阶段需要重新定义</span></span><br><span class="line"><span class="comment"># ARG 是构建时的变量，不能在容器中访问，而ENV是环境变量</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Base images</span></span><br><span class="line"><span class="keyword">ARG</span> BASE_JAVA_IMAGE=eclipse-temurin:<span class="number">8</span>-jdk-jammy</span><br><span class="line"><span class="keyword">ARG</span> MAVEN_IMAGE=maven:<span class="number">3</span>-eclipse-temurin-<span class="number">8</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Application info</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME=aws-starter</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION=<span class="number">1.0</span></span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span>=<span class="number">17674030991</span>@<span class="number">163</span>.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># Arthas</span></span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION=<span class="number">3.7</span>.<span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Directory structure</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME=/opt/deployments</span><br><span class="line"><span class="keyword">ARG</span> APP_USER=app</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP=app</span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 0 : Download Arthas</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> alpine:latest AS arthas-downloader</span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION</span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> apk add --no-cache wget unzip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">mkdir</span> -p /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    wget -q https://maven.aliyun.com/repository/public/com/taobao/arthas/arthas-packaging/<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>/arthas-packaging-<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>-bin.zip -O arthas-bin.zip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    unzip -q arthas-bin.zip -d /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">rm</span> -f arthas-bin.zip</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 1 : BUILD JAR</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;MAVEN_IMAGE&#125; AS maven-builder</span><br><span class="line"></span><br><span class="line"><span class="comment"># Maven configuration</span></span><br><span class="line"><span class="keyword">ENV</span> MAVEN_OPTS=<span class="string">&quot;-Dmaven.test.skip=true -Dmaven.compile.fork=true&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 自定义 settings.xml</span></span><br><span class="line"><span class="comment"># 使用 --build-arg 传入本地 settings.xml 的路径</span></span><br><span class="line"><span class="comment"># ARG MAVEN_SETTINGS</span></span><br><span class="line"><span class="comment"># COPY $&#123;MAVEN_SETTINGS&#125; /root/.m2/settings.xml</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 先复制 pom 文件以利用缓存</span></span><br><span class="line"><span class="comment"># pom 文件不变，依赖的下载就会使用缓存，源代码改变只会触发编译，不会重新下载依赖</span></span><br><span class="line"><span class="comment"># -B: 批处理模式</span></span><br><span class="line"><span class="comment"># dependency:resolve: 预下载声明在 pom.xml 中的依赖</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> pom.xml ./</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn dependency:resolve -B</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制源代码和其他文件</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> src ./src/</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> sh ./sh/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 构建应用</span></span><br><span class="line"><span class="comment"># -am 同时构建所列模块的依赖模块</span></span><br><span class="line"><span class="comment"># -B 以&quot;批处理模式&quot;运行 Maven，减少输出信息</span></span><br><span class="line"><span class="comment"># -DskipUTs 跳过单元测试</span></span><br><span class="line"><span class="comment"># -DskipITs 跳过集成测试</span></span><br><span class="line"><span class="comment"># --no-transfer-progress 不显示文件传输进度，减少输出</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn clean package -am -B -DskipUTs -DskipITs --no-transfer-progress</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 2: BUILD IMAGE</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;BASE_JAVA_IMAGE&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ARGs in LABEL</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> maintainer=<span class="string">&quot;<span class="variable">$&#123;MAINTAINER&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      version=<span class="string">&quot;<span class="variable">$&#123;APP_VERSION&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      description=<span class="string">&quot;<span class="variable">$&#123;APP_NAME&#125;</span>&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set environment variables</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME</span><br><span class="line"><span class="keyword">ARG</span> APP_USER</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> WORK_HOME=$&#123;WORK_HOME&#125;</span><br><span class="line"><span class="keyword">ENV</span> ARTHAS_OUTPUT_DIR=$&#123;WORK_HOME&#125;/arthas-output</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian 方式创建用户和目录</span></span><br><span class="line"><span class="comment"># install -d -m 避免 chown 命令导致镜像膨胀</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> groupadd --system <span class="variable">$&#123;APP_GROUP&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    useradd --system --gid <span class="variable">$&#123;APP_GROUP&#125;</span> --shell /bin/false <span class="variable">$&#123;APP_USER&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    install -d -m 755 -o <span class="variable">$&#123;APP_USER&#125;</span> -g <span class="variable">$&#123;APP_GROUP&#125;</span> <span class="variable">$&#123;WORK_HOME&#125;</span>/logs <span class="variable">$&#123;WORK_HOME&#125;</span>/arthas-output</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> <span class="variable">$&#123;WORK_HOME&#125;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy application files</span></span><br><span class="line"><span class="comment"># 这里使用 --chown=$&#123;APP_USER&#125;:$&#123;APP_GROUP&#125; 是为了避免单独使用chown -R $&#123;APP_USER&#125;:$&#123;APP_GROUP&#125;命令，导致镜像大小膨胀1倍</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> target/*-exec.jar ./app.jar</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> sh ./</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=arthas-downloader --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> /opt/arthas ./arthas/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">chmod</span> +x ./run.sh</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Switch to app user</span></span><br><span class="line"><span class="keyword">USER</span> $&#123;APP_USER&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;./run.sh&quot;</span>]</span></span><br></pre></td></tr></table></figure>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>docker</category>
       </categories>
@@ -269,62 +255,6 @@
         <tag>docker</tag>
         <tag>dockerfile</tag>
         <tag>基础镜像</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>多线程异常处理</title>
-    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
-</blockquote>
-<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
-<li>新起线程中抛出异常</li>
-</ul>
-<blockquote>
-<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>线程池中抛出的异常</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-
-<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
-<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
-</blockquote>
-<ul>
-<li><p>Try catch 显示处理异常</p>
-</li>
-<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
-<ul>
-<li><p>线程处理</p>
-</li>
-<li><p>thread.setUncaughtExceptionHandler</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
-
-</li>
-<li><p>线程池处理</p>
-</li>
-<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ul>
-<p>Hold on…..有人的地方就不存在信任这一说- -</p>
-<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
-<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
-</blockquote>
-<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>JAVA</category>
-      </categories>
-      <tags>
-        <tag>JAVA</tag>
-        <tag>多线程</tag>
       </tags>
   </entry>
   <entry>
@@ -340,7 +270,7 @@
 <li>配置类装配 FeignClient bean</li>
 </ul>
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>feign</category>
       </categories>
@@ -452,7 +382,7 @@
 <h3 id="注入-bean，覆盖默认的配置-FeignRibbonClientAutoConfiguration"><a href="#注入-bean，覆盖默认的配置-FeignRibbonClientAutoConfiguration" class="headerlink" title="注入 bean，覆盖默认的配置 FeignRibbonClientAutoConfiguration"></a>注入 bean，覆盖默认的配置 FeignRibbonClientAutoConfiguration</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LocalRibbonConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Value(&quot;$&#123;server.local.host:127.0.0.1&#125;&quot;)</span></span><br><span class="line">    <span class="keyword">private</span> String localHost;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Value(&quot;$&#123;server.local.port:8000&#125;&quot;)</span></span><br><span class="line">    <span class="keyword">private</span> Integer localPort;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> CachingSpringLoadBalancerFactory <span class="title function_">cachingLBClientFactory</span><span class="params">(</span></span><br><span class="line"><span class="params">            SpringClientFactory factory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LocalCachingSpringLoadBalancerFactory</span>(factory, localHost, localPort);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <h3 id="使用-BeanPostProcessor-修改-LoadBalancerFeignClient-中的-CachingSpringLoadBalancerFactory"><a href="#使用-BeanPostProcessor-修改-LoadBalancerFeignClient-中的-CachingSpringLoadBalancerFactory" class="headerlink" title="使用 BeanPostProcessor 修改 LoadBalancerFeignClient 中的 CachingSpringLoadBalancerFactory"></a>使用 BeanPostProcessor 修改 LoadBalancerFeignClient 中的 CachingSpringLoadBalancerFactory</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LocalCachingSpringLoadBalancerFactoryBeanPostProcessor</span> <span class="keyword">implements</span> <span class="title class_">BeanPostProcessor</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String localHost;</span><br><span class="line">    <span class="keyword">private</span> Integer localPort;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">LocalCachingSpringLoadBalancerFactoryBeanPostProcessor</span><span class="params">(String localHost, Integer localPort)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.localHost = localHost;</span><br><span class="line">        <span class="built_in">this</span>.localPort = localPort;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Object <span class="title function_">postProcessAfterInitialization</span><span class="params">(Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (bean <span class="keyword">instanceof</span> LoadBalancerFeignClient) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="type">var</span> <span class="variable">loadBalancerFeignClient</span> <span class="operator">=</span> (LoadBalancerFeignClient) bean;</span><br><span class="line">                <span class="type">Field</span> <span class="variable">lbClientFactory</span> <span class="operator">=</span> FieldUtils.getDeclaredField(LoadBalancerFeignClient.class, <span class="string">&quot;lbClientFactory&quot;</span>, <span class="literal">true</span>);</span><br><span class="line">                lbClientFactory.setAccessible(<span class="literal">true</span>);</span><br><span class="line">                <span class="type">var</span> <span class="variable">clientFactory</span> <span class="operator">=</span> FieldUtils.getDeclaredField(LoadBalancerFeignClient.class, <span class="string">&quot;clientFactory&quot;</span>, <span class="literal">true</span>);</span><br><span class="line">                clientFactory.setAccessible(<span class="literal">true</span>);</span><br><span class="line">                <span class="comment">// 获取到 springClientFactory</span></span><br><span class="line">                <span class="type">var</span> <span class="variable">springClientFactory</span> <span class="operator">=</span> (SpringClientFactory) clientFactory.get(loadBalancerFeignClient);</span><br><span class="line">                <span class="comment">// 构建local</span></span><br><span class="line">                <span class="type">LocalCachingSpringLoadBalancerFactory</span> <span class="variable">cachingSpringLoadBalancerFactory</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LocalCachingSpringLoadBalancerFactory</span>(springClientFactory, localHost, localPort);</span><br><span class="line">                <span class="comment">// 设置到值里面</span></span><br><span class="line">                lbClientFactory.set(loadBalancerFeignClient, cachingSpringLoadBalancerFactory);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (IllegalAccessException e) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> bean;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>feign</category>
       </categories>
@@ -487,7 +417,7 @@
 <ul>
 <li>以上就能实现自定义路由的功能</li>
 </ul>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>feign</category>
       </categories>
@@ -495,6 +425,62 @@
         <tag>feign</tag>
         <tag>rpc</tag>
         <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>多线程异常处理</title>
+    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
+</blockquote>
+<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
+<li>新起线程中抛出异常</li>
+</ul>
+<blockquote>
+<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>线程池中抛出的异常</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
+<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
+</blockquote>
+<ul>
+<li><p>Try catch 显示处理异常</p>
+</li>
+<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
+<ul>
+<li><p>线程处理</p>
+</li>
+<li><p>thread.setUncaughtExceptionHandler</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
+
+</li>
+<li><p>线程池处理</p>
+</li>
+<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<p>Hold on…..有人的地方就不存在信任这一说- -</p>
+<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
+<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
+</blockquote>
+<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JAVA</category>
+      </categories>
+      <tags>
+        <tag>JAVA</tag>
+        <tag>多线程</tag>
       </tags>
   </entry>
   <entry>
@@ -711,7 +697,7 @@
 </li>
 </ul>
 <p><img data-src="/images/jfr_01_01.png" alt="img"></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>JFR</category>
       </categories>
@@ -796,7 +782,7 @@
 </ol>
 </li>
 </ul>
-]]></content>
+<h2 id="JFR-事件"><a href="#JFR-事件" class="headerlink" title="JFR 事件"></a>JFR 事件</h2><h3 id="Java-Application-Object-Allocation-In-New-TLAB"><a href="#Java-Application-Object-Allocation-In-New-TLAB" class="headerlink" title="Java Application&#x2F;Object Allocation In New TLAB"></a>Java Application&#x2F;Object Allocation In New TLAB</h3><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>JFR</category>
       </categories>
@@ -828,7 +814,7 @@
 <h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
 <p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
 <p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>JVM</category>
       </categories>
@@ -876,7 +862,7 @@
 </tr>
 </tbody></table>
 <p><img data-src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAJIAmgMBIgACEQEDEQH/xAAbAAABBQEBAAAAAAAAAAAAAAAAAQIDBAUGB//EADsQAAEDAgQEBAQEBAUFAAAAAAEAAgMEEQUSIUETMVFxBhRhgQciUrEyQmKhI5HB8BUz0eHxJFOCosL/xAAaAQADAQEBAQAAAAAAAAAAAAAAAQIDBAUG/8QAIhEAAgICAgIDAQEAAAAAAAAAAAECEhETAyEEQTFRYSMi/9oADAMBAAIRAxEAPwD0MytCXjsHM2WZIHEfiUeUlti7mttiDWawnYeTk4vbb8Sw8hjdo4+ysRhz/wAx90XQay/dpv8AMo3ZTpmVKanIcCye3UJhL9AZOSWxD1l405GpfYKpOGC9pNU08U2u+4TTAXcnJbS1xkcbXF3op3RtylDKZ312UsdC69890nzBUqGN9tCAE3hzX+V5stZlM0bk+ym4AaBbL/JQ+YMIxmmpHJTWlIHG5bLQdEdiB2CjdC473S3DwVHWI7clVdcHVaYoiTqLqVuHjcAd0tw8IxmuN9BdTszDa11rigYOdvZPEEDOQBPqpfKw6M+NjrcrqXK76VbztbsB2ScVqWxhj8Mhpc5SiMDkpwY+rT2Trx/pWO03oRNjupG05HIXupWmP09lI0xpbBOBX8oz8zdUjqSPTQDurgyHkbJbDYg90tgqlIUjNiB2S+VaN7q0RbYHsmPIAJcGgW1JHJLYWkzm/F2Lnw/QxywRtdPNJkYZBdjdLkkb9lV8L+IcRqKgwYtE17XluSaKMM5i/UXHL16rlMfxHw/iviGWoqa+udTmwY1sRyxkC1tTexIHIb+67Dw6aOqjilo6uN7WkaAXJHr0OhQ3L5NlCDj+nWtdcaa+ycNVUL3A80GR+zkrMx1P0XCBum2aFSMkn1Jpkfu5Fh6WXjKByUbpVSMjut0mc7pWZa4C0ZTsk4p3VXOdkcRyVh6S1nvtdJn/AEqtxHJOI5Kw9QgicVI2E7q5wkcMjksrmmSrwrJwblU5jcmmNydhEd7b2Rn9bp3Dd6e6DGd8qLDqMLhvf2XEePfFIpoZcJw94NQ9uWeRpvwwfyj1OvYLovFWKf4JgdTVtLeNbJCDu88tPTU9gVyHgDwzHVsOM4pEJxI69OyTW5vq8g89eW2hO4WsGkrMMd4OJno6mmYx9TTyRMe0Oa57bZgeVvRXMFqoYZeDVSPZTSOaXPZq6F7TdkjfVpv7Fw3Xp3jiJsnh+UvLQ5rhlceQJ0sb7G9u9l5A0NIFtH7EfddEJWXRLiz0Ol8e8OpMOI04tZp4kJ5XAPI9/Rb1L4pwWpbf/EY4zzLZ/k/c6KpgsGD+IsEp5KiipZZY2COT5QHMIHUajSxTJvAmDSA5BUw6/kmv9wVjJwz2ilGXo6Jk8MgjeyeMtkPyFrwQ62hsd9U/Kd1nYdgNBQUkEEcb3CH8L5Hkm981+nMk8t1p5RfUg9llJr0XhjbIspA1qcA1TYMMiDUZFLZqDbZKwYIuGjhqRCVgwWfMt+k+yXzDehHdUgxyMjlhdGmuJcNQNkwzqtkcs7G8UGD08dRLDJIx0gZmb+FhPLMdht3Kall4QUijXfUBrSXGwHM35Ko3FKNzS5tTFZvMl4H3XGVWL1GIuBlJEIdpHHqB6n6j/eyeyOM5JcjZBe4DxcHp6FbqHXZOUjS8QR4Z4jdDSy1BkawEtEb7XcdARsSP6roKaCOlp4aeEAQxRtjaB0AsFQo5G4lLG9sYDaYXyEcnnp6WBWkWHYLOc8Kv0Woo434iVcjKeKm+bgvaXECxzO2/l/W+y82zG3ys6a6C69N+JMLRgLZnCz2yhjf/AC/4XneH0VTiFU2lo4uLM4EtbcDlvc6Ls4ZpwyYci/0WsAxmfBsRZU04zxZck0OYgSj+mu9tl2MPxEp3H+Nh0zevDlDvfkFk0Xw9xWY3q6impm6XsTI7+QsP/Za0nw4g4IbBisrZur4QWn2uPuonPib7ZcVKJoM8d4OYOJ/1Qf8A9rhfN97fuoHePqO38KhqXH9bmt+xKyKn4e4lE29LWU1RbYgxk/cfuqB8LY7Gcpw+Q+rZGOH7FZ/y+zWP6dzgXiWnxepNOKeSGXLmaHOBBW+BfnsvLKenxbAaiKudRyRGIkB72EsFxbW3ddTgjccxt8dVXVLoaLRwji+TijoLa27rKeF8MprHZ1YanZUoYSBdPbGsrGTYzKNzZGVv1KbIjIixDkU7uCM7k2zvqRkv+Ik9lhc36FzndRVcMVXTS09RG2SGRuV7DuFJkA5BxRb9DihTDo8xrKSowDEjTyvc9hGaOU/nb179R773OxDJFKxsmrIsoL7n83Rv96LqMZwuHFKMwSscyQHNFIBqx3X/AGWRguGPpI5KjFoGxNpb2Jddrg0Xz9u9uwXdDyE4mcomng1M9ofNIAwyCzGci1vUrQztcdJGk22PNeD43PTVGLVtRSZxTzzGRmcWPzakW7kqAUU7rWo5rHlaE2Wj8a3bkTswehfFHEBw6LDmvHzEzPsdRrlH75knwxobmrxF45WhjPU83f8AyuNoMCxaslEdLh1Wb7uic1o9zovZMAwyLB8IpqFpa50bfnf9TzqT2udPSyXNNcfHUI9yyXAbbXT2u/Slu3qB2S3ZubrgcmzVtCZjsLIuTzTg6MbA904PZs1qVmTZDC0OGUi4I5KSNmgyiwGiUSAcgB2ThIlZkuRI2NxUjY3JjH3ViJ1yjLMpNjRE4peC5XYos3JTcILakvRhtOQ80jzSwvNu+pHmnH8ypeOd2TcNSk8ysTzLut0nmTunoDJuGqXL/EGqqXeH+DSNc4z1DI5A3nlN9Pc5R7q4ai/X2TWzZb6kX6q4cVZZJfaDwxgVJgNKyzI31xH8WoIub/S0nkFueZ/UsU1HrdJx1UuOUpZYLCNg1P6k3zPrdZJmSGZLSGTX8yjzCx+KniVGlBk1hUJwqFkiRSCRS+JAagnUjZ1ltkUzJFL40NI1opVdgk1WLFIrkU1uZsoccClDJ0UE4jFz0TvPtXL1+I8Mtha7XmVVOIuv+JZT8mcXVER8By7OWEiUSLLfX08Oks8TT0LgqsniCgZye55H0tP9f9V69Asb/EQJFiQ47QzW/jhh6PBH+yuxzskF43teOrSD9kUCxf4iOIqXERxE6CsXeIjiKmJEGRFAsXOIjiKlxEcROgrF3ipwlVDiJwkQ4BY0RKpWyrNEqkbIs3AtSNISqRsqz2yKQSrNxNEzTZNZTipDGuLuQF1lNlT+JmaW9QQs3E0XyUZK8zSOkdzcbpvm1jvlySOb0NknHXE+LLPUWMHFAADQAdkIQvcPnxCla4tN2lwdsWmyEIAuRYpXx8ql5A2f833VyLxFO0gTRROHUaFY6LIA7eKYSRtkYczHC7SnZ1z+BVpEZpn7as7LW4+mipLJDeC1nRnVYT90cfv7p4DJZzpQ9U+OkM52RUDRD1I2RZYmcnCY7qXAtM1RKN1I2YbLKEikbIocDRM1ROnCdZgkOydxDa5WbgaJmdXPtVSepuoOInYobVF+oVPOuaUOzsjydGGhCF3nlghCEACEIQA6N7o5GvbzabhdNDO2aNsjOThdcv2WhhM+Rxid+F2o7pxEzbz2Rnuoc4PfdGZWSTZgeaS7VFmRmTAluByTg5Vy5AfZAFtr08SKlxE4SKGi0y6JUvEuFT4iOIocS0yLFDfL6LOMmqu1rrxLJus3E2jyYRVQhC1OYEIQgAQhCABPg/zmd0ITA3hyQUIVokVIhCABBQhACJQhCAQ5CEKWUQ1X+Wso80IUSLR//9k=" alt="123"></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>JVM</category>
       </categories>
@@ -997,7 +983,7 @@
 <p>a. 启动JConsole</p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">位于jdk/bin目录下</span></span><br><span class="line">open `sdk home java 17.0.11-zulu`/bin/jconsole</span><br></pre></td></tr></table></figure>
 
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>JVM</category>
       </categories>
@@ -1054,7 +1040,7 @@
 <p>这里配置一个简单的 cpu、内存 <code>deployment</code> 图表</p>
 </blockquote>
 <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="attr">&quot;annotations&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;list&quot;:</span> [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;builtIn&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;grafana&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;-- Grafana --&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;enable&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;iconColor&quot;:</span> <span class="string">&quot;rgba(0, 211, 255, 1)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;Annotations &amp; Alerts&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;dashboard&quot;</span></span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;editable&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">  <span class="attr">&quot;fiscalYearStartMonth&quot;:</span> <span class="number">0</span>,</span><br><span class="line">  <span class="attr">&quot;graphTooltip&quot;:</span> <span class="number">0</span>,</span><br><span class="line">  <span class="attr">&quot;id&quot;:</span> <span class="number">10</span>,</span><br><span class="line">  <span class="attr">&quot;links&quot;:</span> [],</span><br><span class="line">  <span class="attr">&quot;panels&quot;:</span> [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;default&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;fieldConfig&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;defaults&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;color&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;palette-classic&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;custom&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;axisBorderShow&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisCenteredZero&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisColorMode&quot;:</span> <span class="string">&quot;text&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisLabel&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisPlacement&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisSoftMax&quot;:</span> <span class="number">10</span>,</span><br><span class="line">            <span class="attr">&quot;axisSoftMin&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barAlignment&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barWidthFactor&quot;:</span> <span class="number">0.6</span>,</span><br><span class="line">            <span class="attr">&quot;drawStyle&quot;:</span> <span class="string">&quot;line&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;fillOpacity&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;gradientMode&quot;:</span> <span class="string">&quot;none&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;hideFrom&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;viz&quot;:</span> <span class="literal">false</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;insertNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;lineInterpolation&quot;:</span> <span class="string">&quot;smooth&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;lineWidth&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;pointSize&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;scaleDistribution&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;linear&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;showPoints&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;spanNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;stacking&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;group&quot;:</span> <span class="string">&quot;A&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;thresholdsStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;off&quot;</span></span><br><span class="line">            &#125;</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;mappings&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;max&quot;:</span> <span class="number">10</span>,</span><br><span class="line">          <span class="attr">&quot;min&quot;:</span> <span class="number">0</span>,</span><br><span class="line">          <span class="attr">&quot;thresholds&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;absolute&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;steps&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;green&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="literal">null</span></span><br><span class="line">              &#125;,</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;red&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="number">80</span></span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;unit&quot;:</span> <span class="string">&quot;percent&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;overrides&quot;:</span> [</span><br><span class="line">          &#123;</span><br><span class="line">            <span class="attr">&quot;__systemRef&quot;:</span> <span class="string">&quot;hideSeriesFrom&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;matcher&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;id&quot;:</span> <span class="string">&quot;byNames&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">                <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;exclude&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;names&quot;:</span> [</span><br><span class="line">                  <span class="string">&quot;nginx-77c6dcdbff-rjrpk&quot;</span></span><br><span class="line">                ],</span><br><span class="line">                <span class="attr">&quot;prefix&quot;:</span> <span class="string">&quot;All except:&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;readOnly&quot;:</span> <span class="literal">true</span></span><br><span class="line">              &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;properties&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;id&quot;:</span> <span class="string">&quot;custom.hideFrom&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> &#123;</span><br><span class="line">                  <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">                  <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">                  <span class="attr">&quot;viz&quot;:</span> <span class="literal">true</span></span><br><span class="line">                &#125;</span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;</span><br><span class="line">        ]</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;gridPos&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;h&quot;:</span> <span class="number">8</span>,</span><br><span class="line">        <span class="attr">&quot;w&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;x&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;y&quot;:</span> <span class="number">0</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;id&quot;:</span> <span class="number">1</span>,</span><br><span class="line">      <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;legend&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;calcs&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;displayMode&quot;:</span> <span class="string">&quot;table&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;placement&quot;:</span> <span class="string">&quot;right&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;showLegend&quot;:</span> <span class="literal">true</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;tooltip&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;single&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;sort&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;targets&quot;:</span> [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum(rate(container_cpu_usage_seconds_total&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;[5m])) by (pod)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;__auto&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;A&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      ],</span><br><span class="line">      <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Nginx CPU Usage&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;timeseries&quot;</span></span><br><span class="line">    &#125;,</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;default&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;description&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;fieldConfig&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;defaults&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;color&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;palette-classic&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;custom&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;axisBorderShow&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisCenteredZero&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisColorMode&quot;:</span> <span class="string">&quot;text&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisLabel&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisPlacement&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;barAlignment&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barWidthFactor&quot;:</span> <span class="number">0.6</span>,</span><br><span class="line">            <span class="attr">&quot;drawStyle&quot;:</span> <span class="string">&quot;line&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;fillOpacity&quot;:</span> <span class="number">13</span>,</span><br><span class="line">            <span class="attr">&quot;gradientMode&quot;:</span> <span class="string">&quot;none&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;hideFrom&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;viz&quot;:</span> <span class="literal">false</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;insertNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;lineInterpolation&quot;:</span> <span class="string">&quot;smooth&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;lineStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;fill&quot;:</span> <span class="string">&quot;solid&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;lineWidth&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;pointSize&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;scaleDistribution&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;linear&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;showPoints&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;spanNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;stacking&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;group&quot;:</span> <span class="string">&quot;A&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;thresholdsStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;off&quot;</span></span><br><span class="line">            &#125;</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;mappings&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;thresholds&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;absolute&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;steps&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;green&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="literal">null</span></span><br><span class="line">              &#125;,</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;red&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="number">80</span></span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;unit&quot;:</span> <span class="string">&quot;MB&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;overrides&quot;:</span> []</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;gridPos&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;h&quot;:</span> <span class="number">8</span>,</span><br><span class="line">        <span class="attr">&quot;w&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;x&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;y&quot;:</span> <span class="number">0</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;id&quot;:</span> <span class="number">2</span>,</span><br><span class="line">      <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;legend&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;calcs&quot;:</span> [</span><br><span class="line">            <span class="string">&quot;max&quot;</span>,</span><br><span class="line">            <span class="string">&quot;mean&quot;</span></span><br><span class="line">          ],</span><br><span class="line">          <span class="attr">&quot;displayMode&quot;:</span> <span class="string">&quot;table&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;placement&quot;:</span> <span class="string">&quot;right&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;showLegend&quot;:</span> <span class="literal">true</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;tooltip&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;multi&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;sort&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;targets&quot;:</span> [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;exemplar&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_rss&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - RSS&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;A&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_usage_bytes&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Usage&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;B&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_working_set_bytes&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Working Set&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;C&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_cache&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Cache&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;D&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  kube_pod_container_resource_requests&#123;resource=\&quot;memory\&quot;,namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Requests&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;E&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  kube_pod_container_resource_limits&#123;resource=\&quot;memory\&quot;,namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Limits&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;F&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      ],</span><br><span class="line">      <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Nginx Pods - Memory Metrics&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;timeseries&quot;</span></span><br><span class="line">    &#125;</span><br><span class="line">  ],</span><br><span class="line">  <span class="attr">&quot;schemaVersion&quot;:</span> <span class="number">39</span>,</span><br><span class="line">  <span class="attr">&quot;tags&quot;:</span> [],</span><br><span class="line">  <span class="attr">&quot;templating&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;list&quot;:</span> [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;cadvisor&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;cadvisor&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(namespace)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;namespace&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;namespace&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(namespace)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;allValue&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;nginx&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;nginx&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;&#125;,container)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;deployment&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;deployment&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;&#125;,container)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;All&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;$__all&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;, container=\&quot;$deployment\&quot;&#125;,pod)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;pod&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;pod&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;, container=\&quot;$deployment\&quot;&#125;,pod)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;time&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;from&quot;:</span> <span class="string">&quot;now-5m&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;to&quot;:</span> <span class="string">&quot;now&quot;</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;timepicker&quot;:</span> &#123;&#125;,</span><br><span class="line">  <span class="attr">&quot;timezone&quot;:</span> <span class="string">&quot;browser&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Deployment&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;cdz7nqi6hjvnkf&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;version&quot;:</span> <span class="number">20</span>,</span><br><span class="line">  <span class="attr">&quot;weekStart&quot;:</span> <span class="string">&quot;&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>k8s</category>
       </categories>
@@ -1173,7 +1159,7 @@
 </ul>
 <p>k8s底层的容器运行时，完全使用了linux内核OOMKiller的score机制，当容器的物理内存达到设置的memory limit时，score对应的权重，决定了容器被Kill的优先级。</p>
 <p>强烈建议在生产环境，把 <strong>memory limit</strong> 和 <strong>memory request</strong> 设置成<strong>相同的值</strong>，其实有一个重要原因，就是两者相同时，默认的score adj是-997，被Kill的优先级相对低。</p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>k8s</category>
       </categories>
@@ -1234,7 +1220,7 @@
 </ol>
 </li>
 </ul>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>loom</category>
       </categories>
@@ -1284,7 +1270,7 @@
 </ul>
 </li>
 </ol>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>loom</category>
       </categories>
@@ -1397,7 +1383,7 @@
 <p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
 </blockquote>
 <p><img data-src="/images/netty_01_21.png" alt="netty"></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
       </categories>
@@ -1480,7 +1466,7 @@
 <li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
 </ul>
 <p><img data-src="/images/netty/02_09.png" alt="netty"></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
       </categories>
@@ -1589,7 +1575,7 @@
 </ul>
 <p><img data-src="/images/netty/03_07.png" alt="netty"></p>
 <p><img data-src="/images/netty/03_08.png" alt="netty"></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
       </categories>
@@ -1663,7 +1649,7 @@
 <h3 id="转移回收线程回收的对象到Stack中"><a href="#转移回收线程回收的对象到Stack中" class="headerlink" title="转移回收线程回收的对象到Stack中"></a>转移回收线程回收的对象到Stack中</h3><p><img data-src="/images/netty/04_08.png" alt="netty"></p>
 <p><img data-src="/images/netty/04_09.png" alt="netty"></p>
 <h3 id="从WeakOrderQueue中转移回收对象"><a href="#从WeakOrderQueue中转移回收对象" class="headerlink" title="从WeakOrderQueue中转移回收对象"></a>从WeakOrderQueue中转移回收对象</h3><p><img data-src="/images/netty/04_10.png" alt="netty"></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
       </categories>
@@ -1698,7 +1684,7 @@
 <h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
 <li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
 </ul>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
       </categories>
@@ -1745,7 +1731,7 @@
 <li>零长度段具有微不足道的空间边界，因此任何访问此类段的尝试都会失败，并带有 IndexOutOfBoundsException 。这是一个至关重要的安全特性：由于这些段与大小未知的内存区域相关联，因此涉及这些段的访问操作无法验证。实际上，零长度内存段封装了一个地址，在没有明确意图的情况下无法使用它。</li>
 <li>可以使用 MemorySegment::reinterpret 方法将零长度内存段转换为特定大小的本机段。 此方法将新的空间和时间边界附加到零长度内存段，以便允许解除引用操作。 此方法返回的内存段不安全：零长度内存段可能由 10 字节长的内存区域支持，但客户端可能会高估该区域的大小并使用 MemorySegment::reinterpret 获取 100 字节长的段。 稍后，这可能会导致尝试在该区域边界之外解除引用内存，从而可能导致 JVM 崩溃或更糟的情况，导致静默内存损坏。</li>
 </ul>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>panama</category>
       </categories>
@@ -1753,44 +1739,6 @@
         <tag>java</tag>
         <tag>panama</tag>
         <tag>ffi</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>protobuf</title>
-    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
-    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
-<li>所有字段都有默认值，比如string默认为空串</li>
-<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
-<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
-<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
-<li>对于较小范围的数字，用 int32 而不是 int64</li>
-<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
-<li>对于负数多的场景用 sint32&#x2F;sint64</li>
-<li>字段更新规则！！<ol>
-<li>添加新字段</li>
-<li>删除字段(但保留字段号)</li>
-<li>重命名字段(字段号不变)</li>
-<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
-</ol>
-</li>
-<li>字段不能做的更新规则！！<ol>
-<li>改变已有字段的类型</li>
-<li>复用已删除的字段号</li>
-<li>改变已有字段的编号</li>
-</ol>
-</li>
-</ul>
-]]></content>
-      <categories>
-        <category>protobuf</category>
-      </categories>
-      <tags>
-        <tag>protobuf</tag>
-        <tag>序列化</tag>
       </tags>
   </entry>
   <entry>
@@ -1870,7 +1818,7 @@
 
 
 
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>spring boot</category>
       </categories>
@@ -1938,13 +1886,51 @@
 </ol>
 <p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
 <p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>安全</category>
       </categories>
       <tags>
         <tag>安全</tag>
         <tag>防刷</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>protobuf</title>
+    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
+    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
+<li>所有字段都有默认值，比如string默认为空串</li>
+<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
+<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
+<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
+<li>对于较小范围的数字，用 int32 而不是 int64</li>
+<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
+<li>对于负数多的场景用 sint32&#x2F;sint64</li>
+<li>字段更新规则！！<ol>
+<li>添加新字段</li>
+<li>删除字段(但保留字段号)</li>
+<li>重命名字段(字段号不变)</li>
+<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
+</ol>
+</li>
+<li>字段不能做的更新规则！！<ol>
+<li>改变已有字段的类型</li>
+<li>复用已删除的字段号</li>
+<li>改变已有字段的编号</li>
+</ol>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>protobuf</category>
+      </categories>
+      <tags>
+        <tag>protobuf</tag>
+        <tag>序列化</tag>
       </tags>
   </entry>
   <entry>
@@ -2003,7 +1989,7 @@
 <li>广泛应用于搜索引擎、数据库系统和大数据处理框架。</li>
 <li>特别适合需要高效处理大量整数集合的应用。</li>
 </ul>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>BitMap</category>
       </categories>
@@ -2049,7 +2035,7 @@
 </blockquote>
  <figure class="highlight java"><table><tr><td class="code"><pre><span class="line">- name: Retry #重试策略:目前只对提供者下线导致的连接异常重试，需持续观察异常情况</span><br><span class="line">  args: </span><br><span class="line">    retries: <span class="number">1</span></span><br><span class="line">    series: #不对http状态来判断是否进行重试</span><br><span class="line">    exceptions: io.netty.channel.AbstractChannel$AnnotatedConnectException</span><br></pre></td></tr></table></figure></li>
 </ol>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>网关</category>
       </categories>
@@ -2137,7 +2123,7 @@ sequenceDiagram
 </ul>
 </li>
 </ol>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>网络</category>
       </categories>
@@ -2244,7 +2230,7 @@ sequenceDiagram
 <li>第一次握手服务端只是创建了**<code>request sock</code>**，并加入到半连接队列中，并没有创建 socket，实际创建socket是在三次握手完成时。</li>
 <li>TCP 连接建立的网络耗时大约需要三次传输，再加上少许的双方 cpu 开销，总共大约比 <strong>1.5 倍 RTT</strong> 大一点点。不过从客户端角度来看，只要 ACK 包发出了，内核就认为连接建立成功可以开始发送数据了，所以如果在客户端进行打点统计 TCP 连接建立耗时只需要两次传输耗时——即一个 RTT 多一点的时间（服务端也是同理，从 SYN 包接收到开始算起，到 ACK 包接收完毕）</li>
 </ol>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>网络</category>
       </categories>
@@ -2289,7 +2275,7 @@ sequenceDiagram
 <li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
 <li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
 </ol>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>网络</category>
       </categories>
@@ -2356,7 +2342,7 @@ sequenceDiagram
 <li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
 </ul>
 <p><img data-src="/images/socket_02_09.png" alt="img"></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>网络</category>
       </categories>
@@ -2364,112 +2350,6 @@ sequenceDiagram
         <tag>linux</tag>
         <tag>网络</tag>
         <tag>socket</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>抓包相关</title>
-    <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li>查看路由表信息<ul>
-<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
-<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
-<li><code>ip route</code> linux下使用，替代 netstat -r</li>
-<li><code>ss</code>linux下使用，替代 netstat</li>
-</ul>
-</li>
-<li>确认号(ack)计算规则<ul>
-<li>普通数据包：ack &#x3D; 对方seq + len</li>
-<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
-<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
-</ul>
-</li>
-<li>seq <ul>
-<li>不是包的唯一标识，而是数据流的位置标记</li>
-<li>表示”我之后的数据会从这个位置开始发”</li>
-<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
-</ul>
-</li>
-<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
-<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
-</ul>
-</li>
-<li>LSO<ul>
-<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
-<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
-<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
-<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
-</ul>
-</li>
-<li>数据包分段<ul>
-<li>传输层分段(TCP分段)<ul>
-<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
-<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
-<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
-<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
-</ul>
-</li>
-<li>网络层分段(UDP)<ul>
-<li>ip层分片，丢失一个分片包就需要整个包重传</li>
-<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
-<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
-</ul>
-</li>
-<li>接收方如何重组分段包<ul>
-<li>将ID相同的分片按照off值（偏移量）进行重组</li>
-<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>Windos Scale<ul>
-<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
-<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
-<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
-<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
-</ul>
-</li>
-<li>TTL(Time to Live)<ul>
-<li>TTL 初始值一般为64</li>
-<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
-<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
-</ul>
-</li>
-</ul>
-<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
-<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
-</ol>
-<ul>
-<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
-<li>告知对方自己还能接收多少数据</li>
-<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
-</ul>
-<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
-<li>通过TCP头部Win字段告知对方</li>
-<li>反映接收方的处理能力</li>
-<li>防止接收方缓冲区溢出</li>
-<li>由应用程序处理速度决定</li>
-</ul>
-<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
-<p><img data-src="/images/socket_02_12.png" alt="img"></p>
-<ul>
-<li>发送方内部维护，不需要告知对方</li>
-<li>反映网络的承载能力</li>
-<li>防止网络拥塞</li>
-<li>由网络状况动态调整</li>
-<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
-</ul>
-<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
-<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>tcp</tag>
-        <tag>抓包</tag>
       </tags>
   </entry>
   <entry>
@@ -2654,7 +2534,7 @@ sequenceDiagram
 <li>Raft 通常更容易实现和调试。</li>
 <li>Paxos 的正确实现往往更复杂。</li>
 </ul>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>分布式</category>
       </categories>
@@ -2662,6 +2542,112 @@ sequenceDiagram
         <tag>分布式</tag>
         <tag>算法</tag>
         <tag>raft</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>抓包相关</title>
+    <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li>查看路由表信息<ul>
+<li>可以显示数据包的路由规则，告诉我们去往不同目标IP时会使用哪个网卡，方便指定网卡抓包</li>
+<li><code>netstat -nr</code> 所有系统均可使用，n表示以数字形式显示地址和端口，r表示route</li>
+<li><code>ip route</code> linux下使用，替代 netstat -r</li>
+<li><code>ss</code>linux下使用，替代 netstat</li>
+</ul>
+</li>
+<li>确认号(ack)计算规则<ul>
+<li>普通数据包：ack &#x3D; 对方seq + len</li>
+<li>SYN&#x2F;FIN包：ack &#x3D; 对方seq + len + 1</li>
+<li>“我已经收到到这个位置的数据了”  “你下次就从这个位置继续发”</li>
+</ul>
+</li>
+<li>seq <ul>
+<li>不是包的唯一标识，而是数据流的位置标记</li>
+<li>表示”我之后的数据会从这个位置开始发”</li>
+<li>下一个包的seq等于对端确认的ack，seq、ack本质上都是流的序号，ack表示对端确认到了这个位置，自然我端需要从此为止发送数据</li>
+</ul>
+</li>
+<li>某些场景下挥手时 FIN+ACK可能合并为一个包<ul>
+<li>延迟确认的场景下，FIN+ACK可能合并为一个包</li>
+</ul>
+</li>
+<li>LSO<ul>
+<li>传输层不负责拆包处理，而是将数据直接传递给网卡，交给网卡负责分段</li>
+<li>传统网络是应用层把数据交给TCP层，TCP层根据MSS大小进行分段（cpu负责）</li>
+<li>启用LSO之后，TCP层直接把数据块传给网卡， 让网卡负责分段工作</li>
+<li>优点在于节省了cpu资源，缺点在数据发送方抓包的时候可能看到一个分段前，超过MSS的大包</li>
+</ul>
+</li>
+<li>数据包分段<ul>
+<li>传输层分段(TCP分段)<ul>
+<li>tcp会根据mss进行分段，一般mss的长度是MTU-40，同时会将IP层的flags打上DF标记避免ip分片</li>
+<li>tcp层分段的好处是支持超时重传和快速重传等机制保证可靠性</li>
+<li>有时候TCP头不止20字节，所以会侵占一些MSS的空间，比如用作 TCP Options，这样传输层真正用来承载的字节数 &#x3D; MTU(1500) - 20(ip header) - 20(tcp header) - length(Tcp Options)</li>
+<li>TCP连接必须进行三次握手，在前两个握手包中双方互相声明自己的MSS，双方适配得到共识的MTU，这样就不会出现客户端发送的MTU大于接收方的情况</li>
+</ul>
+</li>
+<li>网络层分段(UDP)<ul>
+<li>ip层分片，丢失一个分片包就需要整个包重传</li>
+<li>使用udp协议若不在应用层做好分段处理，就可能由于分片丢包重传导致性能地下</li>
+<li>Udp 没有MSS的概念，全部数据移交给网络层</li>
+</ul>
+</li>
+<li>接收方如何重组分段包<ul>
+<li>将ID相同的分片按照off值（偏移量）进行重组</li>
+<li>接收方通过Flags下面的的 <code>More Fragments = 0</code> 判断是不是最后一个分片，如果是最后一个分片了，可以开始重组分片了</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Windos Scale<ul>
+<li>TCP协议中只给接收窗口(win)预留了16个比特，意味着最大只能表示 65535 字节</li>
+<li>随着网络带宽越来越大，预留的16个比特已经不够用了，RFC 1323 提供了一个创意，在三次握手时双方都把一个叫 <code>Windows Scale</code> 的值告知对方，对方收到后会把这个值当做2的指数，算出来的值再作为接收窗口的系数</li>
+<li>假设 Windos Scale &#x3D; 3，win &#x3D; 10，那么实际的接收窗口 &#x3D; 10 * 2^3 &#x3D; 80</li>
+<li>！！如果在三次握手之后才开始抓包，就无法获取到Windos Scale，只能显示出没有系数的大小，这是不准确的</li>
+</ul>
+</li>
+<li>TTL(Time to Live)<ul>
+<li>TTL 初始值一般为64</li>
+<li>RFC 1812 一个网络包的TTL每减去1就意味着它经过一次路由</li>
+<li>TTL一般可以用来验证网络拓扑，比如当前收到的包具体是哪个服务器发出的</li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP-流量控制与窗口机制"><a href="#TCP-流量控制与窗口机制" class="headerlink" title="TCP 流量控制与窗口机制"></a>TCP 流量控制与窗口机制</h3><ol>
+<li><h4 id="TCP头部Win字段"><a href="#TCP头部Win字段" class="headerlink" title="TCP头部Win字段"></a>TCP头部Win字段</h4></li>
+</ol>
+<ul>
+<li>Win字段表示发送方的接收窗口大小(rwnd)</li>
+<li>告知对方自己还能接收多少数据</li>
+<li>动态变化：Win &#x3D; 接收缓冲区大小 - 已接收但未处理的数据量</li>
+</ul>
+<h4 id="2-流量控制机制"><a href="#2-流量控制机制" class="headerlink" title="2.  流量控制机制"></a>2.  流量控制机制</h4><h5 id="2-1-接收窗口-rwnd"><a href="#2-1-接收窗口-rwnd" class="headerlink" title="2.1   接收窗口(rwnd)"></a>2.1   接收窗口(rwnd)</h5><ul>
+<li>通过TCP头部Win字段告知对方</li>
+<li>反映接收方的处理能力</li>
+<li>防止接收方缓冲区溢出</li>
+<li>由应用程序处理速度决定</li>
+</ul>
+<h5 id="2-2-拥塞窗口-cwnd"><a href="#2-2-拥塞窗口-cwnd" class="headerlink" title="2.2  拥塞窗口(cwnd)"></a>2.2  拥塞窗口(cwnd)</h5><p><img data-src="/images/socket_02_11.jpeg" alt="img"></p>
+<p><img data-src="/images/socket_02_12.png" alt="img"></p>
+<ul>
+<li>发送方内部维护，不需要告知对方</li>
+<li>反映网络的承载能力</li>
+<li>防止网络拥塞</li>
+<li>由网络状况动态调整</li>
+<li>拥塞窗口可以通过估算在途字节数进行计算，在途字节数 &#x3D; seq + len - ack，简单来说就是发送方这边发送过去的字节数减去对端ack的字节数得到在途字节数，那么拥塞窗口怎么确定最后一个数据包呢，找到第一个发生重传的数据包，根据此数据包进行过滤，得到最后一个发送的数据包以及ack包，就能计算在途字节数了，当然这种方式只是估算，需要采样几次，去最低的拥塞点作为拥塞窗口</li>
+</ul>
+<h5 id="2-3-实际发送控制"><a href="#2-3-实际发送控制" class="headerlink" title="2.3 实际发送控制"></a>2.3 实际发送控制</h5><blockquote>
+<p>发送窗口大小 &#x3D; min(对方通告的win, 本地的cwnd)</p>
+</blockquote>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>tcp</tag>
+        <tag>抓包</tag>
       </tags>
   </entry>
   <entry>
@@ -2751,231 +2737,13 @@ sequenceDiagram
 <li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
 </ol>
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>ES</category>
       </categories>
       <tags>
         <tag>数据库</tag>
         <tag>ES</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>rocksdb</title>
-    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
-    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
-<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
-<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
-<thead>
-<tr>
-<th>类别</th>
-<th>属性名</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>总体统计</td>
-<td>rocksdb.stats</td>
-<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
-</tr>
-<tr>
-<td>数据库大小</td>
-<td>rocksdb.total-sst-files-size</td>
-<td>所有 SST 文件的总大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-table-readers-mem</td>
-<td>估计表读取器使用的内存</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-live-data-size</td>
-<td>估计的活跃数据大小</td>
-</tr>
-<tr>
-<td>内存使用</td>
-<td>rocksdb.cur-size-all-mem-tables</td>
-<td>所有 MemTable 的当前大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.block-cache-usage</td>
-<td>块缓存的使用量</td>
-</tr>
-<tr>
-<td>压缩</td>
-<td>rocksdb.background-errors</td>
-<td>后台工作（如压缩）中的错误数</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.num-running-compactions</td>
-<td>当前运行的压缩任务数</td>
-</tr>
-<tr>
-<td>写入</td>
-<td>rocksdb.num-immutable-mem-table</td>
-<td>不可变 MemTable 的数量</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.mem-table-flush-pending</td>
-<td>是否有待处理的 MemTable 刷新</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.is-write-stopped</td>
-<td>写入是否已停止</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.actual-delayed-write-rate</td>
-<td>实际的延迟写入速率</td>
-</tr>
-<tr>
-<td>读取</td>
-<td>rocksdb.estimate-num-keys</td>
-<td>估计的键数量</td>
-</tr>
-<tr>
-<td>文件</td>
-<td>rocksdb.num-files-at-level<N></td>
-<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.live-sst-files-size</td>
-<td>活跃 SST 文件的大小</td>
-</tr>
-</tbody></table>
-<p>注意：</p>
-<ol>
-<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
-<li>某些属性可能会影响性能，应谨慎使用。</li>
-<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
-<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
-</ol>
-<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
-<li>为单个 key 提供并发控制<ol>
-<li>事务开始时获取逻辑锁</li>
-<li>提交时检查冲突</li>
-<li>避免显式锁定，提高并发性</li>
-<li>减少死锁风险</li>
-<li>计数器更新</li>
-<li>用户状态修改</li>
-</ol>
-</li>
-<li>确保多个 key 的一致性更新<ol>
-<li>将多个 key 操作组合为单一事务</li>
-<li>全部成功或全部失败</li>
-<li>维护相关数据的一致性</li>
-<li>简化复杂操作的实现</li>
-<li>用户注册（创建账户 + 初始化设置）</li>
-<li>订单处理（更新库存 + 记录订单）</li>
-</ol>
-</li>
-</ul>
-<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
-<li>触发时机：事务提交时</li>
-<li>检测对象：活跃事务之间的写集</li>
-<li>检测方式：<ol>
-<li>每个事务的 put 操作都会记录在写集中</li>
-<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
-<li>结果：如果发现冲突，后提交的事务通常会失败</li>
-</ol>
-</li>
-</ol>
-<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
-<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
-<li>检测对象：所有活跃事务的锁和写意图</li>
-<li>检测方式：<ol>
-<li>检查目标键是否被任何活跃事务锁定</li>
-<li>检查是否有活跃事务对该键有写意图</li>
-<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
-</ol>
-</li>
-</ol>
-<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
-<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
-<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
-<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
-<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
-<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
-</ol>
-<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
-<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
-<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
-<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
-<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
-<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
-<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
-<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>方面</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>全局序列号</td>
-<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
-</tr>
-<tr>
-<td>事务开始</td>
-<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
-</tr>
-<tr>
-<td>读操作</td>
-<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
-</tr>
-<tr>
-<td>写操作</td>
-<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
-</tr>
-<tr>
-<td>事务提交</td>
-<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
-</tr>
-<tr>
-<td>回滚处理</td>
-<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
-</tr>
-<tr>
-<td>冲突检测</td>
-<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
-</tr>
-<tr>
-<td>OptimisticTransactionDB</td>
-<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
-</tr>
-<tr>
-<td>TransactionDB</td>
-<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
-</tr>
-<tr>
-<td>隔离级别影响</td>
-<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
-</tr>
-<tr>
-<td>注意事项</td>
-<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
-</tr>
-</tbody></table>
-<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
-<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
-<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
-<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
-</ol>
-]]></content>
-      <categories>
-        <category>rocksdb</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>rocksdb</tag>
       </tags>
   </entry>
   <entry>
@@ -4155,13 +3923,231 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
 <figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> person_info <span class="keyword">ORDER</span> <span class="keyword">BY</span> name, birthday, phone_number LIMIT <span class="number">10</span>;</span><br></pre></td></tr></table></figure>
 
 <p>但是如果增加了limit子句，需要回表的数据</p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>MySQL</category>
       </categories>
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>rocksdb</title>
+    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
+    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
+<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
+<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>属性名</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>总体统计</td>
+<td>rocksdb.stats</td>
+<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
+</tr>
+<tr>
+<td>数据库大小</td>
+<td>rocksdb.total-sst-files-size</td>
+<td>所有 SST 文件的总大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-table-readers-mem</td>
+<td>估计表读取器使用的内存</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-live-data-size</td>
+<td>估计的活跃数据大小</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>rocksdb.cur-size-all-mem-tables</td>
+<td>所有 MemTable 的当前大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.block-cache-usage</td>
+<td>块缓存的使用量</td>
+</tr>
+<tr>
+<td>压缩</td>
+<td>rocksdb.background-errors</td>
+<td>后台工作（如压缩）中的错误数</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.num-running-compactions</td>
+<td>当前运行的压缩任务数</td>
+</tr>
+<tr>
+<td>写入</td>
+<td>rocksdb.num-immutable-mem-table</td>
+<td>不可变 MemTable 的数量</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.mem-table-flush-pending</td>
+<td>是否有待处理的 MemTable 刷新</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.is-write-stopped</td>
+<td>写入是否已停止</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.actual-delayed-write-rate</td>
+<td>实际的延迟写入速率</td>
+</tr>
+<tr>
+<td>读取</td>
+<td>rocksdb.estimate-num-keys</td>
+<td>估计的键数量</td>
+</tr>
+<tr>
+<td>文件</td>
+<td>rocksdb.num-files-at-level<N></td>
+<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.live-sst-files-size</td>
+<td>活跃 SST 文件的大小</td>
+</tr>
+</tbody></table>
+<p>注意：</p>
+<ol>
+<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
+<li>某些属性可能会影响性能，应谨慎使用。</li>
+<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
+<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
+</ol>
+<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
+<li>为单个 key 提供并发控制<ol>
+<li>事务开始时获取逻辑锁</li>
+<li>提交时检查冲突</li>
+<li>避免显式锁定，提高并发性</li>
+<li>减少死锁风险</li>
+<li>计数器更新</li>
+<li>用户状态修改</li>
+</ol>
+</li>
+<li>确保多个 key 的一致性更新<ol>
+<li>将多个 key 操作组合为单一事务</li>
+<li>全部成功或全部失败</li>
+<li>维护相关数据的一致性</li>
+<li>简化复杂操作的实现</li>
+<li>用户注册（创建账户 + 初始化设置）</li>
+<li>订单处理（更新库存 + 记录订单）</li>
+</ol>
+</li>
+</ul>
+<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
+<li>触发时机：事务提交时</li>
+<li>检测对象：活跃事务之间的写集</li>
+<li>检测方式：<ol>
+<li>每个事务的 put 操作都会记录在写集中</li>
+<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
+<li>结果：如果发现冲突，后提交的事务通常会失败</li>
+</ol>
+</li>
+</ol>
+<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
+<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
+<li>检测对象：所有活跃事务的锁和写意图</li>
+<li>检测方式：<ol>
+<li>检查目标键是否被任何活跃事务锁定</li>
+<li>检查是否有活跃事务对该键有写意图</li>
+<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
+</ol>
+</li>
+</ol>
+<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
+<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
+<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
+<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
+<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
+<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
+</ol>
+<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
+<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
+<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
+<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
+<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
+<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
+<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
+<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全局序列号</td>
+<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
+</tr>
+<tr>
+<td>事务开始</td>
+<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
+</tr>
+<tr>
+<td>读操作</td>
+<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
+</tr>
+<tr>
+<td>写操作</td>
+<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
+</tr>
+<tr>
+<td>事务提交</td>
+<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
+</tr>
+<tr>
+<td>回滚处理</td>
+<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
+</tr>
+<tr>
+<td>冲突检测</td>
+<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
+</tr>
+<tr>
+<td>OptimisticTransactionDB</td>
+<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
+</tr>
+<tr>
+<td>TransactionDB</td>
+<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
+</tr>
+<tr>
+<td>隔离级别影响</td>
+<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
+</tr>
+<tr>
+<td>注意事项</td>
+<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
+</tr>
+</tbody></table>
+<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
+<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
+<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
+<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>rocksdb</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>rocksdb</tag>
       </tags>
   </entry>
   <entry>
@@ -4312,7 +4298,7 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
 </ul>
 </li>
 </ul>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>消息队列</category>
       </categories>
@@ -4450,7 +4436,7 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
 <p>NetworkClient:</p>
 <p><img data-src="/images/message/kafka/01.png" alt="img"></p>
 <p>​      </p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>消息队列</category>
       </categories>
@@ -4459,58 +4445,6 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
         <tag>消息队列</tag>
         <tag>中间件</tag>
         <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>pulsar-使用</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
-    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
-<li>docker 单机创建</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>可视化 pulsar-manager</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
-</ul>
-<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
-<ul>
-<li>创建租户</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 namespace</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>显示某个 namespace 下的 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>pulsar</tag>
       </tags>
   </entry>
   <entry>
@@ -4628,7 +4562,7 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
 </li>
 </ul>
 <p><img data-src="/images/message/kafka/08.png" alt="img"></p>
-]]></content>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>消息队列</category>
       </categories>
@@ -4638,6 +4572,58 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
         <tag>中间件</tag>
         <tag>kafka</tag>
         <tag>spring</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>pulsar-使用</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
+    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
+<li>docker 单机创建</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>可视化 pulsar-manager</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
+</ul>
+<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
+<ul>
+<li>创建租户</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 namespace</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>显示某个 namespace 下的 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>pulsar</tag>
       </tags>
   </entry>
 </search>
