@@ -3,6 +3,14 @@ title: 思维导图示例
 date: 2024-02-21
 ---
 
+{% markmap %}
+# 根节点
+## 子节点1
+### 内容1
+## 子节点2
+### 内容2
+{% endmarkmap %}
+
 {% pullquote mindmap mindmap-md %}
 - SkyWalking-8.7.0 源码整理
   - 原理简述
