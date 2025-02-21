@@ -983,6 +983,53 @@
       </tags>
   </entry>
   <entry>
+    <title>JVM重要参数</title>
+    <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
+    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
+<thead>
+<tr>
+<th align="left">参数</th>
+<th align="left">说明</th>
+<th align="left">备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">-XX:+PrintFlagsFinal</td>
+<td align="left">启动时打印出所有JVM参数</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
+<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
+<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
+</tr>
+<tr>
+<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
+<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
+<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
+</tr>
+<tr>
+<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
+<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
+<td align="left">safepoint</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<p><img data-src="data:image/jpeg;base64,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" alt="123"></p>
+]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>参数</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>jvm监控和故障处理工具</title>
     <url>/2025/02/19/jvm/jvm-jian-kong-he-gu-zhang-chu-li-gong-ju/posts/undefined/</url>
     <content><![CDATA[<h3 id="命令行处理工具"><a href="#命令行处理工具" class="headerlink" title="命令行处理工具"></a>命令行处理工具</h3><h4 id="1-jps"><a href="#1-jps" class="headerlink" title="1. jps"></a>1. jps</h4><blockquote>
@@ -1167,53 +1214,6 @@
       </tags>
   </entry>
   <entry>
-    <title>JVM重要参数</title>
-    <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
-    <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
-<thead>
-<tr>
-<th align="left">参数</th>
-<th align="left">说明</th>
-<th align="left">备注</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left">-XX:+PrintFlagsFinal</td>
-<td align="left">启动时打印出所有JVM参数</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-XX:+HeapDumpOnOutOfMemoryError-XX:HeapDumpPath&#x3D;&#x2F;path&#x2F;to&#x2F;heap.hprof-XX:+ExitOnOutOfMemoryError</td>
-<td align="left">开启OOM时堆转储指定dump文件位置发生 OOM 时强制 JVM 立即退出</td>
-<td align="left">！！dump hprof文件时要求内存比较大，这块后续要再找更好的方案</td>
-</tr>
-<tr>
-<td align="left">-Xlog:gc*:file&#x3D;gc.log::filecount&#x3D;5,filesize&#x3D;20M</td>
-<td align="left">JDK 9+ 的新版 GC 日志参数-Xlog:  gc*                    # 记录所有gc相关日志  :file&#x3D;gc.log          # 输出到gc.log文件  :                           # 空的tag过滤器  :filecount&#x3D;5,         # 最多保留5个文件  filesize&#x3D;20M          # 每个文件最大20MB</td>
-<td align="left">等价  jdk8           -verbose:gc        -Xloggc:&#x2F;path&#x2F;to&#x2F;gc.log        -XX:+PrintGCDetails        -XX:+PrintGCDateStamps        -XX:+PrintGCTimeStamps        -XX:+UseGCLogFileRotation        -XX:NumberOfGCLogFiles&#x3D;5        -XX:GCLogFileSize&#x3D;20M</td>
-</tr>
-<tr>
-<td align="left">-XX:StartFlightRecording&#x3D;delay&#x3D;1s,disk&#x3D;true,dumponexit&#x3D;true,filename&#x3D;.&#x2F;logs&#x2F;recording.jfr,maxsize&#x3D;1024m,maxage&#x3D;1d,path-to-gc-roots&#x3D;true-XX:FlightRecorderOptions&#x3D;stackdepth&#x3D;128</td>
-<td align="left">jfr启动参数，具体参考 <a href="https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc">JFR</a></td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">-Xlog:safepoint&#x3D;debug:file&#x3D;.&#x2F;logs&#x2F;safepoint.log:utctime,level,tags:filecount&#x3D;50,filesize&#x3D;100M</td>
-<td align="left">safepoint</td>
-<td align="left"></td>
-</tr>
-</tbody></table>
-<p><img data-src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAJIAmgMBIgACEQEDEQH/xAAbAAABBQEBAAAAAAAAAAAAAAAAAQIDBAUGB//EADsQAAEDAgQEBAQEBAUFAAAAAAEAAgMEEQUSIUETMVFxBhRhgQciUrEyQmKhI5HB8BUz0eHxJFOCosL/xAAaAQADAQEBAQAAAAAAAAAAAAAAAQIDBAUG/8QAIhEAAgICAgIDAQEAAAAAAAAAAAECEhETAyEEQTFRYSMi/9oADAMBAAIRAxEAPwD0MytCXjsHM2WZIHEfiUeUlti7mttiDWawnYeTk4vbb8Sw8hjdo4+ysRhz/wAx90XQay/dpv8AMo3ZTpmVKanIcCye3UJhL9AZOSWxD1l405GpfYKpOGC9pNU08U2u+4TTAXcnJbS1xkcbXF3op3RtylDKZ312UsdC69890nzBUqGN9tCAE3hzX+V5stZlM0bk+ym4AaBbL/JQ+YMIxmmpHJTWlIHG5bLQdEdiB2CjdC473S3DwVHWI7clVdcHVaYoiTqLqVuHjcAd0tw8IxmuN9BdTszDa11rigYOdvZPEEDOQBPqpfKw6M+NjrcrqXK76VbztbsB2ScVqWxhj8Mhpc5SiMDkpwY+rT2Trx/pWO03oRNjupG05HIXupWmP09lI0xpbBOBX8oz8zdUjqSPTQDurgyHkbJbDYg90tgqlIUjNiB2S+VaN7q0RbYHsmPIAJcGgW1JHJLYWkzm/F2Lnw/QxywRtdPNJkYZBdjdLkkb9lV8L+IcRqKgwYtE17XluSaKMM5i/UXHL16rlMfxHw/iviGWoqa+udTmwY1sRyxkC1tTexIHIb+67Dw6aOqjilo6uN7WkaAXJHr0OhQ3L5NlCDj+nWtdcaa+ycNVUL3A80GR+zkrMx1P0XCBum2aFSMkn1Jpkfu5Fh6WXjKByUbpVSMjut0mc7pWZa4C0ZTsk4p3VXOdkcRyVh6S1nvtdJn/AEqtxHJOI5Kw9QgicVI2E7q5wkcMjksrmmSrwrJwblU5jcmmNydhEd7b2Rn9bp3Dd6e6DGd8qLDqMLhvf2XEePfFIpoZcJw94NQ9uWeRpvwwfyj1OvYLovFWKf4JgdTVtLeNbJCDu88tPTU9gVyHgDwzHVsOM4pEJxI69OyTW5vq8g89eW2hO4WsGkrMMd4OJno6mmYx9TTyRMe0Oa57bZgeVvRXMFqoYZeDVSPZTSOaXPZq6F7TdkjfVpv7Fw3Xp3jiJsnh+UvLQ5rhlceQJ0sb7G9u9l5A0NIFtH7EfddEJWXRLiz0Ol8e8OpMOI04tZp4kJ5XAPI9/Rb1L4pwWpbf/EY4zzLZ/k/c6KpgsGD+IsEp5KiipZZY2COT5QHMIHUajSxTJvAmDSA5BUw6/kmv9wVjJwz2ilGXo6Jk8MgjeyeMtkPyFrwQ62hsd9U/Kd1nYdgNBQUkEEcb3CH8L5Hkm981+nMk8t1p5RfUg9llJr0XhjbIspA1qcA1TYMMiDUZFLZqDbZKwYIuGjhqRCVgwWfMt+k+yXzDehHdUgxyMjlhdGmuJcNQNkwzqtkcs7G8UGD08dRLDJIx0gZmb+FhPLMdht3Kall4QUijXfUBrSXGwHM35Ko3FKNzS5tTFZvMl4H3XGVWL1GIuBlJEIdpHHqB6n6j/eyeyOM5JcjZBe4DxcHp6FbqHXZOUjS8QR4Z4jdDSy1BkawEtEb7XcdARsSP6roKaCOlp4aeEAQxRtjaB0AsFQo5G4lLG9sYDaYXyEcnnp6WBWkWHYLOc8Kv0Woo434iVcjKeKm+bgvaXECxzO2/l/W+y82zG3ys6a6C69N+JMLRgLZnCz2yhjf/AC/4XneH0VTiFU2lo4uLM4EtbcDlvc6Ls4ZpwyYci/0WsAxmfBsRZU04zxZck0OYgSj+mu9tl2MPxEp3H+Nh0zevDlDvfkFk0Xw9xWY3q6impm6XsTI7+QsP/Za0nw4g4IbBisrZur4QWn2uPuonPib7ZcVKJoM8d4OYOJ/1Qf8A9rhfN97fuoHePqO38KhqXH9bmt+xKyKn4e4lE29LWU1RbYgxk/cfuqB8LY7Gcpw+Q+rZGOH7FZ/y+zWP6dzgXiWnxepNOKeSGXLmaHOBBW+BfnsvLKenxbAaiKudRyRGIkB72EsFxbW3ddTgjccxt8dVXVLoaLRwji+TijoLa27rKeF8MprHZ1YanZUoYSBdPbGsrGTYzKNzZGVv1KbIjIixDkU7uCM7k2zvqRkv+Ik9lhc36FzndRVcMVXTS09RG2SGRuV7DuFJkA5BxRb9DihTDo8xrKSowDEjTyvc9hGaOU/nb179R773OxDJFKxsmrIsoL7n83Rv96LqMZwuHFKMwSscyQHNFIBqx3X/AGWRguGPpI5KjFoGxNpb2Jddrg0Xz9u9uwXdDyE4mcomng1M9ofNIAwyCzGci1vUrQztcdJGk22PNeD43PTVGLVtRSZxTzzGRmcWPzakW7kqAUU7rWo5rHlaE2Wj8a3bkTswehfFHEBw6LDmvHzEzPsdRrlH75knwxobmrxF45WhjPU83f8AyuNoMCxaslEdLh1Wb7uic1o9zovZMAwyLB8IpqFpa50bfnf9TzqT2udPSyXNNcfHUI9yyXAbbXT2u/Slu3qB2S3ZubrgcmzVtCZjsLIuTzTg6MbA904PZs1qVmTZDC0OGUi4I5KSNmgyiwGiUSAcgB2ThIlZkuRI2NxUjY3JjH3ViJ1yjLMpNjRE4peC5XYos3JTcILakvRhtOQ80jzSwvNu+pHmnH8ypeOd2TcNSk8ysTzLut0nmTunoDJuGqXL/EGqqXeH+DSNc4z1DI5A3nlN9Pc5R7q4ai/X2TWzZb6kX6q4cVZZJfaDwxgVJgNKyzI31xH8WoIub/S0nkFueZ/UsU1HrdJx1UuOUpZYLCNg1P6k3zPrdZJmSGZLSGTX8yjzCx+KniVGlBk1hUJwqFkiRSCRS+JAagnUjZ1ltkUzJFL40NI1opVdgk1WLFIrkU1uZsoccClDJ0UE4jFz0TvPtXL1+I8Mtha7XmVVOIuv+JZT8mcXVER8By7OWEiUSLLfX08Oks8TT0LgqsniCgZye55H0tP9f9V69Asb/EQJFiQ47QzW/jhh6PBH+yuxzskF43teOrSD9kUCxf4iOIqXERxE6CsXeIjiKmJEGRFAsXOIjiKlxEcROgrF3ipwlVDiJwkQ4BY0RKpWyrNEqkbIs3AtSNISqRsqz2yKQSrNxNEzTZNZTipDGuLuQF1lNlT+JmaW9QQs3E0XyUZK8zSOkdzcbpvm1jvlySOb0NknHXE+LLPUWMHFAADQAdkIQvcPnxCla4tN2lwdsWmyEIAuRYpXx8ql5A2f833VyLxFO0gTRROHUaFY6LIA7eKYSRtkYczHC7SnZ1z+BVpEZpn7as7LW4+mipLJDeC1nRnVYT90cfv7p4DJZzpQ9U+OkM52RUDRD1I2RZYmcnCY7qXAtM1RKN1I2YbLKEikbIocDRM1ROnCdZgkOydxDa5WbgaJmdXPtVSepuoOInYobVF+oVPOuaUOzsjydGGhCF3nlghCEACEIQA6N7o5GvbzabhdNDO2aNsjOThdcv2WhhM+Rxid+F2o7pxEzbz2Rnuoc4PfdGZWSTZgeaS7VFmRmTAluByTg5Vy5AfZAFtr08SKlxE4SKGi0y6JUvEuFT4iOIocS0yLFDfL6LOMmqu1rrxLJus3E2jyYRVQhC1OYEIQgAQhCABPg/zmd0ITA3hyQUIVokVIhCABBQhACJQhCAQ5CEKWUQ1X+Wso80IUSLR//9k=" alt="123"></p>
-]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>参数</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>loom</title>
     <url>/2025/02/19/loom/loom/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -1260,89 +1260,6 @@
         <tag>loom</tag>
         <tag>虚拟线程</tag>
         <tag>java</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>2-Reactor线程运转架构</title>
-    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
-<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
-</ul>
-<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
-<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
-</blockquote>
-<ul>
-<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
-</ul>
-<p>轮询策略如下：</p>
-<ul>
-<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
-<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
-<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
-</ul>
-<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
-<ul>
-<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
-</ul>
-<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
-<ul>
-<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
-</ul>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
-<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
-<ol>
-<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
-<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
-<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
-<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
-</ol>
-<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
-<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
-</blockquote>
-<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
-<blockquote>
-<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
-</blockquote>
-<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
-<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
-<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
-<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
-<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
-<ol>
-<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
-</ol>
-<blockquote>
-<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
-</blockquote>
-<ul>
-<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
-<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<blockquote>
-<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
-</blockquote>
-<ul>
-<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
-<ul>
-<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
-</ul>
-<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
-]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
       </tags>
   </entry>
   <entry>
@@ -1448,6 +1365,89 @@
 <p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
 </blockquote>
 <p><img data-src="/images/netty_01_21.png" alt="netty"></p>
+]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>2-Reactor线程运转架构</title>
+    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
+<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
+</ul>
+<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
+<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
+</blockquote>
+<ul>
+<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
+</ul>
+<p>轮询策略如下：</p>
+<ul>
+<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
+<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
+<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
+</ul>
+<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
+<ul>
+<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
+</ul>
+<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
+<ul>
+<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
+</ul>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
+<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
+<ol>
+<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
+<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
+<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
+<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
+</ol>
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
+<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
+</blockquote>
+<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
+<blockquote>
+<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
+</blockquote>
+<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
+<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
+<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
+<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
+<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
+<ol>
+<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
+</ol>
+<blockquote>
+<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
+</blockquote>
+<ul>
+<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
+<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
+</ul>
+<blockquote>
+<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
+</blockquote>
+<ul>
+<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
+</ul>
+<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
+<ul>
+<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
+</ul>
+<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
 ]]></content>
       <categories>
         <category>Netty</category>
@@ -1848,74 +1848,6 @@
       </tags>
   </entry>
   <entry>
-    <title>接口安全</title>
-    <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://www.bilibili.com/opus/917872422844104721">前后端安全性页面与接口设计</a></li>
-<li><a href="https://www.bilibili.com/read/cv33868282/?opus_fallback=1">防刷机制</a></li>
-</ul>
-<h2 id="前后端安全性页面与接口设计"><a href="#前后端安全性页面与接口设计" class="headerlink" title="前后端安全性页面与接口设计"></a>前后端安全性页面与接口设计</h2><h3 id="接口安全密钥交换"><a href="#接口安全密钥交换" class="headerlink" title="接口安全密钥交换"></a>接口安全密钥交换</h3><blockquote>
-<p>分为 web&#x2F;wap（轻客户端），android&#x2F;ios（受信任客户端） 两大类。</p>
-</blockquote>
-<ul>
-<li>针对 web&#x2F;wap，首先通过 csrf 获取 RSA public key，然后通过 RSA public key，解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。首先 csrf 一定要内嵌在页面，不能放在 cookie，否则意义不大。这样 csrf 可以起到一定的保证页面是服务端渲染生成的效果csrf 需要加密，每次返回的不一样（将时间戳嵌入进去），但是其实对应的后台 csrf token 是同一个。公钥需要轮换：这是一个定时任务，就是后台保存的 wap&#x2F;web 密钥对，定时更新，上一个设置过期时间为 1 个月（我们前端 session 公钥过期时间最多是 2 周，无续期，保险点 1 个月）</li>
-<li>针对 android&#x2F;ios，public key 针对每个版本会生成一个新的带到 app 里面服务端记录好，直接解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。由于 app 一般是受信任客户端，并且每个版本 public key 不一样，一般不用 csrf版本强制升级，也可以通过这个机制去实现。</li>
-</ul>
-<h4 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h4><ul>
-<li>https 是为了防止 wifi 劫持抓包直接能看到 http header 和 body</li>
-<li>接口加密是为了防止机器人爬取，请求伪造，客户端模拟</li>
-<li>android&#x2F;ios 通过 public key 基本能确定是哪个版本并且是我们信任的客户端，浏览器不能，所以加入 csrf token 在一定程度上确保一定是我们渲染的页面发的请求</li>
-</ul>
-<h3 id="安全-Header"><a href="#安全-Header" class="headerlink" title="安全 Header"></a>安全 Header</h3><ul>
-<li>Strict-Transport-Security: max-age&#x3D;31536000; includeSubDomains; preload这个头部用于启用HTTP严格传输安全（HSTS），它告诉浏览器只能通过HTTPS来访问网站。max-age&#x3D;31536000 指定浏览器应该在接下来的31,536,000秒（1年）内记住只通过HTTPS访问站点。includeSubDomains 指令扩展了这个规则，使其也适用于当前域名的所有子域。preload 指令表示网站想要被包含在预加载的HSTS列表中，这些列表内置于浏览器中，即使是第一次请求也会强制使用HTTPS。</li>
-<li>X-Content-Type-Options: nosniff这个头部是一个安全功能，用于防止浏览器尝试猜测（”嗅探”）资源的MIME类型，它强制浏览器遵守服务器提供的Content-Type头。nosniff选项可以防止一些基于MIME类型混淆的攻击，例如防止浏览器将非脚本文件解释为脚本文件。</li>
-<li>X-Frame-Options: SAMEORIGIN这个头部可以防止页面被其他站点通过、、或嵌套，从而防止点击劫持攻击。SAMEORIGIN仅允许来自同一源的页面将当前页面作为、等嵌入。</li>
-<li>Content-Security-Policy: 内容很长，这里省略这个拦截可能会导致某些三方埋点，图片等等显示失败，需要监控（即最后加上 report-uri &#x2F;api&#x2F;csp-report-endpoint?version&#x3D;5）这个上报的都是被拦截的，包括拦截的那些 js，css，jpg，长链接，视频资源等等这个 Header 变化很频繁，所以在 CDN 维护，随时修改。例如搜索引擎跳转你的网页，会嵌入 js 等，以及投放新的广告渠道商会嵌入其他东西等等&#x2F;api&#x2F;csp-report-endpoint 需要自己实现加入 version 参数，用于在你修改添加了新的白名单后，增加版本号，老的版本号的上报可以忽略（因为加这个 header 一般在 CDN 加，比如 Cloudflare，但是一般有很长缓存）</li>
-</ul>
-<h4 id="一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例"><a href="#一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例" class="headerlink" title="一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例"></a>一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">default-src &#x27;self&#x27; data: &#x27;unsafe-inline&#x27; blob: &#x27;unsafe-eval&#x27; *.google-analytics.com *.googletagmanager.com *.gstatic.com *.googleapis.com *.google.co *.google.com *.google.ad *.google.ae *.google.com.af *.google.com.ag *.google.al *.google.am *.google.co.ao *.google.com.ar *.google.as *.google.at *.google.com.au *.google.az *.google.ba *.google.com.bd *.google.be *.google.bf *.google.bg *.google.com.bh *.google.bi *.google.bj *.google.com.bn *.google.com.bo *.google.com.br *.google.bs *.google.bt *.google.co.bw *.google.by *.google.com.bz *.google.ca *.google.cd *.google.cf *.google.cg *.google.ch *.google.ci *.google.co.ck *.google.cl *.google.cm *.google.cn *.google.com.co *.google.co.cr *.google.com.cu *.google.cv *.google.com.cy *.google.cz *.google.de *.google.dj *.google.dk *.google.dm *.google.com.do *.google.dz *.google.com.ec *.google.ee *.google.com.eg *.google.es *.google.com.et *.google.fi *.google.com.fj *.google.fm *.google.fr *.google.ga *.google.ge *.google.gg *.google.com.gh *.google.com.gi *.google.gl *.google.gm *.google.gr *.google.com.gt *.google.gy *.google.com.hk *.google.hn *.google.hr *.google.ht *.google.hu *.google.co.id *.google.ie *.google.co.il *.google.im *.google.co.in *.google.iq *.google.is *.google.it *.google.je *.google.com.jm *.google.jo *.google.co.jp *.google.co.ke *.google.com.kh *.google.ki *.google.kg *.google.co.kr *.google.com.kw *.google.kz *.google.la *.google.com.lb *.google.li *.google.lk *.google.co.ls *.google.lt *.google.lu *.google.lv *.google.com.ly *.google.co.ma *.google.md *.google.me *.google.mg *.google.mk *.google.ml *.google.com.mm *.google.mn *.google.com.mt *.google.mu *.google.mv *.google.mw *.google.com.mx *.google.com.my *.google.co.mz *.google.com.na *.google.com.ng *.google.com.ni *.google.ne *.google.nl *.google.no *.google.com.np *.google.nr *.google.nu *.google.co.nz *.google.com.om *.google.com.pa *.google.com.pe *.google.com.pg *.google.com.ph *.google.com.pk *.google.pl *.google.pn *.google.com.pr *.google.ps *.google.pt *.google.com.py *.google.com.qa *.google.ro *.google.ru *.google.rw *.google.com.sa *.google.com.sb *.google.sc *.google.se *.google.com.sg *.google.sh *.google.si *.google.sk *.google.com.sl *.google.sn *.google.so *.google.sm *.google.sr *.google.st *.google.com.sv *.google.td *.google.tg *.google.co.th *.google.com.tj *.google.tl *.google.tm *.google.tn *.google.to *.google.com.tr *.google.tt *.google.com.tw *.google.co.tz *.google.com.ua *.google.co.ug *.google.co.uk *.google.com.uy *.google.co.uz *.google.com.vc *.google.co.ve *.google.co.vi *.google.com.vn *.google.vu *.google.ws *.google.rs *.google.co.za *.google.co.zm *.google.co.zw *.google.cat *.googleadservices.com facebook.net *.facebook.net facebook.com *.facebook.com; report-uri /api/csp-report-endpoint?version=2</span><br></pre></td></tr></table></figure>
-
-<h3 id="一些反思"><a href="#一些反思" class="headerlink" title="一些反思"></a>一些反思</h3><ul>
-<li>针对渲染的页面，内嵌 csrf token（注意不能放在 cookie，否则意义不大），至于服务器渲染，这个我们也是前后端分离，前端自己维护自己的 nodejs 服务器。前后端分离，但是最好还是有一个类似于中台的前端服务器前端自己维护，这样 SEO 更好做。</li>
-<li>这些只是加固了安全性，但是并不能保证 100% 安全。但是复杂度已经很高了，目前够用了。</li>
-<li>并且在这些机制的基础上，去做 <strong>2FA 或者 MFA 也更好做</strong>，有利于减少 2FA 对于用户的打扰。</li>
-</ul>
-<h2 id="防刷机制"><a href="#防刷机制" class="headerlink" title="防刷机制"></a>防刷机制</h2><h3 id="防刷子机制"><a href="#防刷子机制" class="headerlink" title="防刷子机制"></a>防刷子机制</h3><p>主要分为两种场景：</p>
-<ol>
-<li><strong>针对未登录或者未注册用户</strong>，对于注册，各种验证码等类似的接口进行防刷机制，同时尽量减少对于用户的打扰。</li>
-<li><strong>针对已经登陆的用户</strong>：<ol>
-<li>参与活动设置必要的门槛：比如最近交易量。</li>
-<li>引入 MFA 之后，限制用户只能通过绑定的 MFA 的设备参与活动。</li>
-</ol>
-</li>
-</ol>
-<p><strong>针对 2 其实主要是从业务的角度考虑</strong>，MFA 机制不仅是安全性的保证，MFA 更是利于验证用户设备有效，从而可以使用设备做一些业务的限制。</p>
-<p><strong>针对 1，可以使用以下的机制减少验证码对于用户的打扰</strong>：</p>
-<ol>
-<li>使用类似于 Google reCAPTCHA Enterprise（reCAPTCHA v3）或者国内可以用 hCAPTCHA Enterprise 服务，针对敏感接口，例如注册，短信 OTP 接口等等接入，每次请求会带上一个 Google Recaptcha Enterprise 的评分：<ol>
-<li>reCAPTCHA v3 在用户浏览网站时连续地评估用户行为。这包括用户与页面的交互方式（如鼠标移动、滚动、点击等）、设备和浏览器的信息。它还可能分析用户在整个会话中的行为，包括访问多个页面的顺序和速度。</li>
-<li>基于这些行为分析，reCAPTCHA v3 为每个用户请求分配一个分数，范围从 0.0 到 1.0。分数越接近 1.0 表示系统越认为该行为来自真实人类，分数越低则越可能是由自动化脚本或机器人产生。这里是一个分数分布的例子：</li>
-</ol>
-</li>
-</ol>
-<p><img data-src="/images/security/01.avif" alt="img"></p>
-<ol start="2">
-<li><p>你的后台根据这个分数（笔者这里是针对所有低于 0.8 的请求），请求响应是需要验证码才能继续。这里的验证码实现方案就很多很多了，笔者就不赘述了。</p>
-</li>
-<li><p>也就是，对于大部分用户，注册的时候，其实连验证码都不需要输入。对于评分比较低的用户才去让用户接受挑战（challenge），或者是输入验证码，或者是其他挑战方式。</p>
-</li>
-</ol>
-<p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
-<p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
-]]></content>
-      <categories>
-        <category>安全</category>
-      </categories>
-      <tags>
-        <tag>安全</tag>
-        <tag>防刷</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>BitMap</title>
     <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
     <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
@@ -2028,39 +1960,150 @@
       </tags>
   </entry>
   <entry>
-    <title>linux内核发送网络包</title>
-    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
-    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
+    <title>接口安全</title>
+    <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://www.bilibili.com/opus/917872422844104721">前后端安全性页面与接口设计</a></li>
+<li><a href="https://www.bilibili.com/read/cv33868282/?opus_fallback=1">防刷机制</a></li>
+</ul>
+<h2 id="前后端安全性页面与接口设计"><a href="#前后端安全性页面与接口设计" class="headerlink" title="前后端安全性页面与接口设计"></a>前后端安全性页面与接口设计</h2><h3 id="接口安全密钥交换"><a href="#接口安全密钥交换" class="headerlink" title="接口安全密钥交换"></a>接口安全密钥交换</h3><blockquote>
+<p>分为 web&#x2F;wap（轻客户端），android&#x2F;ios（受信任客户端） 两大类。</p>
+</blockquote>
 <ul>
-<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
-<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
-<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
-<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
-<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
-<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
-<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
+<li>针对 web&#x2F;wap，首先通过 csrf 获取 RSA public key，然后通过 RSA public key，解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。首先 csrf 一定要内嵌在页面，不能放在 cookie，否则意义不大。这样 csrf 可以起到一定的保证页面是服务端渲染生成的效果csrf 需要加密，每次返回的不一样（将时间戳嵌入进去），但是其实对应的后台 csrf token 是同一个。公钥需要轮换：这是一个定时任务，就是后台保存的 wap&#x2F;web 密钥对，定时更新，上一个设置过期时间为 1 个月（我们前端 session 公钥过期时间最多是 2 周，无续期，保险点 1 个月）</li>
+<li>针对 android&#x2F;ios，public key 针对每个版本会生成一个新的带到 app 里面服务端记录好，直接解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。由于 app 一般是受信任客户端，并且每个版本 public key 不一样，一般不用 csrf版本强制升级，也可以通过这个机制去实现。</li>
+</ul>
+<h4 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h4><ul>
+<li>https 是为了防止 wifi 劫持抓包直接能看到 http header 和 body</li>
+<li>接口加密是为了防止机器人爬取，请求伪造，客户端模拟</li>
+<li>android&#x2F;ios 通过 public key 基本能确定是哪个版本并且是我们信任的客户端，浏览器不能，所以加入 csrf token 在一定程度上确保一定是我们渲染的页面发的请求</li>
+</ul>
+<h3 id="安全-Header"><a href="#安全-Header" class="headerlink" title="安全 Header"></a>安全 Header</h3><ul>
+<li>Strict-Transport-Security: max-age&#x3D;31536000; includeSubDomains; preload这个头部用于启用HTTP严格传输安全（HSTS），它告诉浏览器只能通过HTTPS来访问网站。max-age&#x3D;31536000 指定浏览器应该在接下来的31,536,000秒（1年）内记住只通过HTTPS访问站点。includeSubDomains 指令扩展了这个规则，使其也适用于当前域名的所有子域。preload 指令表示网站想要被包含在预加载的HSTS列表中，这些列表内置于浏览器中，即使是第一次请求也会强制使用HTTPS。</li>
+<li>X-Content-Type-Options: nosniff这个头部是一个安全功能，用于防止浏览器尝试猜测（”嗅探”）资源的MIME类型，它强制浏览器遵守服务器提供的Content-Type头。nosniff选项可以防止一些基于MIME类型混淆的攻击，例如防止浏览器将非脚本文件解释为脚本文件。</li>
+<li>X-Frame-Options: SAMEORIGIN这个头部可以防止页面被其他站点通过、、或嵌套，从而防止点击劫持攻击。SAMEORIGIN仅允许来自同一源的页面将当前页面作为、等嵌入。</li>
+<li>Content-Security-Policy: 内容很长，这里省略这个拦截可能会导致某些三方埋点，图片等等显示失败，需要监控（即最后加上 report-uri &#x2F;api&#x2F;csp-report-endpoint?version&#x3D;5）这个上报的都是被拦截的，包括拦截的那些 js，css，jpg，长链接，视频资源等等这个 Header 变化很频繁，所以在 CDN 维护，随时修改。例如搜索引擎跳转你的网页，会嵌入 js 等，以及投放新的广告渠道商会嵌入其他东西等等&#x2F;api&#x2F;csp-report-endpoint 需要自己实现加入 version 参数，用于在你修改添加了新的白名单后，增加版本号，老的版本号的上报可以忽略（因为加这个 header 一般在 CDN 加，比如 Cloudflare，但是一般有很长缓存）</li>
+</ul>
+<h4 id="一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例"><a href="#一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例" class="headerlink" title="一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例"></a>一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">default-src &#x27;self&#x27; data: &#x27;unsafe-inline&#x27; blob: &#x27;unsafe-eval&#x27; *.google-analytics.com *.googletagmanager.com *.gstatic.com *.googleapis.com *.google.co *.google.com *.google.ad *.google.ae *.google.com.af *.google.com.ag *.google.al *.google.am *.google.co.ao *.google.com.ar *.google.as *.google.at *.google.com.au *.google.az *.google.ba *.google.com.bd *.google.be *.google.bf *.google.bg *.google.com.bh *.google.bi *.google.bj *.google.com.bn *.google.com.bo *.google.com.br *.google.bs *.google.bt *.google.co.bw *.google.by *.google.com.bz *.google.ca *.google.cd *.google.cf *.google.cg *.google.ch *.google.ci *.google.co.ck *.google.cl *.google.cm *.google.cn *.google.com.co *.google.co.cr *.google.com.cu *.google.cv *.google.com.cy *.google.cz *.google.de *.google.dj *.google.dk *.google.dm *.google.com.do *.google.dz *.google.com.ec *.google.ee *.google.com.eg *.google.es *.google.com.et *.google.fi *.google.com.fj *.google.fm *.google.fr *.google.ga *.google.ge *.google.gg *.google.com.gh *.google.com.gi *.google.gl *.google.gm *.google.gr *.google.com.gt *.google.gy *.google.com.hk *.google.hn *.google.hr *.google.ht *.google.hu *.google.co.id *.google.ie *.google.co.il *.google.im *.google.co.in *.google.iq *.google.is *.google.it *.google.je *.google.com.jm *.google.jo *.google.co.jp *.google.co.ke *.google.com.kh *.google.ki *.google.kg *.google.co.kr *.google.com.kw *.google.kz *.google.la *.google.com.lb *.google.li *.google.lk *.google.co.ls *.google.lt *.google.lu *.google.lv *.google.com.ly *.google.co.ma *.google.md *.google.me *.google.mg *.google.mk *.google.ml *.google.com.mm *.google.mn *.google.com.mt *.google.mu *.google.mv *.google.mw *.google.com.mx *.google.com.my *.google.co.mz *.google.com.na *.google.com.ng *.google.com.ni *.google.ne *.google.nl *.google.no *.google.com.np *.google.nr *.google.nu *.google.co.nz *.google.com.om *.google.com.pa *.google.com.pe *.google.com.pg *.google.com.ph *.google.com.pk *.google.pl *.google.pn *.google.com.pr *.google.ps *.google.pt *.google.com.py *.google.com.qa *.google.ro *.google.ru *.google.rw *.google.com.sa *.google.com.sb *.google.sc *.google.se *.google.com.sg *.google.sh *.google.si *.google.sk *.google.com.sl *.google.sn *.google.so *.google.sm *.google.sr *.google.st *.google.com.sv *.google.td *.google.tg *.google.co.th *.google.com.tj *.google.tl *.google.tm *.google.tn *.google.to *.google.com.tr *.google.tt *.google.com.tw *.google.co.tz *.google.com.ua *.google.co.ug *.google.co.uk *.google.com.uy *.google.co.uz *.google.com.vc *.google.co.ve *.google.co.vi *.google.com.vn *.google.vu *.google.ws *.google.rs *.google.co.za *.google.co.zm *.google.co.zw *.google.cat *.googleadservices.com facebook.net *.facebook.net facebook.com *.facebook.com; report-uri /api/csp-report-endpoint?version=2</span><br></pre></td></tr></table></figure>
+
+<h3 id="一些反思"><a href="#一些反思" class="headerlink" title="一些反思"></a>一些反思</h3><ul>
+<li>针对渲染的页面，内嵌 csrf token（注意不能放在 cookie，否则意义不大），至于服务器渲染，这个我们也是前后端分离，前端自己维护自己的 nodejs 服务器。前后端分离，但是最好还是有一个类似于中台的前端服务器前端自己维护，这样 SEO 更好做。</li>
+<li>这些只是加固了安全性，但是并不能保证 100% 安全。但是复杂度已经很高了，目前够用了。</li>
+<li>并且在这些机制的基础上，去做 <strong>2FA 或者 MFA 也更好做</strong>，有利于减少 2FA 对于用户的打扰。</li>
+</ul>
+<h2 id="防刷机制"><a href="#防刷机制" class="headerlink" title="防刷机制"></a>防刷机制</h2><h3 id="防刷子机制"><a href="#防刷子机制" class="headerlink" title="防刷子机制"></a>防刷子机制</h3><p>主要分为两种场景：</p>
+<ol>
+<li><strong>针对未登录或者未注册用户</strong>，对于注册，各种验证码等类似的接口进行防刷机制，同时尽量减少对于用户的打扰。</li>
+<li><strong>针对已经登陆的用户</strong>：<ol>
+<li>参与活动设置必要的门槛：比如最近交易量。</li>
+<li>引入 MFA 之后，限制用户只能通过绑定的 MFA 的设备参与活动。</li>
 </ol>
 </li>
-</ul>
-</li>
-<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
-<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
-<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
-</ul>
-</li>
-<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
-<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
-<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
-</ul>
-</li>
-</ul>
-<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
-<p>指待发送数据的内存拷贝</p>
-</blockquote>
+</ol>
+<p><strong>针对 2 其实主要是从业务的角度考虑</strong>，MFA 机制不仅是安全性的保证，MFA 更是利于验证用户设备有效，从而可以使用设备做一些业务的限制。</p>
+<p><strong>针对 1，可以使用以下的机制减少验证码对于用户的打扰</strong>：</p>
 <ol>
-<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
-<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
-<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
+<li>使用类似于 Google reCAPTCHA Enterprise（reCAPTCHA v3）或者国内可以用 hCAPTCHA Enterprise 服务，针对敏感接口，例如注册，短信 OTP 接口等等接入，每次请求会带上一个 Google Recaptcha Enterprise 的评分：<ol>
+<li>reCAPTCHA v3 在用户浏览网站时连续地评估用户行为。这包括用户与页面的交互方式（如鼠标移动、滚动、点击等）、设备和浏览器的信息。它还可能分析用户在整个会话中的行为，包括访问多个页面的顺序和速度。</li>
+<li>基于这些行为分析，reCAPTCHA v3 为每个用户请求分配一个分数，范围从 0.0 到 1.0。分数越接近 1.0 表示系统越认为该行为来自真实人类，分数越低则越可能是由自动化脚本或机器人产生。这里是一个分数分布的例子：</li>
+</ol>
+</li>
+</ol>
+<p><img data-src="/images/security/01.avif" alt="img"></p>
+<ol start="2">
+<li><p>你的后台根据这个分数（笔者这里是针对所有低于 0.8 的请求），请求响应是需要验证码才能继续。这里的验证码实现方案就很多很多了，笔者就不赘述了。</p>
+</li>
+<li><p>也就是，对于大部分用户，注册的时候，其实连验证码都不需要输入。对于评分比较低的用户才去让用户接受挑战（challenge），或者是输入验证码，或者是其他挑战方式。</p>
+</li>
+</ol>
+<p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
+<p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
+]]></content>
+      <categories>
+        <category>安全</category>
+      </categories>
+      <tags>
+        <tag>安全</tag>
+        <tag>防刷</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Socket</title>
+    <url>/2025/02/09/wang-luo/socket/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://zhuanlan.zhihu.com/p/455352339">聊聊Netty那些事儿之从内核角度看IO模型</a></li>
+</ul>
+<h3 id="Socket-数据接收到-Epoll-处理流程"><a href="#Socket-数据接收到-Epoll-处理流程" class="headerlink" title="Socket 数据接收到 Epoll 处理流程"></a>Socket 数据接收到 Epoll 处理流程</h3><pre>
+<code class="mermaid">
+
+sequenceDiagram
+    participant S as Socket
+    participant WQ as Wait Queue
+    participant CB as Callback (ep_poll_callback)
+    participant EP as eppoll_entry
+    participant EI as epitem
+    participant EPL as eventpoll
+
+    S-&gt;&gt;S: 接收数据
+    S-&gt;&gt;WQ: 触发等待队列
+    WQ-&gt;&gt;CB: 调用回调函数
+    CB-&gt;&gt;EP: container_of 找到 eppoll_entry
+    EP-&gt;&gt;EI: 访问 base 指针找到 epitem
+    EI-&gt;&gt;EPL: 将 epitem 加入活跃队列
+</code>
+</pre>
+
+
+<ol>
+<li><p>数据到达和初始处理： </p>
+<ul>
+<li>网卡接收数据，通过 DMA 将数据放入 Ring Buffer。</li>
+<li>触发软中断，内核将数据包（sk_buff）放入 socket 的接收队列。</li>
+</ul>
+</li>
+<li><p>Socket 唤醒等待队列： </p>
+<ul>
+<li>Socket 检测到有新数据，开始唤醒其等待队列（wait_queue）中的等待者。</li>
+<li>获取其中一个 wait_queue_entry_t，这里不获取全部一是避免惊群效应，二是 epoll 场景下一般也只会有一个 wait_queue_entry_t</li>
+</ul>
+</li>
+<li><p>回调函数触发： </p>
+<ul>
+<li>对于 epoll 添加的等待项，其 wait_queue_entry_t 的回调函数是 ep_poll_callback。</li>
+<li>内核调用这个回调函数，传入 wait_queue_entry_t 指针作为参数。</li>
+</ul>
+</li>
+<li><p>找到 eppoll_entry： </p>
+<ul>
+<li>在 ep_poll_callback 函数中，使用 container_of 宏。</li>
+<li>通过 wait_queue_entry_t 指针，找到包含它的 eppoll_entry 结构。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eppoll_entry</span> *<span class="title">pwq</span> =</span> container_of(wait, <span class="keyword">struct</span> eppoll_entry, wait);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>从 eppoll_entry 到 epitem： </p>
+<ul>
+<li>eppoll_entry 结构中有一个 base 指针，直接指向关联的 epitem。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epitem</span> *<span class="title">epi</span> =</span> pwq-&gt;base;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取 eventpoll 结构： </p>
+<ul>
+<li>epitem 结构中包含指向其关联的 eventpoll 结构的指针。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> *<span class="title">ep</span> =</span> epi-&gt;ep;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将 epitem 加入活跃队列： </p>
+<ul>
+<li>检查 epitem 是否已经在活跃队列中。</li>
+<li>如果不在，则将其添加到 eventpoll 的活跃队列（rdllist）中。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (!ep_is_linked(&amp;epi-&gt;rdllink))</span><br><span class="line">    list_add_tail(&amp;epi-&gt;rdllink, &amp;ep-&gt;rdllist);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>唤醒等待的进程： </p>
+<ul>
+<li>如果有进程正在等待 epoll 事件（通过 epoll_wait），唤醒它。</li>
+</ul>
+</li>
 </ol>
 ]]></content>
       <categories>
@@ -2180,94 +2223,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Socket</title>
-    <url>/2025/02/09/wang-luo/socket/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://zhuanlan.zhihu.com/p/455352339">聊聊Netty那些事儿之从内核角度看IO模型</a></li>
-</ul>
-<h3 id="Socket-数据接收到-Epoll-处理流程"><a href="#Socket-数据接收到-Epoll-处理流程" class="headerlink" title="Socket 数据接收到 Epoll 处理流程"></a>Socket 数据接收到 Epoll 处理流程</h3><pre>
-<code class="mermaid">
-
-sequenceDiagram
-    participant S as Socket
-    participant WQ as Wait Queue
-    participant CB as Callback (ep_poll_callback)
-    participant EP as eppoll_entry
-    participant EI as epitem
-    participant EPL as eventpoll
-
-    S-&gt;&gt;S: 接收数据
-    S-&gt;&gt;WQ: 触发等待队列
-    WQ-&gt;&gt;CB: 调用回调函数
-    CB-&gt;&gt;EP: container_of 找到 eppoll_entry
-    EP-&gt;&gt;EI: 访问 base 指针找到 epitem
-    EI-&gt;&gt;EPL: 将 epitem 加入活跃队列
-</code>
-</pre>
-
-
-<ol>
-<li><p>数据到达和初始处理： </p>
-<ul>
-<li>网卡接收数据，通过 DMA 将数据放入 Ring Buffer。</li>
-<li>触发软中断，内核将数据包（sk_buff）放入 socket 的接收队列。</li>
-</ul>
-</li>
-<li><p>Socket 唤醒等待队列： </p>
-<ul>
-<li>Socket 检测到有新数据，开始唤醒其等待队列（wait_queue）中的等待者。</li>
-<li>获取其中一个 wait_queue_entry_t，这里不获取全部一是避免惊群效应，二是 epoll 场景下一般也只会有一个 wait_queue_entry_t</li>
-</ul>
-</li>
-<li><p>回调函数触发： </p>
-<ul>
-<li>对于 epoll 添加的等待项，其 wait_queue_entry_t 的回调函数是 ep_poll_callback。</li>
-<li>内核调用这个回调函数，传入 wait_queue_entry_t 指针作为参数。</li>
-</ul>
-</li>
-<li><p>找到 eppoll_entry： </p>
-<ul>
-<li>在 ep_poll_callback 函数中，使用 container_of 宏。</li>
-<li>通过 wait_queue_entry_t 指针，找到包含它的 eppoll_entry 结构。</li>
-</ul>
- <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eppoll_entry</span> *<span class="title">pwq</span> =</span> container_of(wait, <span class="keyword">struct</span> eppoll_entry, wait);</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>从 eppoll_entry 到 epitem： </p>
-<ul>
-<li>eppoll_entry 结构中有一个 base 指针，直接指向关联的 epitem。</li>
-</ul>
- <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epitem</span> *<span class="title">epi</span> =</span> pwq-&gt;base;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>获取 eventpoll 结构： </p>
-<ul>
-<li>epitem 结构中包含指向其关联的 eventpoll 结构的指针。</li>
-</ul>
- <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> *<span class="title">ep</span> =</span> epi-&gt;ep;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>将 epitem 加入活跃队列： </p>
-<ul>
-<li>检查 epitem 是否已经在活跃队列中。</li>
-<li>如果不在，则将其添加到 eventpoll 的活跃队列（rdllist）中。</li>
-</ul>
- <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (!ep_is_linked(&amp;epi-&gt;rdllink))</span><br><span class="line">    list_add_tail(&amp;epi-&gt;rdllink, &amp;ep-&gt;rdllist);</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>唤醒等待的进程： </p>
-<ul>
-<li>如果有进程正在等待 epoll 事件（通过 epoll_wait），唤醒它。</li>
-</ul>
-</li>
-</ol>
-]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>socket</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>linux内核接收网络包</title>
     <url>/2025/02/09/wang-luo/linux-nei-he-jie-shou-wang-luo-bao/posts/undefined/</url>
     <content><![CDATA[<h3 id="RingBuffer"><a href="#RingBuffer" class="headerlink" title="RingBuffer"></a>RingBuffer</h3><h4 id="RingBuffer到底是什么"><a href="#RingBuffer到底是什么" class="headerlink" title="RingBuffer到底是什么?"></a>RingBuffer到底是什么?</h4><blockquote>
@@ -2324,6 +2279,51 @@ sequenceDiagram
 <li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
 </ul>
 <p><img data-src="/images/socket_02_09.png" alt="img"></p>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>linux内核发送网络包</title>
+    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
+<ul>
+<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
+<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
+<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
+<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
+<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
+<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
+<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
+<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
+<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
+</ul>
+</li>
+<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
+<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
+<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
+</ul>
+</li>
+</ul>
+<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
+<p>指待发送数据的内存拷贝</p>
+</blockquote>
+<ol>
+<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
+<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
+<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
+</ol>
 ]]></content>
       <categories>
         <category>网络</category>
@@ -2633,102 +2633,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>ES</title>
-    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
-</ul>
-<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
-<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
-<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
-<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
-</ul>
-</li>
-<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
-<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
-<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
-</ul>
-</li>
-<li>最佳实践<ul>
-<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
-<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
-<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
-<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
-<li>作用：添加或替换文档。</li>
-<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
-<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
-<li>特点：不关心之前是否存在这本书。</li>
-</ul>
-<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
-<li>作用：仅添加新文档，如果文档已存在则失败。</li>
-<li>类比：只有当书架上没有这本书时，才能放上去。</li>
-<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
-<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
-</ul>
-<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
-<li>作用：修改现有文档的部分内容。</li>
-<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
-<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
-<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
-</ul>
-<ol>
-<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
-<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
-<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
-<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
-<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
-</ol>
-<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
-<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
-<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
-<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
-</blockquote>
-<ol>
-<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
-<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
-<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
-</blockquote>
-<ol>
-<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
-<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
-</blockquote>
-<ol>
-<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
-<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ol>
-<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
-<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>ES</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>ES</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>rocksdb</title>
     <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
     <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
@@ -2944,6 +2848,102 @@ sequenceDiagram
       <tags>
         <tag>数据库</tag>
         <tag>rocksdb</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ES</title>
+    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
+</ul>
+<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
+<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
+<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
+<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
+</ul>
+</li>
+<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
+<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
+<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
+</ul>
+</li>
+<li>最佳实践<ul>
+<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
+<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
+<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
+<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
+<li>作用：添加或替换文档。</li>
+<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
+<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
+<li>特点：不关心之前是否存在这本书。</li>
+</ul>
+<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
+<li>作用：仅添加新文档，如果文档已存在则失败。</li>
+<li>类比：只有当书架上没有这本书时，才能放上去。</li>
+<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
+<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
+</ul>
+<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
+<li>作用：修改现有文档的部分内容。</li>
+<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
+<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
+<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
+</ul>
+<ol>
+<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
+<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
+<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
+<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
+<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
+</ol>
+<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
+<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
+<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
+<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
+</blockquote>
+<ol>
+<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
+<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
+<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
+</blockquote>
+<ol>
+<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
+<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
+</blockquote>
+<ol>
+<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
+<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
+<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>ES</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>ES</tag>
       </tags>
   </entry>
   <entry>
@@ -3241,185 +3241,6 @@ sequenceDiagram
         <tag>消息队列</tag>
         <tag>中间件</tag>
         <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>spring-kafka</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> Spring kafka 版本 2.8.4</p>
-</blockquote>
-<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
-<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
-<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
-</ul>
-<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
-<li>enable.auto.commit&#x3D;true</li>
-<li>auto-commit-interval 自动提交的时间间隔</li>
-</ul>
-<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
-<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
-
-  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
-
-  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
-</code></pre>
-<ul>
-<li>自动提交流程</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
-<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
-<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
-<li>ackMode &#x3D; <em>RECORD</em></li>
-</ul>
-<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
-<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
-<ul>
-<li>ackMode !&#x3D; <em>RECORD</em></li>
-</ul>
-<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
-<ul>
-<li>AckMode 解析</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th align="left">类型</th>
-<th align="left">说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><em>RECORD</em></td>
-<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>BATCH</em></td>
-<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
-</tr>
-<tr>
-<td align="left"><em>TIME</em></td>
-<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT</em></td>
-<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT_TIME</em></td>
-<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL_IMMEDIATE</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
-</tr>
-</tbody></table>
-<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
-<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
-<li>异步提交 syncCommits&#x3D;false</li>
-</ul>
-<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
-<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
-<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
-<li>默认重试 9 次，每次重试之前没有间隔</li>
-</ul>
-<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
-<ul>
-<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
-</ul>
-<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
-<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
-<ul>
-<li>定义重试次数 &amp; 重试间隔</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
-
-<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
-<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
-
-<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
-<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
-<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
-<li>autoCommit &#x3D; false</li>
-<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
-<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
-</ul>
-</li>
-</ul>
-<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-        <tag>spring</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>pulsar-使用</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
-    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
-<li>docker 单机创建</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>可视化 pulsar-manager</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
-</ul>
-<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
-<ul>
-<li>创建租户</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 namespace</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>显示某个 namespace 下的 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>pulsar</tag>
       </tags>
   </entry>
   <entry>
@@ -4606,6 +4427,185 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>spring-kafka</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> Spring kafka 版本 2.8.4</p>
+</blockquote>
+<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
+<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
+<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
+</ul>
+<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
+<li>enable.auto.commit&#x3D;true</li>
+<li>auto-commit-interval 自动提交的时间间隔</li>
+</ul>
+<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
+<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
+
+  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
+
+  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
+</code></pre>
+<ul>
+<li>自动提交流程</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
+<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
+<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
+<li>ackMode &#x3D; <em>RECORD</em></li>
+</ul>
+<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
+<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
+<ul>
+<li>ackMode !&#x3D; <em>RECORD</em></li>
+</ul>
+<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
+<ul>
+<li>AckMode 解析</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">类型</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><em>RECORD</em></td>
+<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>BATCH</em></td>
+<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
+</tr>
+<tr>
+<td align="left"><em>TIME</em></td>
+<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT</em></td>
+<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT_TIME</em></td>
+<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL_IMMEDIATE</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
+</tr>
+</tbody></table>
+<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
+<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
+<li>异步提交 syncCommits&#x3D;false</li>
+</ul>
+<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
+<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
+<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
+<li>默认重试 9 次，每次重试之前没有间隔</li>
+</ul>
+<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
+<ul>
+<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
+</ul>
+<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
+<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
+<ul>
+<li>定义重试次数 &amp; 重试间隔</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
+
+<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
+<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
+
+<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
+<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
+<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
+<li>autoCommit &#x3D; false</li>
+<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
+<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
+</ul>
+</li>
+</ul>
+<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+        <tag>spring</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>pulsar-使用</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
+    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
+<li>docker 单机创建</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>可视化 pulsar-manager</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
+</ul>
+<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
+<ul>
+<li>创建租户</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 namespace</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>显示某个 namespace 下的 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>pulsar</tag>
       </tags>
   </entry>
 </search>
