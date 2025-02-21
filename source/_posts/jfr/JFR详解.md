@@ -312,7 +312,7 @@ JFR 配置限制
   - Allocation Size：触发路径三分配的对象大小（实际占用，考虑了对象对其）
   - Object Class：触发路径三分配的对象类型
   - 线程栈：发生路径三的线程栈，默认是采集的
-    ![img](/images/jfr/07.png)
+  ![img](/images/jfr/07.png)
 - 编写代码模拟内存泄漏业务
   ```java
     public class TestAllocOutsideTLAB {
