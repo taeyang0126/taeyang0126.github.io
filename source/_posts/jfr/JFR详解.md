@@ -1,8 +1,8 @@
 ---
-title: JFR详解
+title: JFR详解-1
 abbrlink: 19346
 date: 2025-02-20 14:13:52
-tags: [JVM, JFR, 监控]
+tags: [JVM, JFR, 监控, OOM, 内存泄漏]
 categories: [JFR]
 ---
 
