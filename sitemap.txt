@@ -130,11 +130,11 @@ https://taeyang0126.github.io/tags/%E5%88%86%E5%B8%83%E5%BC%8F/
 https://taeyang0126.github.io/tags/%E7%AE%97%E6%B3%95/
 https://taeyang0126.github.io/tags/raft/
 https://taeyang0126.github.io/tags/ES/
+https://taeyang0126.github.io/tags/MySQL/
 https://taeyang0126.github.io/tags/rocksdb/
 https://taeyang0126.github.io/tags/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/
 https://taeyang0126.github.io/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/
 https://taeyang0126.github.io/tags/kafka/
-https://taeyang0126.github.io/tags/MySQL/
 https://taeyang0126.github.io/tags/spring/
 https://taeyang0126.github.io/tags/pulsar/
 https://taeyang0126.github.io/categories/C/
@@ -156,6 +156,6 @@ https://taeyang0126.github.io/categories/%E7%BD%91%E5%85%B3/
 https://taeyang0126.github.io/categories/%E7%BD%91%E7%BB%9C/
 https://taeyang0126.github.io/categories/%E5%88%86%E5%B8%83%E5%BC%8F/
 https://taeyang0126.github.io/categories/ES/
+https://taeyang0126.github.io/categories/MySQL/
 https://taeyang0126.github.io/categories/rocksdb/
 https://taeyang0126.github.io/categories/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/
-https://taeyang0126.github.io/categories/MySQL/
