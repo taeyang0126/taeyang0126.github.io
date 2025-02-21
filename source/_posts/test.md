@@ -9,11 +9,6 @@ date: 2024-02-21
 - multiline
   text
 - `inline code`
-- ```js
-  console.log('code block');
-  console.log('code block');
-  ```
-- KaTeX - $x = {-b \pm \sqrt{b^2-4ac} \over 2a}$
 {% endmarkmap %}
 
 
