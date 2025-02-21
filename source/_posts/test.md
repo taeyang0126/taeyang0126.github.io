@@ -4,10 +4,247 @@ date: 2024-02-21
 ---
 
 {% pullquote mindmap mindmap-md %}
-- 在 Hexo 中使用思维导图
-    - 前言
-    - 操作指南
-        - 准备需要的文件
-        - 为主题添加 CSS/JS 文件
-- 使用方法
+- SkyWalking-8.7.0 源码整理
+  - 原理简述
+  - Agent
+    - 启动方式
+      - 静态启动：使用 -javaagent 参数
+        - 入口方法：premain()
+        - 在类加载时对目标类的字节码可以进行任意修改，只要最后的结果符合字节码规范
+        - SkyWalking 只支持这种方式启动 Agent
+      - 动态附加：使用 Attach API
+        - 入口方法：agentmain()
+        - 类已经加载完成并被使用，这时候只能对目标类的字节码进行有限的修改
+          - 不能增减父类
+          - 不能增加接口
+          - 不能调整 Field
+          - ....
+        - 典型的应用：系统诊断（阿里 Arthas、笨马 XPocket）
+    - 启动流程
+      - 初始化配置
+        - 加载配置信息
+          - /config/agent.config
+          - 系统环境变量
+          - Agent 参数
+          - 优先级：自下往上
+        - 将配置信息映射到 Config 类
+        - 根据配置信息重新指定日志解析器
+        - 检查 Agent 名称和后端地址是否配置
+        - 标记配置加载完成
+      - 加载插件
+        - 并行类加载器
+          - 调用 registerAsParallelCapable() 方法开启
+          - 原理就是将类加载时的锁从类加载器级别缩小到具体加载的某一个类
+          - AgentClassLoader
+            - classpath: /config/plugins、/config/activations
+        - 插件定义体系
+          - 插件定义：XxxInstrumentation
+            - 拦截实例方法/构造器：ClassInstanceMethodsEnhancePluginDefine
+            - 拦截静态方法：ClassStaticMethodsEnhancePluginDefine
+            - AbstractClassEnhancePluginDefine 是所有插件定义的顶级父类
+            - 要拦截的类：enhanceClass()
+            - 要拦截的方法：getXxxInterceptorPoints()
+          - 目标类匹配
+            - ClassMatch
+              - 按类名匹配：NamedMatch
+              - 间接匹配：IndirectMatch
+                - PrefixMatch
+                - MethodAnnotationMatch
+          - 拦截器定义
+            - beforeMethod
+            - afterMethod
+            - handleMethodException
+          - 插件声明
+            - resources/skywalking-plugin.def
+            - 插件名称=插件定义
+        - 加载流程
+          - PluginBootstrap 实例化所有插件
+            - PluginResourcesResolver 查找 skywalking-plugin.def
+            - PluginCfg 封装 PluginDefine
+            - DynamicPluginLoader 加载基于 XML 配置的插件
+          - PluginFinder 分类插件
+            - 命名插件 - NameMatch
+            - 间接匹配插件 - IndrectMatch
+            - JDK 类库插件
+      - 定制 Agent
+        - 创建 ByteBuddy 实例
+        - 指定 ByteBuddy 要忽略的类
+          - synthetic
+            - 解决 var that = this 的问题
+            - 仅在嵌套类中讨论
+            - Field - 访问外部类属性
+            - Constructor - 使用 private 构造器
+            - Method - 访问内部类属性
+            - NBAC
+              - Nest Based Access Control
+              - JDK11 引入
+              - 不再生成 synthetic method
+              - 新的嵌套类关系组织方式
+                - nestHost 指向宿主类
+                - nestMembers 列出嵌套关系中所有类型
+        - 将必要的类注入到 BootstrapClassLoader 中
+        - 解决 JDK 模块系统的跨模块类访问
+        - 根据配置决定是否将修改后的字节码保存到磁盘/内存上
+        - 细节定制
+          - 指定 ByteBuddy 要拦截的类
+          - 指定做字节码增强的工具
+          - 指定字节码增强的模式
+            - Redefine
+              - 覆盖掉被修改的内容
+            - Retransform
+              - 保留被修改的内容
+          - 注册监听器
+          - 将 Agent 安装到 Instrumentation
+      - 加载服务
+        - 服务组织
+          - 服务需要实现 BootService 接口
+          - 如果服务只有一种实现，直接创建一个类即可
+          - 如果服务有多种实现
+            - 默认实现需要使用 @DefaultImplementor
+            - 覆盖实现需要使用 @OverrideImplementor
+        - 加载流程
+          - SPI 加载所有 BootService 的实现
+          - 根据服务的实现模式进行服务的筛选
+            - 两个注解都没有的服务实现直接加入集合
+            - 对于 @DefaultImplementor
+              - 直接加入集合
+            - 对于 @OverrideImplementor
+              - value 指向的服务有 @DefaultImplementor 则覆盖掉
+              - value 指向的服务没有 @DefaultImplementor 则报错
+      - 注册关闭钩子
+    - 插件工作原理
+      - Witness 机制
+        - 作用：识别组件版本
+        - witnessClasses
+          - 在指定类加载器下查找指定的类型，如果有多个类型则必须同时存在
+        - witnessMethods
+          - 在指定的类下面查找指定的方法，如果有多个方法则必须同时存在
+      - 工作流程
+        - 校验 TypeDescription 的合法性
+        - Witness 机制校验当前插件是否可用
+        - 字节码增强流程
+          - 静态方法
+            - 要修改原方法入参
+              - JDK 类库的类
+              - 不是 JDK 类库的类
+                - 实例化插件中定义的 Interceptor
+                - 调用 beforeMethod()
+                  - 可以修改原方法入参
+                - 调用原方法
+                  - 调用时可以传参
+                  - 对于异常，调用 handleMethodException()
+                - 调用 afterMethod()
+            - 不修改原方法入参
+              - 是 JDK 类库的类
+                - 前置工作
+                - 调用 prepare()
+                  - 打通 BootstrapClassLoader 和 AgentClassLoader
+                    - 拿到日志对象 ILog
+                  - 实例化插件定义的拦截器
+                    - 替代非 JDK 核心类库处理逻辑里的 InterceptorInstanceLoader.load
+                - 后续流程和非 JDK 核心类库处理流程一致
+              - 不是 JDK 类库的类
+                - 实例化插件中定义的 Interceptor
+                - 调用 beforeMethod()
+                - 调用原方法
+                  - 调用时不能传参
+                  - 对于异常，调用 handleMethodException()
+                - 调用 afterMethod()
+          - 构造器和实例方法
+            - 构造器
+              - 是 JDK 类库的类
+              - 不是 JDK 类库的类
+                - 只能在拦截的构造器原本逻辑执行完成以后再执行 onConstruct()
+            - 实例方法
+              - 参照静态方法
+        - 将记录状态的上下文 EnhanceContext 设置为「已增强」
+    - 服务 BootService
+      - GRPCChannelManager
+        - Agent到OAP的网络连接
+        - 定时重连
+        - 通知监听器网络连接状态的变化
+      - ServiceManagementClient
+        - 向OAP汇报自身的信息
+        - 保持心跳
+      - CommandService
+        - 调度 OAP 下发的命令
+          - 收集其他服务获得的命令
+          - 转交给 CommandExecutorService 服务进行命令处理
+        - CommandExecutorService
+          - 选择一个具体的命令处理器
+          - CommandExecutor
+            - ConfigurationDiscoveryCommandExecutor 配置信息变更命令处理器
+              - AgentConfigChangeWatcher 对某一个配置项的值变化进行监听
+              - WatcherHolder 对上面监听器的封装
+              - WatchHolder 的集合
+            - ProfileTaskCommandExecutor 性能追踪命令处理器
+      - SamplingService
+        - 控制链路是否被上报到 OAP
+        - 采样策略
+          - 如果配置了采样率，则 3 秒内最多上报配置值数量的链路到 OAP
+          - 如果采样机制关闭，则默认所有采集到的链路都要上报到 OAP
+        - 采样率的动态变化
+      - JVMService
+        - 收集 JVM 的相关指标
+        - 收集和发送分离
+          - 收集：XxxProvider
+          - 发送：JVMMetricsSender
+      - KafkaXxxService
+        - 由 Agent 直连 OAP 改为通过 Kafka 交互
+        - Agent 和 OAP 依然存在 GRPC 直连
+        - 大部分的采集的数据都改为走 Kafka
+      - StatusCheckService
+        - 用来判断哪些异常不算异常
+    - 链路追踪
+      - 推荐文档
+        - google 论文
+        - open tracing 规范
+      - 基本概念
+        - Trace：表示一整条链路（跨线程、跨进程的所有 Segment 的集合）
+        - Segment：表示一个 JVM 进程内的一个线程中的所有操作的集合
+        - Span：表示具体的某一个操作
+      - TraceSegment
+        - 组成 Trace 的基本单元
+        - TraceSegmentRef 用于引用 Parent Segment
+        - 所有的 Span 维护在一个 LinkedList 中
+        - relatedGlobalTraceId 表示当前 Segment 所在的 Trace
+        - isSizeLimited 如果为 true 表示当前这条线程内发生的操作次数超过了配置值，Segment 丢弃了一部分操作
+      - Span
+        - AsyncSpan
+          - 最顶层的 Span 定义，用于异步插件
+        - AbstractSpan
+          - setComponent 指定Span所在的插件
+          - setLayer 指定 Span 所在插件的类型
+          - tag 在 Span 上打标签
+          - log 在 Span 上记录异常事件和自定义事件
+          - setOperationName 指定 Span 这个动作的名称
+            - HTTP 请求 -&gt; URL
+            - Redis 操作 -&gt; Redis 命令
+          - start 启动 Span
+          - ref 串联 TraceSegment
+          - setPeer 指定 Span 操作的远端地址
+        - AbstractTracingSpan
+          <node TEXT="" ID="e9cfd48e12afb8fef11f7a2cab5b27b7" STYLE="fork"/>
+          - spanId 从 0 开始自增
+          - parentSpanId 记录上一个 Span 的 ID，第一个 Span 的这个值为 -1
+          - isInAsyncMode 表示当前Span 表示的异步操作是否已经开始
+          - isAsyncStopped 表示当前Span 表示的异步操作是否已经结束
+          - TracingContext 当前链路 Segment 和 Span 的上下文
+          - refs 当前 Span 所在的 Segment 的上一个 Segment 的引用，可能有多个
+        - StackBasedTracingSpan
+          - 并没有一个具体的栈结构
+          - 通过 stackDepth 和 currentMaxDepth 来模拟栈操作
+          - EntrySpan
+            - 只会在第一个插件创建，后面的插件都是复用第一个插件创建的实例
+            - 记录的信息是最靠近服务侧的
+            - 一个 TraceSegment 只能有一个 EntrySpan
+            - 只有当 stackDepth == currentMaxDepth 时才能记录信息
+          - ExitSpan
+            - 所谓 ExitSpan 和 EntrySpan 一样采用复用的机制，前提是在插件嵌套的情况下
+            - 多个 ExitSpan 不存在嵌套关系，是平行存在的时候，是允许同时存在多个 ExitSpan
+            - 把 ExitSpan 简单理解为离开当前进程/线程的操作
+            - TraceSegment 里不一定非要有 ExitSpan
+            - 记录的信息是最靠近消费侧的
+          - LocalSpan
+            - 通常用于记录一个本地方法调用
 {% endpullquote %}
