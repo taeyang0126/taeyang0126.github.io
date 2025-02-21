@@ -272,62 +272,6 @@
       </tags>
   </entry>
   <entry>
-    <title>多线程异常处理</title>
-    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
-</blockquote>
-<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
-<li>新起线程中抛出异常</li>
-</ul>
-<blockquote>
-<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>线程池中抛出的异常</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-
-<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
-<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
-</blockquote>
-<ul>
-<li><p>Try catch 显示处理异常</p>
-</li>
-<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
-<ul>
-<li><p>线程处理</p>
-</li>
-<li><p>thread.setUncaughtExceptionHandler</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
-
-</li>
-<li><p>线程池处理</p>
-</li>
-<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ul>
-<p>Hold on…..有人的地方就不存在信任这一说- -</p>
-<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
-<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
-</blockquote>
-<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>JAVA</category>
-      </categories>
-      <tags>
-        <tag>JAVA</tag>
-        <tag>多线程</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Feign 更换 Client</title>
     <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
     <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
@@ -495,6 +439,62 @@
         <tag>feign</tag>
         <tag>rpc</tag>
         <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>多线程异常处理</title>
+    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
+</blockquote>
+<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
+<li>新起线程中抛出异常</li>
+</ul>
+<blockquote>
+<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>线程池中抛出的异常</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
+<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
+</blockquote>
+<ul>
+<li><p>Try catch 显示处理异常</p>
+</li>
+<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
+<ul>
+<li><p>线程处理</p>
+</li>
+<li><p>thread.setUncaughtExceptionHandler</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
+
+</li>
+<li><p>线程池处理</p>
+</li>
+<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<p>Hold on…..有人的地方就不存在信任这一说- -</p>
+<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
+<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
+</blockquote>
+<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>JAVA</category>
+      </categories>
+      <tags>
+        <tag>JAVA</tag>
+        <tag>多线程</tag>
       </tags>
   </entry>
   <entry>
@@ -1008,6 +1008,117 @@
       </tags>
   </entry>
   <entry>
+    <title>loom-springboot</title>
+    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
+    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
+<li>jdk 22.0.1-graal</li>
+<li>maven 3.6.3</li>
+<li>内置容器 tomcat，最大线程数量 256</li>
+<li>Xms200M Xmx300M</li>
+<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
+<li>M1 max 64g</li>
+<li>SpringBoot 3.3.0</li>
+</ul>
+<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
+</ul>
+<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
+<ul>
+<li>内存、线程占用情况</li>
+</ul>
+<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
+<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
+</ul>
+<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
+<ul>
+<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
+</ul>
+<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
+<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
+<li>版本9.0.60</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
+<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
+<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
+</ul>
+<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
+<li>版本10.1.24</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
+<li>此版本下如何启用虚拟线程?<ol>
+<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
+<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
+</ol>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+        <tag>spring boot</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>loom</title>
+    <url>/2025/02/19/loom/loom/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
+<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
+<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
+<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
+<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
+</ul>
+<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
+<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
+</blockquote>
+<ul>
+<li>Java 代码调用本地代码 (JNI)</li>
+<li>synchronized 块或方法</li>
+</ul>
+<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
+<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
+</ul>
+<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
+<li>Synchronization<ul>
+<li>synchronized最终会解决，但是JNI不会处理</li>
+<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
+</ul>
+</li>
+<li>I&#x2F;O<ul>
+<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
+<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
+<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
+<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
+</ul>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>k8s监控</title>
     <url>/2025/02/10/k8s/k8s-jian-kong/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -1181,117 +1292,6 @@
         <tag>监控</tag>
         <tag>k8s</tag>
         <tag>容器</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>loom-springboot</title>
-    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
-    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
-<li>jdk 22.0.1-graal</li>
-<li>maven 3.6.3</li>
-<li>内置容器 tomcat，最大线程数量 256</li>
-<li>Xms200M Xmx300M</li>
-<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
-<li>M1 max 64g</li>
-<li>SpringBoot 3.3.0</li>
-</ul>
-<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
-</ul>
-<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
-<ul>
-<li>内存、线程占用情况</li>
-</ul>
-<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
-<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
-</ul>
-<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
-<ul>
-<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
-</ul>
-<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
-<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
-<li>版本9.0.60</li>
-<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
-<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
-<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
-</ul>
-<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
-<li>版本10.1.24</li>
-<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
-<li>此版本下如何启用虚拟线程?<ol>
-<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol start="2">
-<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
-<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
-</ol>
-</li>
-</ul>
-]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
-        <tag>spring boot</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>loom</title>
-    <url>/2025/02/19/loom/loom/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
-<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
-<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
-<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
-<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
-</ul>
-<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
-<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
-</blockquote>
-<ul>
-<li>Java 代码调用本地代码 (JNI)</li>
-<li>synchronized 块或方法</li>
-</ul>
-<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
-<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
-</ul>
-<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
-<li>Synchronization<ul>
-<li>synchronized最终会解决，但是JNI不会处理</li>
-<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
-</ul>
-</li>
-<li>I&#x2F;O<ul>
-<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
-<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
-<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
-<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
-</ul>
-</li>
-</ol>
-]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
       </tags>
   </entry>
   <entry>
@@ -1880,6 +1880,71 @@
       </tags>
   </entry>
   <entry>
+    <title>BitMap</title>
+    <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
+    <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
+<p>Roaring Bitmaps 是一种高效的压缩位图数据结构，它在保持快速操作性能的同时，显著减少了内存使用。这种数据结构特别适用于表示和操作大型稀疏数据集</p>
+</blockquote>
+<p>基本结构： </p>
+<ul>
+<li>Roaring Bitmap 将 32 位整数空间分割成 2^16 &#x3D; 65536 个块。</li>
+<li>每个块负责管理 2^16 个连续的整数。</li>
+</ul>
+<p>数据表示方法： </p>
+<ul>
+<li>对于稀疏的块（包含少量元素），使用简单的整数数组。<ul>
+<li>用于存储稀疏数据（少量元素）</li>
+<li>直接存储 16 位整数值</li>
+<li>当元素数量小于 4,096 时使用</li>
+</ul>
+</li>
+<li>对于稠密的块（包含大量元素），使用传统的位图。<ul>
+<li>用于存储稠密数据（大量元素）</li>
+<li>使用传统的位图表示，即 8,192 字节（65,536 位）</li>
+<li>当元素数量大于等于 4,096 时使用</li>
+</ul>
+</li>
+<li>对于连续的长整数序列，使用范围编码。<ul>
+<li>用于存储连续的整数序列</li>
+<li>存储开始和结束值的对</li>
+<li>在特定情况下可以更节省空间</li>
+</ul>
+</li>
+</ul>
+<p>自适应性： </p>
+<ul>
+<li>Roaring Bitmap 会根据数据的分布自动选择最合适的容器类型，并在需要时动态转换容器类型。</li>
+<li>这种自适应性使得 Roaring 在各种数据分布下都能保持高效。</li>
+</ul>
+<p>索引结构:</p>
+<ul>
+<li>使用一个高层索引（通常是一个数组）来快速定位到特定的容器。这个索引存储 16 位的高位值和指向相应容器的指针</li>
+</ul>
+<p>操作效率： </p>
+<ul>
+<li>支持快速的交集、并集、差集等集合操作。</li>
+<li>这些操作可以直接在压缩的表示上执行，无需完全解压。</li>
+</ul>
+<p>内存效率： </p>
+<ul>
+<li>相比传统位图，Roaring 通常可以显著减少内存使用。</li>
+<li>特别是对于稀疏数据集，节省的空间可能高达数百倍。</li>
+</ul>
+<p>使用场景： </p>
+<ul>
+<li>广泛应用于搜索引擎、数据库系统和大数据处理框架。</li>
+<li>特别适合需要高效处理大量整数集合的应用。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>BitMap</category>
+      </categories>
+      <tags>
+        <tag>BitMap</tag>
+        <tag>数据库</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>接口安全</title>
     <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -1945,71 +2010,6 @@
       <tags>
         <tag>安全</tag>
         <tag>防刷</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>BitMap</title>
-    <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
-    <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
-<p>Roaring Bitmaps 是一种高效的压缩位图数据结构，它在保持快速操作性能的同时，显著减少了内存使用。这种数据结构特别适用于表示和操作大型稀疏数据集</p>
-</blockquote>
-<p>基本结构： </p>
-<ul>
-<li>Roaring Bitmap 将 32 位整数空间分割成 2^16 &#x3D; 65536 个块。</li>
-<li>每个块负责管理 2^16 个连续的整数。</li>
-</ul>
-<p>数据表示方法： </p>
-<ul>
-<li>对于稀疏的块（包含少量元素），使用简单的整数数组。<ul>
-<li>用于存储稀疏数据（少量元素）</li>
-<li>直接存储 16 位整数值</li>
-<li>当元素数量小于 4,096 时使用</li>
-</ul>
-</li>
-<li>对于稠密的块（包含大量元素），使用传统的位图。<ul>
-<li>用于存储稠密数据（大量元素）</li>
-<li>使用传统的位图表示，即 8,192 字节（65,536 位）</li>
-<li>当元素数量大于等于 4,096 时使用</li>
-</ul>
-</li>
-<li>对于连续的长整数序列，使用范围编码。<ul>
-<li>用于存储连续的整数序列</li>
-<li>存储开始和结束值的对</li>
-<li>在特定情况下可以更节省空间</li>
-</ul>
-</li>
-</ul>
-<p>自适应性： </p>
-<ul>
-<li>Roaring Bitmap 会根据数据的分布自动选择最合适的容器类型，并在需要时动态转换容器类型。</li>
-<li>这种自适应性使得 Roaring 在各种数据分布下都能保持高效。</li>
-</ul>
-<p>索引结构:</p>
-<ul>
-<li>使用一个高层索引（通常是一个数组）来快速定位到特定的容器。这个索引存储 16 位的高位值和指向相应容器的指针</li>
-</ul>
-<p>操作效率： </p>
-<ul>
-<li>支持快速的交集、并集、差集等集合操作。</li>
-<li>这些操作可以直接在压缩的表示上执行，无需完全解压。</li>
-</ul>
-<p>内存效率： </p>
-<ul>
-<li>相比传统位图，Roaring 通常可以显著减少内存使用。</li>
-<li>特别是对于稀疏数据集，节省的空间可能高达数百倍。</li>
-</ul>
-<p>使用场景： </p>
-<ul>
-<li>广泛应用于搜索引擎、数据库系统和大数据处理框架。</li>
-<li>特别适合需要高效处理大量整数集合的应用。</li>
-</ul>
-]]></content>
-      <categories>
-        <category>BitMap</category>
-      </categories>
-      <tags>
-        <tag>BitMap</tag>
-        <tag>数据库</tag>
       </tags>
   </entry>
   <entry>
@@ -2300,73 +2300,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>linux内核接收网络包</title>
-    <url>/2025/02/09/wang-luo/linux-nei-he-jie-shou-wang-luo-bao/posts/undefined/</url>
-    <content><![CDATA[<h3 id="RingBuffer"><a href="#RingBuffer" class="headerlink" title="RingBuffer"></a>RingBuffer</h3><h4 id="RingBuffer到底是什么"><a href="#RingBuffer到底是什么" class="headerlink" title="RingBuffer到底是什么?"></a>RingBuffer到底是什么?</h4><blockquote>
-<p>是内存中的一块特殊区域，环形队列是笼统的说法，实际上包括<code>igb_rx_buffer</code> 环形队列数组、<code>e1000_adv_rx_desc</code> 环形队列数组及众多的skb</p>
-</blockquote>
-<p><img data-src="/images/socket_02_01.png" alt="img"></p>
-<p>网卡在收到数据的时候以<code>DMA</code> 方式将包写到RingBuffer中。软中断收包的时候来这里将skb取走，并申请新的skb重新挂上去。</p>
-<p>RingBuffer内存是预先分配的还是动态分配的？</p>
-<p>指针数组是预先分配好的，而skb虽然也会预先分配好，但是在后面的收包过程中会不断的动态地分配申请</p>
-<h4 id="RingBuffer为什么会丢包？"><a href="#RingBuffer为什么会丢包？" class="headerlink" title="RingBuffer为什么会丢包？"></a>RingBuffer为什么会丢包？</h4><ul>
-<li>RingBuffer是有大小和长度限制的</li>
-<li>使用 <code>ethtool -g eth0</code> 命令查看长度，Pre-set maximums 指的是最大值，Current hardware settings 表示当前设置，下图表示最大允许1024，目前设置为1024</li>
-</ul>
-<p><img data-src="/images/socket_02_02.png" alt="img"></p>
-<ul>
-<li>查看是否有溢出情况发生  <code>ethtool -S eth0</code>，如果有溢出情况发生(ifconfig中体现为overruns指标增长)，表示有包因为RingBuffer装不下而被丢弃了，解决思路有两种<ul>
-<li>加大RingBuffer长度 <code>ethtool -G eth0 rx 4096 tx 4096</code> ，此种方式只是临时解决，治标不治本</li>
-<li>开启多队列提升网络性能，打散队列的亲核性</li>
-<li>现在主流网卡基本上都支持多队列，通过<code>ethtool -l eth0</code> 进行查看，下图表示当前网卡支持的最大队列数是2，当前开启的也是2，通过sysfs也可以看到真正生效的队列数量。</li>
-<li><img data-src="/images/socket_02_03.png" alt="img"></li>
-<li><img data-src="/images/socket_02_04.png" alt="img"></li>
-<li>加大队列数量，可以使用 <code>ethtool -L eth0 combined 32</code> </li>
-<li>如果发现某个cpu核心si特别高，可以考虑调整队列亲和的cpu核心<ul>
-<li><code>cat /proc/interrupts</code>查看队列的硬件硬中断，下图显示输入队列0的中断号是25，队列1的中断号是27，通过这个中断号对应的<code>smp_affinity</code>可以查看到亲和的cpu核是哪个。下图显示的2在二进制中代表第二位是1，所以表示第2个cpu核心——CPU2</li>
-<li><img data-src="/images/socket_02_05.png" alt="img"></li>
-<li><img data-src="/images/socket_02_06.png" alt="img"></li>
-<li>每个队列都会有独立的、不同的中断号。所以不同的队列在将数据收取到自己的RingBuffer后，可以分别向不同的CPU发起硬中断通知。而在硬中断的处理中，发起软中断是基于当前核心的，这意味着<strong>哪个核响应的硬中断，那么该硬中断发起的软中断任务就必然由这个核来处理</strong>。</li>
-<li>通过设置每个队列中断号上的<code>smp_affinity</code>，将各个队列的硬中断打散到不同的cpu上。</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h3 id="网络相关的硬中断、软中断都是什么"><a href="#网络相关的硬中断、软中断都是什么" class="headerlink" title="网络相关的硬中断、软中断都是什么?"></a>网络相关的硬中断、软中断都是什么?</h3><p> 在网卡将数据放到<code>RingBuffer</code> 之后，接着就发起<code>硬中断</code>，通知cpu进行处理。不过在硬中断的上下文里做的工作很少，将传过来的<code>poll_list</code> 添加到每个cpu变量<code>softnet_data</code> 的 <code>poll_list</code> 里面，接着触发<code>软中断</code> <code>NET_RX_SOFTIRQ</code>。在软中断中对softnet_data的设备列表poll_list进行遍历，执行网卡驱动提供的poll来收取网络包。处理完成后会送到协议栈的ip_rcv、udp_rcv、tcp_rcv_v4等函数中</p>
-<p>poll_list 是个双向链表，存储待处理NAPI实例的链表。</p>
-<p>一个网卡驱动程序通常会注册一个NAPI结构(struct napi_struct)，这个结构基本约等于一个接收队列，目的是为了减少硬中断的次数。在高并发网络中，频繁的接收到网络包导致频繁触发硬中断，浪费了CPU性能，通过NAPI一个队列中接收到网络包后将此队列信息传递给软中断，软中断处理程序在处理的时候先停止触发硬中断，专注接收包的处理，处理完成后再打开硬中断触发，大大减少了硬中断的触发。</p>
-<h3 id="ksoftirqd内核线程是用来干嘛的"><a href="#ksoftirqd内核线程是用来干嘛的" class="headerlink" title="ksoftirqd内核线程是用来干嘛的?"></a>ksoftirqd内核线程是用来干嘛的?</h3><ul>
-<li>机器上有几核，内核就会创建几个ksoftirqd线程出来</li>
-<li>内核线程ksoftirqd包含了所有的软中断处理逻辑，软中断信息可以通过 <code>cat /proc/softirqs</code> 命令进行查看</li>
-</ul>
-<p><img data-src="/images/socket_02_07.png" alt="img"></p>
-<h3 id="tcpdump是如何工作的？"><a href="#tcpdump是如何工作的？" class="headerlink" title="tcpdump是如何工作的？"></a>tcpdump是如何工作的？</h3><blockquote>
-<p>tcpdump工作在设备层，是通过虚拟协议的方式工作的。通过调用packet_create将抓包函数以协议的形式挂到ptype_all上。这个函数会将包送到协议栈函数(ip_rcv、arp_rcv)之前，将包先送到ptype_all抓包点。</p>
-</blockquote>
-<ul>
-<li>iptable&#x2F;netfilter 主要是在IP、ARP等层实现的。如果配置过于复杂的规则，则会消耗过多的cpu，加大网络延迟</li>
-<li>tcpdump工作在设备层，将包送到ip层以前就能处理，而netfilter工作在IP、ARP等层，从下图来看，netfilter工作在tcpdump之后，所以iptable封禁规则不影响tcpdump抓包；但是发包过程恰恰相反，发包的时候netfilter先进行工作，在协议层就被过滤掉了，所以tcpdump什么都看不到。</li>
-</ul>
-<p><img data-src="/images/socket_02_08.png" alt="img"></p>
-<h3 id="网络接收过程中的CPU开销如何查看？"><a href="#网络接收过程中的CPU开销如何查看？" class="headerlink" title="网络接收过程中的CPU开销如何查看？"></a>网络接收过程中的CPU开销如何查看？</h3><blockquote>
-<p>在网络包的接收过程中，主要工作集中在硬中断和软中断上，二者的消耗可以通过top命令进行查看</p>
-</blockquote>
-<ul>
-<li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
-</ul>
-<p><img data-src="/images/socket_02_09.png" alt="img"></p>
-]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>socket</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>抓包相关</title>
     <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2470,6 +2403,73 @@ sequenceDiagram
         <tag>网络</tag>
         <tag>tcp</tag>
         <tag>抓包</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>linux内核接收网络包</title>
+    <url>/2025/02/09/wang-luo/linux-nei-he-jie-shou-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="RingBuffer"><a href="#RingBuffer" class="headerlink" title="RingBuffer"></a>RingBuffer</h3><h4 id="RingBuffer到底是什么"><a href="#RingBuffer到底是什么" class="headerlink" title="RingBuffer到底是什么?"></a>RingBuffer到底是什么?</h4><blockquote>
+<p>是内存中的一块特殊区域，环形队列是笼统的说法，实际上包括<code>igb_rx_buffer</code> 环形队列数组、<code>e1000_adv_rx_desc</code> 环形队列数组及众多的skb</p>
+</blockquote>
+<p><img data-src="/images/socket_02_01.png" alt="img"></p>
+<p>网卡在收到数据的时候以<code>DMA</code> 方式将包写到RingBuffer中。软中断收包的时候来这里将skb取走，并申请新的skb重新挂上去。</p>
+<p>RingBuffer内存是预先分配的还是动态分配的？</p>
+<p>指针数组是预先分配好的，而skb虽然也会预先分配好，但是在后面的收包过程中会不断的动态地分配申请</p>
+<h4 id="RingBuffer为什么会丢包？"><a href="#RingBuffer为什么会丢包？" class="headerlink" title="RingBuffer为什么会丢包？"></a>RingBuffer为什么会丢包？</h4><ul>
+<li>RingBuffer是有大小和长度限制的</li>
+<li>使用 <code>ethtool -g eth0</code> 命令查看长度，Pre-set maximums 指的是最大值，Current hardware settings 表示当前设置，下图表示最大允许1024，目前设置为1024</li>
+</ul>
+<p><img data-src="/images/socket_02_02.png" alt="img"></p>
+<ul>
+<li>查看是否有溢出情况发生  <code>ethtool -S eth0</code>，如果有溢出情况发生(ifconfig中体现为overruns指标增长)，表示有包因为RingBuffer装不下而被丢弃了，解决思路有两种<ul>
+<li>加大RingBuffer长度 <code>ethtool -G eth0 rx 4096 tx 4096</code> ，此种方式只是临时解决，治标不治本</li>
+<li>开启多队列提升网络性能，打散队列的亲核性</li>
+<li>现在主流网卡基本上都支持多队列，通过<code>ethtool -l eth0</code> 进行查看，下图表示当前网卡支持的最大队列数是2，当前开启的也是2，通过sysfs也可以看到真正生效的队列数量。</li>
+<li><img data-src="/images/socket_02_03.png" alt="img"></li>
+<li><img data-src="/images/socket_02_04.png" alt="img"></li>
+<li>加大队列数量，可以使用 <code>ethtool -L eth0 combined 32</code> </li>
+<li>如果发现某个cpu核心si特别高，可以考虑调整队列亲和的cpu核心<ul>
+<li><code>cat /proc/interrupts</code>查看队列的硬件硬中断，下图显示输入队列0的中断号是25，队列1的中断号是27，通过这个中断号对应的<code>smp_affinity</code>可以查看到亲和的cpu核是哪个。下图显示的2在二进制中代表第二位是1，所以表示第2个cpu核心——CPU2</li>
+<li><img data-src="/images/socket_02_05.png" alt="img"></li>
+<li><img data-src="/images/socket_02_06.png" alt="img"></li>
+<li>每个队列都会有独立的、不同的中断号。所以不同的队列在将数据收取到自己的RingBuffer后，可以分别向不同的CPU发起硬中断通知。而在硬中断的处理中，发起软中断是基于当前核心的，这意味着<strong>哪个核响应的硬中断，那么该硬中断发起的软中断任务就必然由这个核来处理</strong>。</li>
+<li>通过设置每个队列中断号上的<code>smp_affinity</code>，将各个队列的硬中断打散到不同的cpu上。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="网络相关的硬中断、软中断都是什么"><a href="#网络相关的硬中断、软中断都是什么" class="headerlink" title="网络相关的硬中断、软中断都是什么?"></a>网络相关的硬中断、软中断都是什么?</h3><p> 在网卡将数据放到<code>RingBuffer</code> 之后，接着就发起<code>硬中断</code>，通知cpu进行处理。不过在硬中断的上下文里做的工作很少，将传过来的<code>poll_list</code> 添加到每个cpu变量<code>softnet_data</code> 的 <code>poll_list</code> 里面，接着触发<code>软中断</code> <code>NET_RX_SOFTIRQ</code>。在软中断中对softnet_data的设备列表poll_list进行遍历，执行网卡驱动提供的poll来收取网络包。处理完成后会送到协议栈的ip_rcv、udp_rcv、tcp_rcv_v4等函数中</p>
+<p>poll_list 是个双向链表，存储待处理NAPI实例的链表。</p>
+<p>一个网卡驱动程序通常会注册一个NAPI结构(struct napi_struct)，这个结构基本约等于一个接收队列，目的是为了减少硬中断的次数。在高并发网络中，频繁的接收到网络包导致频繁触发硬中断，浪费了CPU性能，通过NAPI一个队列中接收到网络包后将此队列信息传递给软中断，软中断处理程序在处理的时候先停止触发硬中断，专注接收包的处理，处理完成后再打开硬中断触发，大大减少了硬中断的触发。</p>
+<h3 id="ksoftirqd内核线程是用来干嘛的"><a href="#ksoftirqd内核线程是用来干嘛的" class="headerlink" title="ksoftirqd内核线程是用来干嘛的?"></a>ksoftirqd内核线程是用来干嘛的?</h3><ul>
+<li>机器上有几核，内核就会创建几个ksoftirqd线程出来</li>
+<li>内核线程ksoftirqd包含了所有的软中断处理逻辑，软中断信息可以通过 <code>cat /proc/softirqs</code> 命令进行查看</li>
+</ul>
+<p><img data-src="/images/socket_02_07.png" alt="img"></p>
+<h3 id="tcpdump是如何工作的？"><a href="#tcpdump是如何工作的？" class="headerlink" title="tcpdump是如何工作的？"></a>tcpdump是如何工作的？</h3><blockquote>
+<p>tcpdump工作在设备层，是通过虚拟协议的方式工作的。通过调用packet_create将抓包函数以协议的形式挂到ptype_all上。这个函数会将包送到协议栈函数(ip_rcv、arp_rcv)之前，将包先送到ptype_all抓包点。</p>
+</blockquote>
+<ul>
+<li>iptable&#x2F;netfilter 主要是在IP、ARP等层实现的。如果配置过于复杂的规则，则会消耗过多的cpu，加大网络延迟</li>
+<li>tcpdump工作在设备层，将包送到ip层以前就能处理，而netfilter工作在IP、ARP等层，从下图来看，netfilter工作在tcpdump之后，所以iptable封禁规则不影响tcpdump抓包；但是发包过程恰恰相反，发包的时候netfilter先进行工作，在协议层就被过滤掉了，所以tcpdump什么都看不到。</li>
+</ul>
+<p><img data-src="/images/socket_02_08.png" alt="img"></p>
+<h3 id="网络接收过程中的CPU开销如何查看？"><a href="#网络接收过程中的CPU开销如何查看？" class="headerlink" title="网络接收过程中的CPU开销如何查看？"></a>网络接收过程中的CPU开销如何查看？</h3><blockquote>
+<p>在网络包的接收过程中，主要工作集中在硬中断和软中断上，二者的消耗可以通过top命令进行查看</p>
+</blockquote>
+<ul>
+<li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
+</ul>
+<p><img data-src="/images/socket_02_09.png" alt="img"></p>
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
       </tags>
   </entry>
   <entry>
@@ -3126,144 +3126,6 @@ sequenceDiagram
 </ul>
 </li>
 </ul>
-]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-producer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>acks</strong></td>
-<td align="left">1</td>
-<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retries</strong></td>
-<td align="left"></td>
-<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retry.backoff.ms</strong></td>
-<td align="left"></td>
-<td align="left">重试的时间间隔</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
-<td align="left">5</td>
-<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">linger.ms</td>
-<td align="left">0</td>
-<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">interceptor.classes</td>
-<td align="left"></td>
-<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left">buffer.memory</td>
-<td align="left">32 * 1024 * 1024</td>
-<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
-<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
-</tr>
-<tr>
-<td align="left">max.block.ms</td>
-<td align="left">60 * 1000</td>
-<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
-<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">batch.size</td>
-<td align="left">16 * 1024</td>
-<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">max.request.size</td>
-<td align="left">1024 * 1024</td>
-<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">compression.type</td>
-<td align="left">none</td>
-<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
-<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
-</ul>
-<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
-<ul>
-<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
-</ul>
-<p>NetworkClient:</p>
-<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
-<p>​      </p>
 ]]></content>
       <categories>
         <category>消息队列</category>
@@ -4459,6 +4321,144 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-producer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>acks</strong></td>
+<td align="left">1</td>
+<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retries</strong></td>
+<td align="left"></td>
+<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retry.backoff.ms</strong></td>
+<td align="left"></td>
+<td align="left">重试的时间间隔</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
+<td align="left">5</td>
+<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">linger.ms</td>
+<td align="left">0</td>
+<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">interceptor.classes</td>
+<td align="left"></td>
+<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left">buffer.memory</td>
+<td align="left">32 * 1024 * 1024</td>
+<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
+<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
+</tr>
+<tr>
+<td align="left">max.block.ms</td>
+<td align="left">60 * 1000</td>
+<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
+<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">batch.size</td>
+<td align="left">16 * 1024</td>
+<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">max.request.size</td>
+<td align="left">1024 * 1024</td>
+<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">compression.type</td>
+<td align="left">none</td>
+<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
+<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
+</ul>
+<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
+<ul>
+<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
+</ul>
+<p>NetworkClient:</p>
+<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
+<p>​      </p>
+]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
