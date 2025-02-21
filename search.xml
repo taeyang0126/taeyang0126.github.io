@@ -1594,80 +1594,6 @@
       </tags>
   </entry>
   <entry>
-    <title>4-Netty对象池</title>
-    <url>/2025/02/12/netty/4.netty-dui-xiang-chi/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
-<li><a href="https://zhuanlan.zhihu.com/p/483115037">Recycler对象池的精妙设计与实现</a></li>
-</ul>
-<h2 id="对象池-Recycler-的使用"><a href="#对象池-Recycler-的使用" class="headerlink" title="对象池 Recycler 的使用"></a>对象池 Recycler 的使用</h2><p><img data-src="/images/netty/04_01.png" alt="netty"></p>
-<blockquote>
-<h4 id="对象池在-PooledDirectByteBuf-类中的使用"><a href="#对象池在-PooledDirectByteBuf-类中的使用" class="headerlink" title="对象池在 PooledDirectByteBuf 类中的使用"></a>对象池在 PooledDirectByteBuf 类中的使用</h4></blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">PooledDirectByteBuf</span> <span class="keyword">extends</span> <span class="title class_">PooledByteBuf</span>&lt;ByteBuffer&gt; &#123;</span><br><span class="line">    <span class="comment">//创建对象池</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ObjectPool&lt;PooledDirectByteBuf&gt; RECYCLER = ObjectPool.newPool(</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">ObjectCreator</span>&lt;PooledDirectByteBuf&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> PooledDirectByteBuf <span class="title function_">newObject</span><span class="params">(Handle&lt;PooledDirectByteBuf&gt; handle)</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">PooledDirectByteBuf</span>(handle, <span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//对象在对象池中的回收句柄</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Handle&lt;PooledByteBuf&lt;T&gt;&gt; recyclerHandle;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> PooledDirectByteBuf <span class="title function_">newInstance</span><span class="params">(<span class="type">int</span> maxCapacity)</span> &#123;</span><br><span class="line">        <span class="comment">//从对象池中获取对象</span></span><br><span class="line">        <span class="type">PooledDirectByteBuf</span> <span class="variable">buf</span> <span class="operator">=</span> RECYCLER.get();</span><br><span class="line">        buf.reuse(maxCapacity);</span><br><span class="line">        <span class="keyword">return</span> buf;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">recycle</span><span class="params">()</span> &#123;</span><br><span class="line">         <span class="comment">//回收对象</span></span><br><span class="line">        recyclerHandle.recycle(<span class="built_in">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ................省略和对象池无关的代码..................</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<h4 id="对象池在-Channel-写入缓冲队列中的使用"><a href="#对象池在-Channel-写入缓冲队列中的使用" class="headerlink" title="对象池在 Channel 写入缓冲队列中的使用"></a>对象池在 Channel 写入缓冲队列中的使用</h4></blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">Entry</span> &#123;</span><br><span class="line"></span><br><span class="line">       <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ObjectPool&lt;Entry&gt; RECYCLER = ObjectPool.newPool(<span class="keyword">new</span> <span class="title class_">ObjectCreator</span>&lt;Entry&gt;() &#123;</span><br><span class="line">           <span class="meta">@Override</span></span><br><span class="line">           <span class="keyword">public</span> Entry <span class="title function_">newObject</span><span class="params">(Handle&lt;Entry&gt; handle)</span> &#123;</span><br><span class="line">               <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">Entry</span>(handle);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;);</span><br><span class="line"></span><br><span class="line">       <span class="comment">//recyclerHandle用于回收对象</span></span><br><span class="line">       <span class="keyword">private</span>  Handle&lt;Entry&gt; handle;</span><br><span class="line">       </span><br><span class="line">       <span class="keyword">private</span> <span class="title function_">Entry</span><span class="params">(Handle&lt;Entry&gt; handle)</span> &#123;</span><br><span class="line">           <span class="built_in">this</span>.handle = handle;</span><br><span class="line">       &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="Recycler-总体设计"><a href="#Recycler-总体设计" class="headerlink" title="Recycler 总体设计"></a>Recycler 总体设计</h2><p><img data-src="/images/netty/04_02.png" alt="netty"></p>
-<ul>
-<li>从创建线程视角来看<ul>
-<li>为了减少多线程从对象池获取对象时的并发操作，Recycle 使用了类似<code>TLAB</code>的分配方式；每个创建线程独立从<code>Stack</code>中分配对象</li>
-<li><img data-src="/images/netty/04_03.png" alt="netty"></li>
-<li>Stack 对象底层使用数组<code>DefaultHandle&lt;?&gt;[] elements</code>存储回收的池化对象</li>
-</ul>
-</li>
-<li>从回收线程视角来看<ul>
-<li><code>WeakOrderQueue</code> 表示回收线程存储待回收池化对象的地方（之所以这么设计还是为了无锁化的回收对象，避免多线程回收场景的同步竞争）</li>
-</ul>
-</li>
-</ul>
-<h3 id="Stack"><a href="#Stack" class="headerlink" title="Stack"></a>Stack</h3><blockquote>
-<p>Stack 中包含一个用数组实现的栈结构，这个栈结构正是对象池中真正用于存储池化对象的地方，每次从对象池中获取对象都会从这个栈结构中弹出栈顶元素。每次将使用完的对象归还到对象池中也是将对象压入这个栈结构中</p>
-</blockquote>
-<ul>
-<li>数组实现的栈结构用来存放对象池中的对象，每个线程绑定一个独立的 Stack 用来存储由该线程创建出来并回收到对象池中的对象。</li>
-<li>WeakOrderQueue 链表，head 指针指向 WeakOrderQueue 链表的头结点，cursor 指针指向链表的当前节点，prev 指针指向当前节点的前一个节点。WeakOrderQueue 链表是用来存储其他线程帮助本线程回收的对象（我们称之为待回收对象）。其中 WeakOrderQueue 链表中的每一个节点对应一个其他线程，这个其他线程为本线程回收的对象存储在对应的 WeakOrderQueue 节点中。</li>
-<li>当创建线程获取对象时，只会从 Stack 结构的数组栈中获取，因为是单线程操作数组栈，自然是不会存在同步竞争的。当 Stack 结构中的数组栈没有任何对象时，那么创建线程就会根据 cursor 指针遍历 Stack 结构中的 WeakOrderQueue 链表，将当前 WeakOrderQueue 节点存放的待回收对象转移至数组栈中。如果 WeakOrderQueue 链表中也没有任何待回收对象可以转移。那么创建线程在对象池中就直接创建一个对象出来返回。</li>
-</ul>
-<h3 id="WeakOrderQueue"><a href="#WeakOrderQueue" class="headerlink" title="WeakOrderQueue"></a>WeakOrderQueue</h3><p><img data-src="/images/netty/04_04.png" alt="netty"></p>
-<ul>
-<li>WeakOrderQueue 的结构其实是一个链表结构。其中包含了链表的头结点 Head，以及链表尾结点指针 Tail。</li>
-<li>链表中的元素类型为 Link 类型，Link 类型中包含了一个 elements 数组，该数组用来存放回收线程收集的待回收对象。</li>
-<li>Link 类型中还包含了 readIndex 用来指示当前 elements 数组中的读取位置。writeIndex 用来指示 elements 数组的写入位置。elements 数组中的容量默认为<code>16</code>，也就是说一个 Link 节点最多可以存放 16 个待回收对象。当回收线程收集的待回收对象超过 16 个时，就会新创建一个 Link 节点插入到 Link 链表的尾部。</li>
-<li>当需要将 WeakoOrderQueue 节点中所存放的待回收对象回收转移至其对应的 Stack 结构中的数组栈中时，创建线程会遍历当前 WeakOrderQueue 节点中的 Link 链表，然后从链表的 Head 节点开始，将 Head 节点中包裹的 Link 链表头结点中存放的待回收对象回收至创建线程对应的 Stack 中。一次最多转移一个 Link 大小的待回收对象（16 个）。</li>
-<li>当 Link 节点中的待回收对象全部转移至创建线程对应的 Stack 中时，会立马将这个 Link 节点从当前 WeakOrderQueue 节点中的 Link 链表里删除，随后 Head 节点向后移动指向下一个 Link 节点。</li>
-<li>head 指针始终指向第一个未被转移完毕的 Link 节点，创建线程从 head 节点处读取转移待回收对象，回收线程从 Tail 节点处插入待回收对象。这样转移操作和插入操作互不影响、没有同步的开销。</li>
-</ul>
-<h3 id="属性详解"><a href="#属性详解" class="headerlink" title="属性详解"></a>属性详解</h3><h4 id="对象池中的容量控制"><a href="#对象池中的容量控制" class="headerlink" title="对象池中的容量控制"></a>对象池中的容量控制</h4><p><img data-src="/images/netty/04_05.png" alt="netty"></p>
-<ul>
-<li><code>DEFAULT_INITIAL_MAX_CAPACITY_PER_THREAD</code>：定义每个创建线程对应的 Stack 结构中的数组栈初始默认的最大容量。默认为 4096 个。可由 JVM 启动参数 <code>-D io.netty.recycler.maxCapacity</code> 指定。</li>
-<li><code>DEFAULT_MAX_CAPACITY_PER_THREAD</code>：定义每个创建线程对应的 Stack 结构中的数组栈的最大容量。可由 JVM 启动参数 <code>-D io.netty.recycler.maxCapacityPerThread</code> 指定，如无特殊指定，即采用 DEFAULT_INITIAL_MAX_CAPACITY_PER_THREAD 的值，默认为 4096 个。</li>
-<li><code>INITIAL_CAPACITY </code>： 定义每个创建线程对应的 Stack 结构中的数组栈的初始容量。计算公式为<code>min(DEFAULT_MAX_CAPACITY_PER_THREAD, 256)</code>，默认为 256 个。当池化对象超过 256 个时，则对对象池进行扩容，但不能超过最大容量 DEFAULT_MAX_CAPACITY_PER_THREAD。</li>
-</ul>
-<h4 id="回收线程可回收对象的容量控制"><a href="#回收线程可回收对象的容量控制" class="headerlink" title="回收线程可回收对象的容量控制"></a>回收线程可回收对象的容量控制</h4><ul>
-<li><code>MAX_SHARED_CAPACITY_FACTOR</code> : 针对创建线程中的 Stack，其对应的所有回收线程总共可帮助其回收的对象总量计算因子。默认为 2。可通过 JVM 参数 <code>-D io.netty.recycler.maxSharedCapacityFactor</code> 指定，总共回收对象总量就是通过对象池的最大容量和该计算因子计算出来的。计算公式： <code>max(maxCapacity / maxSharedCapacityFactor, LINK_CAPACITY)</code> 。由此我们可以知道创建线程对应的所有回收线程总共可帮助其回收的对象总量默认为 2048 个，最小回收容量为 LINK_CAPACITY 默认为 16。</li>
-<li><code>MAX_DELAYED_QUEUES_PER_THREAD</code> : 该参数定义每个回收线程最多可帮助多少个创建线程回收对象。默认为：CPU 核数 * 2。可通过 JVM 参数 <code>-D io.netty.recycler.maxDelayedQueuesPerThread</code> 指定。注意：这里是站在回收线程的角度。</li>
-<li><code>LINK_CAPACITY </code>： 在创建线程对应的 Stack 结构中的 WeakOrderQueue 链表中，回收线程对应的 WeakOrderQueue 节点中的 Link 链表中的 Link 节点存储待回收对象的容量。默认为 16，可通过 JVM 参数 <code>-D io.netty.recycler.linkCapacity</code> 指定。</li>
-</ul>
-<h4 id="对象回收频率控制"><a href="#对象回收频率控制" class="headerlink" title="对象回收频率控制"></a>对象回收频率控制</h4><ul>
-<li><code>RATIO</code>： 创建线程回收对象时的回收比例，默认是 8，表示只回收 1&#x2F;8 的对象。也就是产生 8 个对象回收一个对象到对象池中。池化对象在创建线程中被创建出来后，一直在创建线程中被处理，处理完毕后由创建线程直接进行回收。而为了避免对象池不可控制地迅速膨胀，所以需要对创建线程回收对象的频率进行限制。这个回收频率由参数 RATIO 控制，默认为 8，可由 JVM 启动参数 <code>-D io.netty.recycler.ratio</code> 指定。表示创建线程只回收 1 &#x2F; 8 的对象，也就是每创建 8 个对象最后只回收 1 个对象。</li>
-<li><code>DELAYED_QUEUE_RATIO</code>：回收线程回收对象时的回收比例，默认也是 8，同样也是为了避免回收线程回收队列疯狂增长 回收比例也是 1&#x2F;8。池化对象在创建线程中被创建出来，但是业务的相关处理是在回收线程中，业务处理完毕后由回收线程负责回收。前边提到对象回收有一个基本原则就是对象是谁创建的，就要回收到创建线程对应的 Stack 中。所以回收线程就需要将池化对象回收至其创建线程对应的 Stack 中的 WeakOrderQueue 链表中。并等待创建线程将 WeakOrderQueue 链表中的待回收对象转移至 Stack 中的数组栈中。同样，回收线程也需要控制回收频率，由参数 DELAYED_QUEUE_RATIO 进行控制，默认也是 8，可由 JVM 启动参数 <code>-D io.netty.recycler.delayedQueue.ratio</code> 指定，表示回收线程每处理完 8 个对象才回收 1 个对象。</li>
-</ul>
-<h3 id="从对象池中获取对象"><a href="#从对象池中获取对象" class="headerlink" title="从对象池中获取对象"></a>从对象池中获取对象</h3><p><img data-src="/images/netty/04_06.png" alt="netty"></p>
-<h3 id="从Stack中获取池化对象"><a href="#从Stack中获取池化对象" class="headerlink" title="从Stack中获取池化对象"></a>从Stack中获取池化对象</h3><p><img data-src="/images/netty/04_07.png" alt="netty"></p>
-<h3 id="转移回收线程回收的对象到Stack中"><a href="#转移回收线程回收的对象到Stack中" class="headerlink" title="转移回收线程回收的对象到Stack中"></a>转移回收线程回收的对象到Stack中</h3><p><img data-src="/images/netty/04_08.png" alt="netty"></p>
-<p><img data-src="/images/netty/04_09.png" alt="netty"></p>
-<h3 id="从WeakOrderQueue中转移回收对象"><a href="#从WeakOrderQueue中转移回收对象" class="headerlink" title="从WeakOrderQueue中转移回收对象"></a>从WeakOrderQueue中转移回收对象</h3><p><img data-src="/images/netty/04_10.png" alt="netty"></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>3-Netty接收网络连接</title>
     <url>/2025/02/12/netty/3.netty-jie-shou-wang-luo-lian-jie/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
@@ -1767,6 +1693,80 @@
 </ul>
 <p><img data-src="/images/netty/03_07.png" alt="netty"></p>
 <p><img data-src="/images/netty/03_08.png" alt="netty"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>4-Netty对象池</title>
+    <url>/2025/02/12/netty/4.netty-dui-xiang-chi/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
+<li><a href="https://zhuanlan.zhihu.com/p/483115037">Recycler对象池的精妙设计与实现</a></li>
+</ul>
+<h2 id="对象池-Recycler-的使用"><a href="#对象池-Recycler-的使用" class="headerlink" title="对象池 Recycler 的使用"></a>对象池 Recycler 的使用</h2><p><img data-src="/images/netty/04_01.png" alt="netty"></p>
+<blockquote>
+<h4 id="对象池在-PooledDirectByteBuf-类中的使用"><a href="#对象池在-PooledDirectByteBuf-类中的使用" class="headerlink" title="对象池在 PooledDirectByteBuf 类中的使用"></a>对象池在 PooledDirectByteBuf 类中的使用</h4></blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">PooledDirectByteBuf</span> <span class="keyword">extends</span> <span class="title class_">PooledByteBuf</span>&lt;ByteBuffer&gt; &#123;</span><br><span class="line">    <span class="comment">//创建对象池</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ObjectPool&lt;PooledDirectByteBuf&gt; RECYCLER = ObjectPool.newPool(</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">ObjectCreator</span>&lt;PooledDirectByteBuf&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> PooledDirectByteBuf <span class="title function_">newObject</span><span class="params">(Handle&lt;PooledDirectByteBuf&gt; handle)</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">PooledDirectByteBuf</span>(handle, <span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//对象在对象池中的回收句柄</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Handle&lt;PooledByteBuf&lt;T&gt;&gt; recyclerHandle;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> PooledDirectByteBuf <span class="title function_">newInstance</span><span class="params">(<span class="type">int</span> maxCapacity)</span> &#123;</span><br><span class="line">        <span class="comment">//从对象池中获取对象</span></span><br><span class="line">        <span class="type">PooledDirectByteBuf</span> <span class="variable">buf</span> <span class="operator">=</span> RECYCLER.get();</span><br><span class="line">        buf.reuse(maxCapacity);</span><br><span class="line">        <span class="keyword">return</span> buf;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">recycle</span><span class="params">()</span> &#123;</span><br><span class="line">         <span class="comment">//回收对象</span></span><br><span class="line">        recyclerHandle.recycle(<span class="built_in">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ................省略和对象池无关的代码..................</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<h4 id="对象池在-Channel-写入缓冲队列中的使用"><a href="#对象池在-Channel-写入缓冲队列中的使用" class="headerlink" title="对象池在 Channel 写入缓冲队列中的使用"></a>对象池在 Channel 写入缓冲队列中的使用</h4></blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">Entry</span> &#123;</span><br><span class="line"></span><br><span class="line">       <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ObjectPool&lt;Entry&gt; RECYCLER = ObjectPool.newPool(<span class="keyword">new</span> <span class="title class_">ObjectCreator</span>&lt;Entry&gt;() &#123;</span><br><span class="line">           <span class="meta">@Override</span></span><br><span class="line">           <span class="keyword">public</span> Entry <span class="title function_">newObject</span><span class="params">(Handle&lt;Entry&gt; handle)</span> &#123;</span><br><span class="line">               <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">Entry</span>(handle);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;);</span><br><span class="line"></span><br><span class="line">       <span class="comment">//recyclerHandle用于回收对象</span></span><br><span class="line">       <span class="keyword">private</span>  Handle&lt;Entry&gt; handle;</span><br><span class="line">       </span><br><span class="line">       <span class="keyword">private</span> <span class="title function_">Entry</span><span class="params">(Handle&lt;Entry&gt; handle)</span> &#123;</span><br><span class="line">           <span class="built_in">this</span>.handle = handle;</span><br><span class="line">       &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Recycler-总体设计"><a href="#Recycler-总体设计" class="headerlink" title="Recycler 总体设计"></a>Recycler 总体设计</h2><p><img data-src="/images/netty/04_02.png" alt="netty"></p>
+<ul>
+<li>从创建线程视角来看<ul>
+<li>为了减少多线程从对象池获取对象时的并发操作，Recycle 使用了类似<code>TLAB</code>的分配方式；每个创建线程独立从<code>Stack</code>中分配对象</li>
+<li><img data-src="/images/netty/04_03.png" alt="netty"></li>
+<li>Stack 对象底层使用数组<code>DefaultHandle&lt;?&gt;[] elements</code>存储回收的池化对象</li>
+</ul>
+</li>
+<li>从回收线程视角来看<ul>
+<li><code>WeakOrderQueue</code> 表示回收线程存储待回收池化对象的地方（之所以这么设计还是为了无锁化的回收对象，避免多线程回收场景的同步竞争）</li>
+</ul>
+</li>
+</ul>
+<h3 id="Stack"><a href="#Stack" class="headerlink" title="Stack"></a>Stack</h3><blockquote>
+<p>Stack 中包含一个用数组实现的栈结构，这个栈结构正是对象池中真正用于存储池化对象的地方，每次从对象池中获取对象都会从这个栈结构中弹出栈顶元素。每次将使用完的对象归还到对象池中也是将对象压入这个栈结构中</p>
+</blockquote>
+<ul>
+<li>数组实现的栈结构用来存放对象池中的对象，每个线程绑定一个独立的 Stack 用来存储由该线程创建出来并回收到对象池中的对象。</li>
+<li>WeakOrderQueue 链表，head 指针指向 WeakOrderQueue 链表的头结点，cursor 指针指向链表的当前节点，prev 指针指向当前节点的前一个节点。WeakOrderQueue 链表是用来存储其他线程帮助本线程回收的对象（我们称之为待回收对象）。其中 WeakOrderQueue 链表中的每一个节点对应一个其他线程，这个其他线程为本线程回收的对象存储在对应的 WeakOrderQueue 节点中。</li>
+<li>当创建线程获取对象时，只会从 Stack 结构的数组栈中获取，因为是单线程操作数组栈，自然是不会存在同步竞争的。当 Stack 结构中的数组栈没有任何对象时，那么创建线程就会根据 cursor 指针遍历 Stack 结构中的 WeakOrderQueue 链表，将当前 WeakOrderQueue 节点存放的待回收对象转移至数组栈中。如果 WeakOrderQueue 链表中也没有任何待回收对象可以转移。那么创建线程在对象池中就直接创建一个对象出来返回。</li>
+</ul>
+<h3 id="WeakOrderQueue"><a href="#WeakOrderQueue" class="headerlink" title="WeakOrderQueue"></a>WeakOrderQueue</h3><p><img data-src="/images/netty/04_04.png" alt="netty"></p>
+<ul>
+<li>WeakOrderQueue 的结构其实是一个链表结构。其中包含了链表的头结点 Head，以及链表尾结点指针 Tail。</li>
+<li>链表中的元素类型为 Link 类型，Link 类型中包含了一个 elements 数组，该数组用来存放回收线程收集的待回收对象。</li>
+<li>Link 类型中还包含了 readIndex 用来指示当前 elements 数组中的读取位置。writeIndex 用来指示 elements 数组的写入位置。elements 数组中的容量默认为<code>16</code>，也就是说一个 Link 节点最多可以存放 16 个待回收对象。当回收线程收集的待回收对象超过 16 个时，就会新创建一个 Link 节点插入到 Link 链表的尾部。</li>
+<li>当需要将 WeakoOrderQueue 节点中所存放的待回收对象回收转移至其对应的 Stack 结构中的数组栈中时，创建线程会遍历当前 WeakOrderQueue 节点中的 Link 链表，然后从链表的 Head 节点开始，将 Head 节点中包裹的 Link 链表头结点中存放的待回收对象回收至创建线程对应的 Stack 中。一次最多转移一个 Link 大小的待回收对象（16 个）。</li>
+<li>当 Link 节点中的待回收对象全部转移至创建线程对应的 Stack 中时，会立马将这个 Link 节点从当前 WeakOrderQueue 节点中的 Link 链表里删除，随后 Head 节点向后移动指向下一个 Link 节点。</li>
+<li>head 指针始终指向第一个未被转移完毕的 Link 节点，创建线程从 head 节点处读取转移待回收对象，回收线程从 Tail 节点处插入待回收对象。这样转移操作和插入操作互不影响、没有同步的开销。</li>
+</ul>
+<h3 id="属性详解"><a href="#属性详解" class="headerlink" title="属性详解"></a>属性详解</h3><h4 id="对象池中的容量控制"><a href="#对象池中的容量控制" class="headerlink" title="对象池中的容量控制"></a>对象池中的容量控制</h4><p><img data-src="/images/netty/04_05.png" alt="netty"></p>
+<ul>
+<li><code>DEFAULT_INITIAL_MAX_CAPACITY_PER_THREAD</code>：定义每个创建线程对应的 Stack 结构中的数组栈初始默认的最大容量。默认为 4096 个。可由 JVM 启动参数 <code>-D io.netty.recycler.maxCapacity</code> 指定。</li>
+<li><code>DEFAULT_MAX_CAPACITY_PER_THREAD</code>：定义每个创建线程对应的 Stack 结构中的数组栈的最大容量。可由 JVM 启动参数 <code>-D io.netty.recycler.maxCapacityPerThread</code> 指定，如无特殊指定，即采用 DEFAULT_INITIAL_MAX_CAPACITY_PER_THREAD 的值，默认为 4096 个。</li>
+<li><code>INITIAL_CAPACITY </code>： 定义每个创建线程对应的 Stack 结构中的数组栈的初始容量。计算公式为<code>min(DEFAULT_MAX_CAPACITY_PER_THREAD, 256)</code>，默认为 256 个。当池化对象超过 256 个时，则对对象池进行扩容，但不能超过最大容量 DEFAULT_MAX_CAPACITY_PER_THREAD。</li>
+</ul>
+<h4 id="回收线程可回收对象的容量控制"><a href="#回收线程可回收对象的容量控制" class="headerlink" title="回收线程可回收对象的容量控制"></a>回收线程可回收对象的容量控制</h4><ul>
+<li><code>MAX_SHARED_CAPACITY_FACTOR</code> : 针对创建线程中的 Stack，其对应的所有回收线程总共可帮助其回收的对象总量计算因子。默认为 2。可通过 JVM 参数 <code>-D io.netty.recycler.maxSharedCapacityFactor</code> 指定，总共回收对象总量就是通过对象池的最大容量和该计算因子计算出来的。计算公式： <code>max(maxCapacity / maxSharedCapacityFactor, LINK_CAPACITY)</code> 。由此我们可以知道创建线程对应的所有回收线程总共可帮助其回收的对象总量默认为 2048 个，最小回收容量为 LINK_CAPACITY 默认为 16。</li>
+<li><code>MAX_DELAYED_QUEUES_PER_THREAD</code> : 该参数定义每个回收线程最多可帮助多少个创建线程回收对象。默认为：CPU 核数 * 2。可通过 JVM 参数 <code>-D io.netty.recycler.maxDelayedQueuesPerThread</code> 指定。注意：这里是站在回收线程的角度。</li>
+<li><code>LINK_CAPACITY </code>： 在创建线程对应的 Stack 结构中的 WeakOrderQueue 链表中，回收线程对应的 WeakOrderQueue 节点中的 Link 链表中的 Link 节点存储待回收对象的容量。默认为 16，可通过 JVM 参数 <code>-D io.netty.recycler.linkCapacity</code> 指定。</li>
+</ul>
+<h4 id="对象回收频率控制"><a href="#对象回收频率控制" class="headerlink" title="对象回收频率控制"></a>对象回收频率控制</h4><ul>
+<li><code>RATIO</code>： 创建线程回收对象时的回收比例，默认是 8，表示只回收 1&#x2F;8 的对象。也就是产生 8 个对象回收一个对象到对象池中。池化对象在创建线程中被创建出来后，一直在创建线程中被处理，处理完毕后由创建线程直接进行回收。而为了避免对象池不可控制地迅速膨胀，所以需要对创建线程回收对象的频率进行限制。这个回收频率由参数 RATIO 控制，默认为 8，可由 JVM 启动参数 <code>-D io.netty.recycler.ratio</code> 指定。表示创建线程只回收 1 &#x2F; 8 的对象，也就是每创建 8 个对象最后只回收 1 个对象。</li>
+<li><code>DELAYED_QUEUE_RATIO</code>：回收线程回收对象时的回收比例，默认也是 8，同样也是为了避免回收线程回收队列疯狂增长 回收比例也是 1&#x2F;8。池化对象在创建线程中被创建出来，但是业务的相关处理是在回收线程中，业务处理完毕后由回收线程负责回收。前边提到对象回收有一个基本原则就是对象是谁创建的，就要回收到创建线程对应的 Stack 中。所以回收线程就需要将池化对象回收至其创建线程对应的 Stack 中的 WeakOrderQueue 链表中。并等待创建线程将 WeakOrderQueue 链表中的待回收对象转移至 Stack 中的数组栈中。同样，回收线程也需要控制回收频率，由参数 DELAYED_QUEUE_RATIO 进行控制，默认也是 8，可由 JVM 启动参数 <code>-D io.netty.recycler.delayedQueue.ratio</code> 指定，表示回收线程每处理完 8 个对象才回收 1 个对象。</li>
+</ul>
+<h3 id="从对象池中获取对象"><a href="#从对象池中获取对象" class="headerlink" title="从对象池中获取对象"></a>从对象池中获取对象</h3><p><img data-src="/images/netty/04_06.png" alt="netty"></p>
+<h3 id="从Stack中获取池化对象"><a href="#从Stack中获取池化对象" class="headerlink" title="从Stack中获取池化对象"></a>从Stack中获取池化对象</h3><p><img data-src="/images/netty/04_07.png" alt="netty"></p>
+<h3 id="转移回收线程回收的对象到Stack中"><a href="#转移回收线程回收的对象到Stack中" class="headerlink" title="转移回收线程回收的对象到Stack中"></a>转移回收线程回收的对象到Stack中</h3><p><img data-src="/images/netty/04_08.png" alt="netty"></p>
+<p><img data-src="/images/netty/04_09.png" alt="netty"></p>
+<h3 id="从WeakOrderQueue中转移回收对象"><a href="#从WeakOrderQueue中转移回收对象" class="headerlink" title="从WeakOrderQueue中转移回收对象"></a>从WeakOrderQueue中转移回收对象</h3><p><img data-src="/images/netty/04_10.png" alt="netty"></p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
@@ -2359,51 +2359,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>linux内核发送网络包</title>
-    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
-    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
-<ul>
-<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
-<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
-<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
-<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
-<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
-<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
-<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
-</ol>
-</li>
-</ul>
-</li>
-<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
-<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
-<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
-</ul>
-</li>
-<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
-<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
-<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
-</ul>
-</li>
-</ul>
-<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
-<p>指待发送数据的内存拷贝</p>
-</blockquote>
-<ol>
-<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
-<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
-<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>socket</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>linux内核接收网络包</title>
     <url>/2025/02/09/wang-luo/linux-nei-he-jie-shou-wang-luo-bao/posts/undefined/</url>
     <content><![CDATA[<h3 id="RingBuffer"><a href="#RingBuffer" class="headerlink" title="RingBuffer"></a>RingBuffer</h3><h4 id="RingBuffer到底是什么"><a href="#RingBuffer到底是什么" class="headerlink" title="RingBuffer到底是什么?"></a>RingBuffer到底是什么?</h4><blockquote>
@@ -2460,6 +2415,51 @@ sequenceDiagram
 <li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
 </ul>
 <p><img data-src="/images/socket_02_09.png" alt="img"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>linux内核发送网络包</title>
+    <url>/2025/02/09/wang-luo/linux-nei-he-fa-song-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="网络发送过程汇总"><a href="#网络发送过程汇总" class="headerlink" title="网络发送过程汇总"></a>网络发送过程汇总</h3><p><img data-src="/images/socket_02_10.png" alt="img"></p>
+<ul>
+<li>上图中网络设备子系统在发送网络包的时候，是通过while循环不断地从队列中取出skb并进行发送。这时候其实都是占用的用户进程的系统态时间(sy)，只有当<code>quota</code> 用尽或者其他进程需要cpu时才触发软中断进行发送。</li>
+<li>网络设备子系统的队列和网卡驱动的 Ring Buffer 实际上是两个不同的概念<ul>
+<li>网络设备子系统的队列是在内核网络栈中的软件队列，当数据包（skb）准备发送时，它首先被放入这个软件队列，这个队列主要用于流量控制、QoS（服务质量）管理等目的</li>
+<li>网卡驱动的 Ring Buffer是一个硬件级别的队列，Ring Buffer 存储的不是完整的 skb，而是指向内存中数据包的描述符。</li>
+<li>Ring Buffer 包含两个主要的数组，两个数组相同index下对应存储了同一个skb，只不过内核需要的是skb，网卡需要具体的物理地址，通过此设计当网卡发送完毕后，内核通过同一个index能定位到skb从而进行清理等工作。<ol>
+<li>描述符数组（Descriptor Ring）主要是网卡使用</li>
+<li>缓冲区信息数组（Buffer Info Array）主要是内核使用</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>在监控内核发送数据消耗的cpu时，应该将sy、si都考虑进来<ul>
+<li>网络包发送过程中，用户进程(在内核态)完成了绝大部分的工作，甚至连调用驱动的工作都干了。只有当内核态进程被切走前才会发起软中断。发送过程中，绝大部分（90%）以上的开销都是在用户进程内核态消耗掉的。</li>
+<li>只有一少部分情况才会触发软中断（NET_TX类型），由软中断ksoftirqd线程来发送。</li>
+</ul>
+</li>
+<li>在服务器上查看&#x2F;proc&#x2F;softirqs，为什么NET_RX比NET_TX大的多的多？<ul>
+<li>当数据发送完毕后，通过硬中断的方式来通知驱动发送完成，但是硬中断无论是数据接收，还是发送完毕，触发的软中断都是NET_RX_SOFTIRQ。</li>
+<li>对于读来说，都是需要经过NET_RX软中断的，都走ksoftirqd内核线程，而对于发送来说，绝大部分工作都是在用户进程内核态处理了，只有系统态配额用尽才发出NET_TX，让软中断上。</li>
+</ul>
+</li>
+</ul>
+<h3 id="发送网络数据的时候都涉及哪些内存拷贝"><a href="#发送网络数据的时候都涉及哪些内存拷贝" class="headerlink" title="发送网络数据的时候都涉及哪些内存拷贝?"></a>发送网络数据的时候都涉及哪些内存拷贝?</h3><blockquote>
+<p>指待发送数据的内存拷贝</p>
+</blockquote>
+<ol>
+<li>第一次拷贝操作是在内核申请完skb之后，这时候会将用户传递进来的buffer里的数据内容都拷贝到skb。如果要发送的数据量比较大，这个拷贝操作开销不小。</li>
+<li>第二次拷贝操作是从传输层进入网络层的时候，每一个skb都会被克隆出来一个新的副本。目的是保留原始的skb，当网络发现对方没有返回ack的时候，还可以重新发送，以实现TCP中要求的可靠传输，不过这次只是浅拷贝，只拷贝skb描述符本身，所指向的数据还是复用的。</li>
+<li>第三次拷贝不是必须的，只有当IP层发现skb大于MTU时才需要进行。此时会再申请额外的skb，并讲究原来的skb拷贝为多个小的skb。</li>
+</ol>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>网络</category>
