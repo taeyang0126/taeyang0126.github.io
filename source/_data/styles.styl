@@ -3,31 +3,38 @@
   margin: 24px 0;
   padding: 24px;
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  background: transparent !important; // 改为透明
   transition: transform 0.2s ease;
-  
+  color: #e5e5e5;
+
   &:hover {
     transform: translateY(-1px);
   }
 }
 
+.post-header,
+.post-body,
+.post-footer {
+  background: transparent !important;
+}
+
+
 // 链接样式
 a {
-  color: #0073aa;
-  text-decoration: none;
-  
+  color: #7aa2f7; // 修改链接颜色
+
   &:hover {
-    color: #005177;
+    color: #bb9af7;
   }
 }
 
 // 标题样式
 .post-title {
   font-weight: 600;
-  
+  color: #fff !important; // 修改标题颜色
+
   &:hover {
-    color: #0073aa;
+    color: #7aa2f7;
   }
 }
 
@@ -38,26 +45,32 @@ a {
   border-radius: 2px;
 }
 
-// 布局宽度
+// 主要内容区域
 .main-inner {
   max-width: 1100px;
   width: 85%;
   padding: 40px 50px;
-  background: #fff;
+  background: rgba(45, 45, 45, 0.8) !important;
+  backdrop-filter: blur(10px);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .header-inner {
   max-width: 1200px;
   width: 90%;
-  background: #fff;
+  background: rgba(45, 45, 45, 0.8) !important; // 修改这里
+  backdrop-filter: blur(10px);
   border-radius: 0 0 12px 12px;
 }
 
 // 简化背景
 body {
-  background: #f5f7fa;
+    background:url(/images/body.png);
+    background-repeat: no-repeat;
+    background-attachment:fixed; //不重复
+    background-size: cover;      //填充
+    background-position:50% 50%;
 }
 
 // 响应式调整
@@ -98,13 +111,13 @@ body::-webkit-scrollbar {
   height: 8px;
 }
 
+// 滚动条样式
 body::-webkit-scrollbar-thumb {
-  background: #c0c4cc;
-  border-radius: 4px;
+  background: #444;
 }
 
 body::-webkit-scrollbar-track {
-  background: #f5f7fa;
+  background: #2d2d2d;
 }
 
 // 图片样式
@@ -118,11 +131,11 @@ body::-webkit-scrollbar-track {
 .highlight {
   margin: 1.5em 0;        // 增加上下间距
   padding: 1.2em;         // 增加内部padding
-  background: #f2f2f2;    // 稍微深一点的背景色，提高对比度
+  background: rgba(35, 35, 35, 0.8) !important; // 修改代码块背景
   border-radius: 8px;     // 增加圆角
   overflow-x: auto;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);  // 添加轻微阴影
-  border: 1px solid #eee;  // 添加边框
+  border: 1px solid rgba(255, 255, 255, 0.1);
 
   // 选中样式
   *::selection {
@@ -138,6 +151,8 @@ body::-webkit-scrollbar-track {
 
 // 相关文章样式
 .post-related {
+  background: transparent !important;
+  color: #e5e5e5;
   margin: 2rem 0;
   padding: 1.5rem;
   background: #f8f9fa;
@@ -192,20 +207,15 @@ body::-webkit-scrollbar-track {
   }
 }
 
-// 搜索弹窗样式
+// 搜索相关样式修改
 .search-popup {
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(10px);
+  background: rgba(45, 45, 45, 0.95) !important;
 }
 
-// 搜索框样式
 .search-popup .search-input input {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  border-radius: 8px;
-  padding: 10px 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: rgba(35, 35, 35, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 // 搜索结果样式
@@ -214,7 +224,8 @@ body::-webkit-scrollbar-track {
 }
 
 .search-result-list li {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(45, 45, 45, 0.8);
+  color: #e5e5e5;
   border-radius: 8px;
   margin: 10px 0;
   padding: 15px;
@@ -286,3 +297,41 @@ body::-webkit-scrollbar-track {
 .local-search-result-content {
   color: #666;
 }
+
+//博客内容透明化
+//文章内容的透明度设置
+.content-wrap {
+  opacity: 1; // 移除这个opacity设置，因为我们已经使用rgba设置透明度
+}
+
+.sidebar {
+  background: rgba(45, 45, 45, 0.8) !important;
+  backdrop-filter: blur(10px);
+}
+
+// 补充一些其他元素的暗色样式
+.post-meta {
+  color: #bbb !important;
+}
+
+
+//菜单栏的透明度设置
+.header-inner {
+  background: rgba(255,255,255,0.9);
+}
+
+//搜索框（local-search）的透明度设置
+.popup {
+  opacity: 0.9;
+}
+
+// 文章内的标题颜色
+.post-body h1,
+.post-body h2,
+.post-body h3,
+.post-body h4,
+.post-body h5,
+.post-body h6 {
+  color: #fff !important;
+}
+
