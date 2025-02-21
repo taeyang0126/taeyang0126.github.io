@@ -108,3 +108,7 @@ JFR 配置限制
      ```
      - 执行结果，出现 NoSuchMethodError 错误没关系，因为打包的是最新的 whitebox，使用的jdk版本可能没有某些最新的api
      ![img](/images/jfr/03.png)
+
+## JFR 事件
+### Java Application/Object Allocation In New TLAB
+

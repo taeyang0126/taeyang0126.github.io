@@ -15,3 +15,22 @@ description: 文章描述
 top: true  # 置顶文章
 comments: true  # 是否开启评论
 ---
+
+## mermaid
+{% mermaid %}
+sequenceDiagram
+    participant S as Socket
+    participant WQ as Wait Queue
+    participant CB as Callback (ep_poll_callback)
+    participant EP as eppoll_entry
+    participant EI as epitem
+    participant EPL as eventpoll
+
+    S->>S: 接收数据
+    S->>WQ: 触发等待队列
+    WQ->>CB: 调用回调函数
+    CB->>EP: container_of 找到 eppoll_entry
+    EP->>EI: 访问 base 指针找到 epitem
+    EI->>EPL: 将 epitem 加入活跃队列
+{% endmermaid %}
+
