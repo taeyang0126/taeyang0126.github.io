@@ -1,6 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>C语言基础知识</title>
+    <url>/2025/02/10/c/c-yu-yan-ji-chu-zhi-shi/posts/undefined/</url>
+    <content><![CDATA[<h3 id="指针"><a href="#指针" class="headerlink" title="指针"></a>指针</h3><ul>
+<li><strong>&amp;</strong> 获取变量地址</li>
+<li>***** 说明变量为指针变量，存储的是另一个变量的地址；*<strong>p</strong> 若p本身已经是地址，那么能获取到这个地址对应的值</li>
+<li>多级指针使用多个 ***** 表示</li>
+<li>数组名不代表整个数组，只代表数组首元素的地址，对这个<strong>地址+1</strong>即可获取数组下一个元素的地址</li>
+<li><strong>char</strong> <strong>string[]</strong> 数组定义字符串，<strong>char*</strong> <strong>str</strong> <strong>&#x3D; “x”</strong> 指针定义字符串</li>
+<li>函数指针，函数名代表函数的地址。定义函数指针技巧如下: <ul>
+<li>把要指向函数头拷贝过来</li>
+<li>把函数名称使用小括号括起来</li>
+<li>在函数名称前面加上一个 *</li>
+<li>修改函数名称</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">sum</span><span class="params">(<span class="type">int</span> a, <span class="type">int</span> b)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> a + b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">multi</span><span class="params">(<span class="type">int</span> a, <span class="type">int</span> b)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> a * b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 计算func结果，并打印</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">printFunc</span><span class="params">(<span class="type">char</span> *prefix, <span class="type">int</span> (*func)(<span class="type">int</span> a, <span class="type">int</span> b), <span class="type">int</span> a, <span class="type">int</span> b)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> c = func(a, b);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;[%d %s %d] = %d\n&quot;</span>, a, prefix, b, c);</span><br><span class="line">    <span class="keyword">return</span> c;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// a 是一个变量，直接获取a那么得到的是具体的值也就是1</span></span><br><span class="line">    <span class="comment">// 怎么获取变量a的地址呢？&amp;a</span></span><br><span class="line">    <span class="type">int</span> a = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 现在可以使用一个指针变量指向a的地址，而不是a</span></span><br><span class="line">    <span class="type">int</span>* b = &amp;a;</span><br><span class="line">    <span class="comment">// 这里表示直接获取变量b的值，我们知道变量b存储的是地址，所以这里显示的地址</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;b: %p\n&quot;</span>, b);</span><br><span class="line">    <span class="comment">// 怎么通过这个地址获取到地址指向的值呢？使用 *</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;b: %d\n&quot;</span>, *b);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 二级指针，此变量存放的也是地址，但是不是具体变量的地址，而是一个指针的地址</span></span><br><span class="line">    <span class="type">int</span>** c = &amp;b;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;c: %p\n&quot;</span>, c);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;c: %p\n&quot;</span>, *c);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;c: %d\n&quot;</span>, **c);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 数组名d不代表整个数组,只代表数组首元素的地址</span></span><br><span class="line">    <span class="type">int</span> d[<span class="number">3</span>] = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>&#125;;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;d: %p\n&quot;</span>, d);</span><br><span class="line">    <span class="type">int</span>* p = d;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p: %p\n&quot;</span>, p);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p0: %d\n&quot;</span>, *(p));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p1: %d\n&quot;</span>, *(p + <span class="number">1</span>));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p2: %d\n&quot;</span>, *(p + <span class="number">2</span>));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 定义字符串</span></span><br><span class="line">    <span class="comment">// 1. 使用数组</span></span><br><span class="line">    <span class="type">char</span> <span class="built_in">string</span>[] = <span class="string">&quot;我是...&quot;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;s: %s\n&quot;</span>, <span class="built_in">string</span>);</span><br><span class="line">    <span class="comment">// 2. 字符串指针指向字符串</span></span><br><span class="line">    <span class="comment">// 用字符指针来保存字符串,它保存的是字符串常量地址,常量区是只读的,所以我们不可以修改字符串中的字符</span></span><br><span class="line">    <span class="type">char</span>* str = <span class="string">&quot;xxxyyyy...&quot;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;str: %p\n&quot;</span>, str);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;str: %s\n&quot;</span>, str);</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="built_in">strlen</span>(str); ++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%c&quot;</span>, *(str + i));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;\n&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 函数指针</span></span><br><span class="line">    <span class="comment">// 函数作为一段程序，在内存中也要占据部分存储空间，它也有一个起始地址</span></span><br><span class="line">    <span class="comment">// 因此可以利用一个指针指向一个函数。其中，函数名就代表着函数的地址</span></span><br><span class="line">    <span class="comment">// 具体格式就是 返回值 指针变量 参数</span></span><br><span class="line">    <span class="comment">// 指针函数定义技巧</span></span><br><span class="line">    <span class="comment">// 1、 把要指向函数头拷贝过来</span></span><br><span class="line">    <span class="comment">// 2、 把函数名称使用小括号括起来</span></span><br><span class="line">    <span class="comment">// 3、 在函数名称前面加上一个 *</span></span><br><span class="line">    <span class="comment">// 4、 修改函数名称</span></span><br><span class="line">    <span class="type">int</span> (*add)(<span class="type">int</span>, <span class="type">int</span>);</span><br><span class="line">    add = sum;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;add: %p\n&quot;</span>, add);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;add result: %d\n&quot;</span>, add(<span class="number">1</span>, <span class="number">2</span>));</span><br><span class="line">    <span class="comment">// 计算并打印</span></span><br><span class="line">    printFunc(<span class="string">&quot;add&quot;</span>, add, <span class="number">2</span>, <span class="number">3</span>);</span><br><span class="line">    printFunc(<span class="string">&quot;multi&quot;</span>, multi, <span class="number">2</span>, <span class="number">3</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="结构体"><a href="#结构体" class="headerlink" title="结构体"></a>结构体</h3><ul>
+<li>结构体中没有初始化的属性可能有垃圾值，这是因为内存没有初始化导致的，建议结构体中内嵌的结构体使用指针的形式，便于使用NULL定义</li>
+<li>结构体之间赋值是值拷贝, 而不是地址传递</li>
+<li>结构体变量作为函数形参时也是值传递, 在函数内修改形参, 不会影响外界实参</li>
+<li>sizeof计算普通结构体变量，计算的是结构体整体占用的内存大小；计算指针则是指针本身占用的内存大小</li>
+<li>共用体 union 内部所有属性共享一块内存，其中一个属性发生变化，其他属性也会改变</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Date</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">int</span> month;</span><br><span class="line">    <span class="type">int</span> day;</span><br><span class="line">    <span class="type">int</span> year;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">Student</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">char</span>* name;</span><br><span class="line">    <span class="type">int</span> age;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Date</span> <span class="title">birthday</span>;</span></span><br><span class="line">&#125; Student;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">printStudent</span><span class="params">(<span class="type">const</span> Student* student)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;name:%s,age:%d,&quot;</span>, student-&gt;name, student-&gt;age);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Date</span> <span class="title">birthday</span> =</span> student-&gt;birthday;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;birthday:%d-%d-%d\n&quot;</span>, birthday.year, birthday.month, birthday.day);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">union</span> <span class="title">Test</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">int</span> age;</span><br><span class="line">    <span class="type">char</span> a;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 先定义再初始化</span></span><br><span class="line">    <span class="comment">// struct Student student 这里会为整个结构体分配内存，包含内部的三个属性</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">student</span>;</span></span><br><span class="line">    <span class="comment">// memset(&amp;student, 0, sizeof(&amp;student));</span></span><br><span class="line">    student.age = <span class="number">10</span>;</span><br><span class="line">    student.name = <span class="string">&quot;123&quot;</span>;</span><br><span class="line">    printStudent(&amp;student);</span><br><span class="line">    <span class="comment">// 打印没有初始化的birthday属性，会发现有值</span></span><br><span class="line">    <span class="comment">// 这些值是尚未初始化的内存，是内存中原本就有的数据，属于垃圾值</span></span><br><span class="line">    <span class="comment">// 这时候可以考虑使用指针，设置为NULL即可</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Date</span> <span class="title">birthday</span> =</span> student.birthday;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;birthday:%d-%d-%d\n&quot;</span>, birthday.year, birthday.month, birthday.day);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 初始化的时候定义</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">stu</span> =</span> &#123;.name = <span class="string">&quot;name&quot;</span>, .age = <span class="number">29</span>&#125;;</span><br><span class="line">    printStudent(&amp;stu);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 先定义后一次初始化</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">stu2</span>;</span></span><br><span class="line">    stu2 = (<span class="keyword">struct</span> Student)&#123;<span class="string">&quot;lnj&quot;</span>, <span class="number">35</span>&#125;;</span><br><span class="line">    printStudent(&amp;stu2);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 定义包含结构体的结构体</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">stu3</span> =</span> &#123;.name = <span class="string">&quot;name3&quot;</span>, .age = <span class="number">20</span>, .birthday = &#123;.year = <span class="number">2024</span>, .month = <span class="number">10</span>, .day = <span class="number">22</span>&#125;&#125;;</span><br><span class="line">    printStudent(&amp;stu3);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 结构体之间赋值是值拷贝, 而不是地址传递</span></span><br><span class="line">    <span class="comment">// 同理 结构体变量作为函数形参时也是值传递, 在函数内修改形参, 不会影响外界实参</span></span><br><span class="line">    <span class="comment">// 这个跟java不一样，java中只要不是基本对象，其他都是拷贝地址，而不是值拷贝</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">copyStudent</span> =</span> student;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;age1:%d, age2:%d\n&quot;</span>, student.age, copyStudent.age);</span><br><span class="line">    <span class="comment">// 发现copyStudent对应的数据变化了，但是student数据没有改变</span></span><br><span class="line">    copyStudent.age = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;age1:%d, age2:%d\n&quot;</span>, student.age, copyStudent.age);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// sizeof</span></span><br><span class="line">    <span class="comment">// 这里计算的是普通变量，也就是整个结构体的大小=24</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;sizeof: %lu\n&quot;</span>, <span class="keyword">sizeof</span>(student));</span><br><span class="line">    <span class="comment">// 这里计算的是指针变量，也就是计算这个指针变量本身的大小，在64位机器上是8个byte</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;sizeof: %lu\n&quot;</span>, <span class="keyword">sizeof</span>(&amp;student));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 使用typeof定义的名称访问</span></span><br><span class="line">    Student studentx = &#123;.name = <span class="string">&quot;x&quot;</span>&#125;;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;name: %s&quot;</span>, studentx.name);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 共用体，内部所有的属性占用同一块内存，修改某个属性会影响到其他属性</span></span><br><span class="line">    <span class="comment">// 通信中的数据包会用到共用体，因为不知道对方会发送什么样的数据包过来，用共用体的话就简单了，定义几种格式的包，收到包之后就可以根据包的格式取出数据</span></span><br><span class="line">    <span class="comment">// 节约内存。如果有2个很长的数据结构，但不会同时使用</span></span><br><span class="line">    <span class="comment">// 某些应用需要大量的临时变量，这些变量类型不同，而且会随时更换。而你的堆栈空间有限，不能同时分配那么多临时变量。这时可以使用共用体让这些变量共享同一个内存空间，这些临时变量不用长期保存，用完即丢，和寄存器差不多，不用维护</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> <span class="title">Test</span> <span class="title">t</span>;</span></span><br><span class="line">    <span class="comment">// 发现这个共用体占用的内存是4，也就是其中某个属性占用内存的最大值</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;sizeof union: %lu\n&quot;</span>, <span class="keyword">sizeof</span>(t));</span><br><span class="line">    t.age = <span class="number">33</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;t.age = %i\n&quot;</span>, t.age); <span class="comment">// 33</span></span><br><span class="line">    t.a = <span class="string">&#x27;a&#x27;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;t.ch = %c\n&quot;</span>, t.a); <span class="comment">// a</span></span><br><span class="line">    <span class="comment">// 修改属性a发现age属性也变化了</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;t.age = %i\n&quot;</span>, t.age); <span class="comment">// 97</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="宏"><a href="#宏" class="headerlink" title="宏"></a>宏</h3><ul>
+<li>源程序中所有的宏在编译预处理的时候都会进行文本替换</li>
+<li>定义一个宏时可以引用已经定义的宏名</li>
+<li>可用宏定义表示数据类型,使书写方便  <code>#define String char*</code></li>
+<li>带参数的宏定义<ul>
+<li>C语言允许宏带有参数。在宏定义中的参数称为形式参数,在宏调用中的参数称为实际参数。对带参数的宏,在调用中,不仅要宏展开,而且要用实参去代换形参</li>
+<li>格式: #define 宏名(形参表) 字符串</li>
+<li><ol>
+<li>宏名和参数列表之间不能有空格，否则空格后面的所有字符串都作为替换的字符串.</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>带参数的宏在展开时，只作简单的字符和参数的替换，不进行任何计算操作。所以在定义宏时，一般用一个小括号括住字符串的参数</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>计算结果最好也用括号括起来，避免出现一些优先的问题 #define Pow(a) ( (a) * (a) )</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>条件编译</li>
+</ul>
+<blockquote>
+<p>希望程序的其中一部分代码只有在满足一定条件时才进行编译，否则不参与编译(只有参与编译的代码最终才能被执行)，这就是条件编译</p>
+</blockquote>
+<ul>
+<li>宏定义与函数的区别<ul>
+<li>宏定义不涉及存储空间的分配、参数类型匹配、参数传递、返回值问题</li>
+<li>函数调用在程序运行时执行，而宏替换只在编译预处理阶段进行。所以带参数的宏比函数具有更高的执行效率</li>
+</ul>
+</li>
+<li>typedef和#define的区别<ul>
+<li>宏定义只是简单的字符串替换,￼是在预处理完成的</li>
+<li>typedef是在编译时处理的,它不是作简单的代换,而是对类型说明符￼重新命名。被命名的标识符具有类型定义说明的功能</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 源程序中所有的宏名PI在编译预处理的时候都会被3.14所代替</span></span><br><span class="line"><span class="comment">// 宏名一般用大写字母，以便与变量名区别开来</span></span><br><span class="line"><span class="comment">// 定义一个宏时可以引用已经定义的宏名</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PI 3.14</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 可用宏定义表示数据类型,使书写方便</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> String char*</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 带参数的宏定义</span></span><br><span class="line"><span class="comment">// C语言允许宏带有参数。在宏定义中的参数称为形式参数,在宏调用中的参数称为实际参数。对带参数的宏,在调用中,不仅要宏展开,而且要用实参去代换形参</span></span><br><span class="line"><span class="comment">// 格式: #define 宏名(形参表) 字符串</span></span><br><span class="line"><span class="comment">// 1. 宏名和参数列表之间不能有空格，否则空格后面的所有字符串都作为替换的字符串.</span></span><br><span class="line"><span class="comment">// 2. 带参数的宏在展开时，只作简单的字符和参数的替换，不进行任何计算操作。所以在定义宏时，一般用一个小括号括住字符串的参数</span></span><br><span class="line"><span class="comment">// 3. 计算结果最好也用括号括起来，避免出现一些优先的问题 #define Pow(a) ( (a) * (a) )</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> average(a, b) ((a + b) / 2)</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 条件编译，希望程序的其中一部分代码只有在满足一定条件时才进行编译，否则不参与编译(只有参与编译的代码最终才能被执行)，这就是条件编译</span></span><br><span class="line"><span class="comment">// #if 常量表达式</span></span><br><span class="line"><span class="comment">//      ..code1...</span></span><br><span class="line"><span class="comment">// #else</span></span><br><span class="line"><span class="comment">//      ..code2...</span></span><br><span class="line"><span class="comment">// #endif</span></span><br><span class="line"><span class="comment">// !! 条件编译后面的条件表达式中不能识别变量,它里面只能识别常量和宏定义，同样的，也只能定义常量和宏</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SCORE 67</span></span><br><span class="line"><span class="meta">#<span class="keyword">if</span> SCORE &gt; 90</span></span><br><span class="line">    <span class="meta">#<span class="keyword">define</span> printScore() printf(<span class="string">&quot;优秀&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="keyword">elif</span> SCORE &gt; 60</span></span><br><span class="line">    <span class="meta">#<span class="keyword">define</span> printScore() printf(<span class="string">&quot;良好&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">    <span class="meta">#<span class="keyword">define</span> printScore() printf(<span class="string">&quot;不及格&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 根据圆的半径计radius算周长</span></span><br><span class="line"><span class="type">float</span> <span class="title function_">girth</span><span class="params">(<span class="type">float</span> radius)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">2</span> * PI * radius;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">float</span> g = girth(<span class="number">2</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;周长为：%f\n&quot;</span>, g);</span><br><span class="line"></span><br><span class="line">    String str = <span class="string">&quot;123&quot;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;str: %s\n&quot;</span>, str);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;avg: %d\n&quot;</span>, average(<span class="number">1</span>, <span class="number">2</span>));</span><br><span class="line"></span><br><span class="line">    printScore();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="malloc"><a href="#malloc" class="headerlink" title="malloc"></a>malloc</h3><ul>
+<li>malloc 和 free 成对使用</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 存储在栈中, 内存地址从大到小</span></span><br><span class="line">    <span class="type">int</span> a = <span class="number">10</span>;</span><br><span class="line">    <span class="type">int</span> b = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;a = %p\n&quot;</span>, &amp;a); <span class="comment">// &amp;a = 0x16b90eb68</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;b = %p\n&quot;</span>, &amp;b); <span class="comment">// &amp;b = 0x16b90eb64</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 存储在栈中, 内存地址从小到大</span></span><br><span class="line">    <span class="type">int</span>* p1 = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    *p1 = <span class="number">10</span>;</span><br><span class="line">    <span class="type">int</span>* p2 = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    *p2 = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p1 = %p\n&quot;</span>, p1); <span class="comment">//  p1 = 00762F48</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p2 = %p\n&quot;</span>, p2); <span class="comment">// p2 = 00762F58</span></span><br><span class="line">    <span class="built_in">free</span>(p1);</span><br><span class="line">    <span class="built_in">free</span>(p2);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// malloc 所在文件:stdlib.h</span></span><br><span class="line">    <span class="comment">// 申请堆内存空间并返回,所申请的空间并未初始化。</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * malloc</span></span><br><span class="line"><span class="comment">     * 第一个参数: 需要申请多少个字节空间</span></span><br><span class="line"><span class="comment">     * 返回值类型: void *</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">int</span>* p = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p); <span class="comment">// *p可能是垃圾数据</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 第一个参数: 需要初始化的内存地址</span></span><br><span class="line"><span class="comment">     * 第二个初始: 需要初始化的值</span></span><br><span class="line"><span class="comment">     * 第三个参数: 需要初始化对少个字节</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="built_in">memset</span>(p, <span class="number">0</span>, <span class="keyword">sizeof</span>(<span class="type">int</span>)); <span class="comment">// 对申请的内存空间进行初始化</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p); <span class="comment">// 初始化为0</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;p = %p\n&quot;</span>, p);</span><br><span class="line">    *p = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// realloc 扩容/缩容</span></span><br><span class="line">    <span class="comment">// 返回的指针，可能与 ptr 的值相同，也有可能不同。</span></span><br><span class="line">    <span class="comment">// 若相同，则说明在原空间后面申请，否则，则可能后续空间不足，重新申请的新的连续空间，原数据拷贝到新空间， 原有空间自动释放</span></span><br><span class="line">    p = <span class="built_in">realloc</span>(p, <span class="keyword">sizeof</span>(<span class="type">int</span>) * <span class="number">2</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;p = %p\n&quot;</span>, p);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// free stdlib.h</span></span><br><span class="line">    <span class="comment">// 通过malloc申请的存储空间一定要释放, 所以malloc和free函数总是成对出现</span></span><br><span class="line">    <span class="comment">// 释放申请的堆内存</span></span><br><span class="line">    <span class="built_in">free</span>(p);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="链表实现"><a href="#链表实现" class="headerlink" title="链表实现"></a>链表实现</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">node</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">int</span> data;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">node</span>* <span class="title">next</span>;</span></span><br><span class="line">&#125; Node;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NODE_SIZE sizeof(Node)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建一个空链表，包含一个头结点</span></span><br><span class="line">Node* <span class="title function_">createNodeList</span><span class="params">()</span>;</span><br><span class="line"><span class="comment">// 尾插法</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertTail</span><span class="params">(Node* head, <span class="type">int</span> data)</span>;</span><br><span class="line"><span class="comment">// 头插法</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertHead</span><span class="params">(Node* head, <span class="type">int</span> data)</span>;</span><br><span class="line"><span class="comment">// 打印链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">printNodeList</span><span class="params">(Node* node)</span>;</span><br><span class="line"><span class="comment">// 释放一个链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">freeNode</span><span class="params">(Node* head)</span>;</span><br><span class="line"><span class="comment">// 计算链表长度</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">listLength</span><span class="params">(<span class="type">const</span> Node* head)</span>;</span><br><span class="line"><span class="comment">// 链表查找</span></span><br><span class="line">Node* <span class="title function_">searchList</span><span class="params">(Node* head, <span class="type">int</span> key)</span>;</span><br><span class="line"><span class="comment">// 链表删除</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">deleteNodeList</span><span class="params">(Node* head, Node* find)</span>;</span><br><span class="line"><span class="comment">// 反转链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">reverseList</span><span class="params">(Node* head)</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = createNodeList();</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    insertHead(head, <span class="number">1</span>);</span><br><span class="line">    insertHead(head, <span class="number">2</span>);</span><br><span class="line">    insertTail(head, <span class="number">3</span>);</span><br><span class="line">    insertTail(head, <span class="number">4</span>);</span><br><span class="line">    printNodeList(head);</span><br><span class="line">    reverseList(head);</span><br><span class="line">    printNodeList(head);</span><br><span class="line">    <span class="type">int</span> length = listLength(head);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;链表长度: %i\n&quot;</span>, length);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (searchList(head, <span class="number">4</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;找到了值为%i的节点\n&quot;</span>, <span class="number">4</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (searchList(head, <span class="number">2</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;找到了值为%i的节点\n&quot;</span>, <span class="number">2</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!searchList(head, <span class="number">100</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;没找到值为%i的节点\n&quot;</span>, <span class="number">100</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    deleteNodeList(head, searchList(head, <span class="number">4</span>));</span><br><span class="line">    deleteNodeList(head, searchList(head, <span class="number">2</span>));</span><br><span class="line"></span><br><span class="line">    printNodeList(head);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">free</span>(head);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Node* <span class="title function_">createNodeList</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    head-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">return</span> head;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertTail</span><span class="params">(Node* head, <span class="type">int</span> data)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 找到尾结点</span></span><br><span class="line">    Node* pre = head;</span><br><span class="line">    <span class="keyword">while</span> (pre != <span class="literal">NULL</span> &amp;&amp; pre-&gt;next != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        pre = pre-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (pre == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Node* node = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    node-&gt;data = data;</span><br><span class="line">    node-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    pre-&gt;next = node;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertHead</span><span class="params">(Node* head, <span class="type">int</span> data)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* node = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    node-&gt;data = data;</span><br><span class="line">    node-&gt;next = head-&gt;next;</span><br><span class="line">    head-&gt;next = node;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">printNodeList</span><span class="params">(Node* node)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = node-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">int</span> currentData = head-&gt;data;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;currentData = %i\n&quot;</span>, currentData);</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">freeNode</span><span class="params">(Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Node* cur = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">while</span> (head != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        cur = head-&gt;next;</span><br><span class="line">        <span class="built_in">free</span>(head);</span><br><span class="line">        head = cur;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// const Node* head 表示指针指向的内容不能修改</span></span><br><span class="line"><span class="comment">// Node* const head 表示这个指针不能修改</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">listLength</span><span class="params">(<span class="type">const</span> Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span> count = <span class="number">0</span>;</span><br><span class="line">    head = head-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        count++;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> count;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Node* <span class="title function_">searchList</span><span class="params">(Node* head, <span class="type">int</span> key)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    head = head-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (key == head-&gt;data)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> head;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">deleteNodeList</span><span class="params">(Node* head, Node* find)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">while</span> (head-&gt;next != find)</span><br><span class="line">    &#123;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        head-&gt;next = find-&gt;next;</span><br><span class="line">        <span class="built_in">free</span>(find);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">reverseList</span><span class="params">(Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node *pre, *cur;</span><br><span class="line">    pre = head-&gt;next;</span><br><span class="line">    <span class="comment">// 把head置为一个空链表</span></span><br><span class="line">    head-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">while</span> (pre)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 反转链表，相当于头插法</span></span><br><span class="line">        cur = pre-&gt;next;</span><br><span class="line">        pre-&gt;next = head-&gt;next;</span><br><span class="line">        head-&gt;next = pre;</span><br><span class="line">        pre = cur;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>C</category>
+      </categories>
+      <tags>
+        <tag>C</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Arthas</title>
     <url>/2025/02/09/arthas/arthas/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -155,88 +237,6 @@
         <tag>docker</tag>
         <tag>dockerfile</tag>
         <tag>基础镜像</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>C语言基础知识</title>
-    <url>/2025/02/10/c/c-yu-yan-ji-chu-zhi-shi/posts/undefined/</url>
-    <content><![CDATA[<h3 id="指针"><a href="#指针" class="headerlink" title="指针"></a>指针</h3><ul>
-<li><strong>&amp;</strong> 获取变量地址</li>
-<li>***** 说明变量为指针变量，存储的是另一个变量的地址；*<strong>p</strong> 若p本身已经是地址，那么能获取到这个地址对应的值</li>
-<li>多级指针使用多个 ***** 表示</li>
-<li>数组名不代表整个数组，只代表数组首元素的地址，对这个<strong>地址+1</strong>即可获取数组下一个元素的地址</li>
-<li><strong>char</strong> <strong>string[]</strong> 数组定义字符串，<strong>char*</strong> <strong>str</strong> <strong>&#x3D; “x”</strong> 指针定义字符串</li>
-<li>函数指针，函数名代表函数的地址。定义函数指针技巧如下: <ul>
-<li>把要指向函数头拷贝过来</li>
-<li>把函数名称使用小括号括起来</li>
-<li>在函数名称前面加上一个 *</li>
-<li>修改函数名称</li>
-</ul>
-</li>
-</ul>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">sum</span><span class="params">(<span class="type">int</span> a, <span class="type">int</span> b)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> a + b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">multi</span><span class="params">(<span class="type">int</span> a, <span class="type">int</span> b)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> a * b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 计算func结果，并打印</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">printFunc</span><span class="params">(<span class="type">char</span> *prefix, <span class="type">int</span> (*func)(<span class="type">int</span> a, <span class="type">int</span> b), <span class="type">int</span> a, <span class="type">int</span> b)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> c = func(a, b);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;[%d %s %d] = %d\n&quot;</span>, a, prefix, b, c);</span><br><span class="line">    <span class="keyword">return</span> c;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// a 是一个变量，直接获取a那么得到的是具体的值也就是1</span></span><br><span class="line">    <span class="comment">// 怎么获取变量a的地址呢？&amp;a</span></span><br><span class="line">    <span class="type">int</span> a = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 现在可以使用一个指针变量指向a的地址，而不是a</span></span><br><span class="line">    <span class="type">int</span>* b = &amp;a;</span><br><span class="line">    <span class="comment">// 这里表示直接获取变量b的值，我们知道变量b存储的是地址，所以这里显示的地址</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;b: %p\n&quot;</span>, b);</span><br><span class="line">    <span class="comment">// 怎么通过这个地址获取到地址指向的值呢？使用 *</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;b: %d\n&quot;</span>, *b);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 二级指针，此变量存放的也是地址，但是不是具体变量的地址，而是一个指针的地址</span></span><br><span class="line">    <span class="type">int</span>** c = &amp;b;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;c: %p\n&quot;</span>, c);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;c: %p\n&quot;</span>, *c);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;c: %d\n&quot;</span>, **c);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 数组名d不代表整个数组,只代表数组首元素的地址</span></span><br><span class="line">    <span class="type">int</span> d[<span class="number">3</span>] = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>&#125;;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;d: %p\n&quot;</span>, d);</span><br><span class="line">    <span class="type">int</span>* p = d;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p: %p\n&quot;</span>, p);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p0: %d\n&quot;</span>, *(p));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p1: %d\n&quot;</span>, *(p + <span class="number">1</span>));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p2: %d\n&quot;</span>, *(p + <span class="number">2</span>));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 定义字符串</span></span><br><span class="line">    <span class="comment">// 1. 使用数组</span></span><br><span class="line">    <span class="type">char</span> <span class="built_in">string</span>[] = <span class="string">&quot;我是...&quot;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;s: %s\n&quot;</span>, <span class="built_in">string</span>);</span><br><span class="line">    <span class="comment">// 2. 字符串指针指向字符串</span></span><br><span class="line">    <span class="comment">// 用字符指针来保存字符串,它保存的是字符串常量地址,常量区是只读的,所以我们不可以修改字符串中的字符</span></span><br><span class="line">    <span class="type">char</span>* str = <span class="string">&quot;xxxyyyy...&quot;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;str: %p\n&quot;</span>, str);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;str: %s\n&quot;</span>, str);</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="built_in">strlen</span>(str); ++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%c&quot;</span>, *(str + i));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;\n&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 函数指针</span></span><br><span class="line">    <span class="comment">// 函数作为一段程序，在内存中也要占据部分存储空间，它也有一个起始地址</span></span><br><span class="line">    <span class="comment">// 因此可以利用一个指针指向一个函数。其中，函数名就代表着函数的地址</span></span><br><span class="line">    <span class="comment">// 具体格式就是 返回值 指针变量 参数</span></span><br><span class="line">    <span class="comment">// 指针函数定义技巧</span></span><br><span class="line">    <span class="comment">// 1、 把要指向函数头拷贝过来</span></span><br><span class="line">    <span class="comment">// 2、 把函数名称使用小括号括起来</span></span><br><span class="line">    <span class="comment">// 3、 在函数名称前面加上一个 *</span></span><br><span class="line">    <span class="comment">// 4、 修改函数名称</span></span><br><span class="line">    <span class="type">int</span> (*add)(<span class="type">int</span>, <span class="type">int</span>);</span><br><span class="line">    add = sum;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;add: %p\n&quot;</span>, add);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;add result: %d\n&quot;</span>, add(<span class="number">1</span>, <span class="number">2</span>));</span><br><span class="line">    <span class="comment">// 计算并打印</span></span><br><span class="line">    printFunc(<span class="string">&quot;add&quot;</span>, add, <span class="number">2</span>, <span class="number">3</span>);</span><br><span class="line">    printFunc(<span class="string">&quot;multi&quot;</span>, multi, <span class="number">2</span>, <span class="number">3</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="结构体"><a href="#结构体" class="headerlink" title="结构体"></a>结构体</h3><ul>
-<li>结构体中没有初始化的属性可能有垃圾值，这是因为内存没有初始化导致的，建议结构体中内嵌的结构体使用指针的形式，便于使用NULL定义</li>
-<li>结构体之间赋值是值拷贝, 而不是地址传递</li>
-<li>结构体变量作为函数形参时也是值传递, 在函数内修改形参, 不会影响外界实参</li>
-<li>sizeof计算普通结构体变量，计算的是结构体整体占用的内存大小；计算指针则是指针本身占用的内存大小</li>
-<li>共用体 union 内部所有属性共享一块内存，其中一个属性发生变化，其他属性也会改变</li>
-</ul>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Date</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">int</span> month;</span><br><span class="line">    <span class="type">int</span> day;</span><br><span class="line">    <span class="type">int</span> year;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">Student</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">char</span>* name;</span><br><span class="line">    <span class="type">int</span> age;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Date</span> <span class="title">birthday</span>;</span></span><br><span class="line">&#125; Student;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">printStudent</span><span class="params">(<span class="type">const</span> Student* student)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;name:%s,age:%d,&quot;</span>, student-&gt;name, student-&gt;age);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Date</span> <span class="title">birthday</span> =</span> student-&gt;birthday;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;birthday:%d-%d-%d\n&quot;</span>, birthday.year, birthday.month, birthday.day);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">union</span> <span class="title">Test</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">int</span> age;</span><br><span class="line">    <span class="type">char</span> a;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 先定义再初始化</span></span><br><span class="line">    <span class="comment">// struct Student student 这里会为整个结构体分配内存，包含内部的三个属性</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">student</span>;</span></span><br><span class="line">    <span class="comment">// memset(&amp;student, 0, sizeof(&amp;student));</span></span><br><span class="line">    student.age = <span class="number">10</span>;</span><br><span class="line">    student.name = <span class="string">&quot;123&quot;</span>;</span><br><span class="line">    printStudent(&amp;student);</span><br><span class="line">    <span class="comment">// 打印没有初始化的birthday属性，会发现有值</span></span><br><span class="line">    <span class="comment">// 这些值是尚未初始化的内存，是内存中原本就有的数据，属于垃圾值</span></span><br><span class="line">    <span class="comment">// 这时候可以考虑使用指针，设置为NULL即可</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Date</span> <span class="title">birthday</span> =</span> student.birthday;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;birthday:%d-%d-%d\n&quot;</span>, birthday.year, birthday.month, birthday.day);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 初始化的时候定义</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">stu</span> =</span> &#123;.name = <span class="string">&quot;name&quot;</span>, .age = <span class="number">29</span>&#125;;</span><br><span class="line">    printStudent(&amp;stu);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 先定义后一次初始化</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">stu2</span>;</span></span><br><span class="line">    stu2 = (<span class="keyword">struct</span> Student)&#123;<span class="string">&quot;lnj&quot;</span>, <span class="number">35</span>&#125;;</span><br><span class="line">    printStudent(&amp;stu2);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 定义包含结构体的结构体</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">stu3</span> =</span> &#123;.name = <span class="string">&quot;name3&quot;</span>, .age = <span class="number">20</span>, .birthday = &#123;.year = <span class="number">2024</span>, .month = <span class="number">10</span>, .day = <span class="number">22</span>&#125;&#125;;</span><br><span class="line">    printStudent(&amp;stu3);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 结构体之间赋值是值拷贝, 而不是地址传递</span></span><br><span class="line">    <span class="comment">// 同理 结构体变量作为函数形参时也是值传递, 在函数内修改形参, 不会影响外界实参</span></span><br><span class="line">    <span class="comment">// 这个跟java不一样，java中只要不是基本对象，其他都是拷贝地址，而不是值拷贝</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Student</span> <span class="title">copyStudent</span> =</span> student;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;age1:%d, age2:%d\n&quot;</span>, student.age, copyStudent.age);</span><br><span class="line">    <span class="comment">// 发现copyStudent对应的数据变化了，但是student数据没有改变</span></span><br><span class="line">    copyStudent.age = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;age1:%d, age2:%d\n&quot;</span>, student.age, copyStudent.age);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// sizeof</span></span><br><span class="line">    <span class="comment">// 这里计算的是普通变量，也就是整个结构体的大小=24</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;sizeof: %lu\n&quot;</span>, <span class="keyword">sizeof</span>(student));</span><br><span class="line">    <span class="comment">// 这里计算的是指针变量，也就是计算这个指针变量本身的大小，在64位机器上是8个byte</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;sizeof: %lu\n&quot;</span>, <span class="keyword">sizeof</span>(&amp;student));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 使用typeof定义的名称访问</span></span><br><span class="line">    Student studentx = &#123;.name = <span class="string">&quot;x&quot;</span>&#125;;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;name: %s&quot;</span>, studentx.name);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 共用体，内部所有的属性占用同一块内存，修改某个属性会影响到其他属性</span></span><br><span class="line">    <span class="comment">// 通信中的数据包会用到共用体，因为不知道对方会发送什么样的数据包过来，用共用体的话就简单了，定义几种格式的包，收到包之后就可以根据包的格式取出数据</span></span><br><span class="line">    <span class="comment">// 节约内存。如果有2个很长的数据结构，但不会同时使用</span></span><br><span class="line">    <span class="comment">// 某些应用需要大量的临时变量，这些变量类型不同，而且会随时更换。而你的堆栈空间有限，不能同时分配那么多临时变量。这时可以使用共用体让这些变量共享同一个内存空间，这些临时变量不用长期保存，用完即丢，和寄存器差不多，不用维护</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> <span class="title">Test</span> <span class="title">t</span>;</span></span><br><span class="line">    <span class="comment">// 发现这个共用体占用的内存是4，也就是其中某个属性占用内存的最大值</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;sizeof union: %lu\n&quot;</span>, <span class="keyword">sizeof</span>(t));</span><br><span class="line">    t.age = <span class="number">33</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;t.age = %i\n&quot;</span>, t.age); <span class="comment">// 33</span></span><br><span class="line">    t.a = <span class="string">&#x27;a&#x27;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;t.ch = %c\n&quot;</span>, t.a); <span class="comment">// a</span></span><br><span class="line">    <span class="comment">// 修改属性a发现age属性也变化了</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;t.age = %i\n&quot;</span>, t.age); <span class="comment">// 97</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="宏"><a href="#宏" class="headerlink" title="宏"></a>宏</h3><ul>
-<li>源程序中所有的宏在编译预处理的时候都会进行文本替换</li>
-<li>定义一个宏时可以引用已经定义的宏名</li>
-<li>可用宏定义表示数据类型,使书写方便  <code>#define String char*</code></li>
-<li>带参数的宏定义<ul>
-<li>C语言允许宏带有参数。在宏定义中的参数称为形式参数,在宏调用中的参数称为实际参数。对带参数的宏,在调用中,不仅要宏展开,而且要用实参去代换形参</li>
-<li>格式: #define 宏名(形参表) 字符串</li>
-<li><ol>
-<li>宏名和参数列表之间不能有空格，否则空格后面的所有字符串都作为替换的字符串.</li>
-</ol>
-</li>
-<li><ol start="2">
-<li>带参数的宏在展开时，只作简单的字符和参数的替换，不进行任何计算操作。所以在定义宏时，一般用一个小括号括住字符串的参数</li>
-</ol>
-</li>
-<li><ol start="3">
-<li>计算结果最好也用括号括起来，避免出现一些优先的问题 #define Pow(a) ( (a) * (a) )</li>
-</ol>
-</li>
-</ul>
-</li>
-<li>条件编译</li>
-</ul>
-<blockquote>
-<p>希望程序的其中一部分代码只有在满足一定条件时才进行编译，否则不参与编译(只有参与编译的代码最终才能被执行)，这就是条件编译</p>
-</blockquote>
-<ul>
-<li>宏定义与函数的区别<ul>
-<li>宏定义不涉及存储空间的分配、参数类型匹配、参数传递、返回值问题</li>
-<li>函数调用在程序运行时执行，而宏替换只在编译预处理阶段进行。所以带参数的宏比函数具有更高的执行效率</li>
-</ul>
-</li>
-<li>typedef和#define的区别<ul>
-<li>宏定义只是简单的字符串替换,￼是在预处理完成的</li>
-<li>typedef是在编译时处理的,它不是作简单的代换,而是对类型说明符￼重新命名。被命名的标识符具有类型定义说明的功能</li>
-</ul>
-</li>
-</ul>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 源程序中所有的宏名PI在编译预处理的时候都会被3.14所代替</span></span><br><span class="line"><span class="comment">// 宏名一般用大写字母，以便与变量名区别开来</span></span><br><span class="line"><span class="comment">// 定义一个宏时可以引用已经定义的宏名</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PI 3.14</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 可用宏定义表示数据类型,使书写方便</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> String char*</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 带参数的宏定义</span></span><br><span class="line"><span class="comment">// C语言允许宏带有参数。在宏定义中的参数称为形式参数,在宏调用中的参数称为实际参数。对带参数的宏,在调用中,不仅要宏展开,而且要用实参去代换形参</span></span><br><span class="line"><span class="comment">// 格式: #define 宏名(形参表) 字符串</span></span><br><span class="line"><span class="comment">// 1. 宏名和参数列表之间不能有空格，否则空格后面的所有字符串都作为替换的字符串.</span></span><br><span class="line"><span class="comment">// 2. 带参数的宏在展开时，只作简单的字符和参数的替换，不进行任何计算操作。所以在定义宏时，一般用一个小括号括住字符串的参数</span></span><br><span class="line"><span class="comment">// 3. 计算结果最好也用括号括起来，避免出现一些优先的问题 #define Pow(a) ( (a) * (a) )</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> average(a, b) ((a + b) / 2)</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 条件编译，希望程序的其中一部分代码只有在满足一定条件时才进行编译，否则不参与编译(只有参与编译的代码最终才能被执行)，这就是条件编译</span></span><br><span class="line"><span class="comment">// #if 常量表达式</span></span><br><span class="line"><span class="comment">//      ..code1...</span></span><br><span class="line"><span class="comment">// #else</span></span><br><span class="line"><span class="comment">//      ..code2...</span></span><br><span class="line"><span class="comment">// #endif</span></span><br><span class="line"><span class="comment">// !! 条件编译后面的条件表达式中不能识别变量,它里面只能识别常量和宏定义，同样的，也只能定义常量和宏</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SCORE 67</span></span><br><span class="line"><span class="meta">#<span class="keyword">if</span> SCORE &gt; 90</span></span><br><span class="line">    <span class="meta">#<span class="keyword">define</span> printScore() printf(<span class="string">&quot;优秀&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="keyword">elif</span> SCORE &gt; 60</span></span><br><span class="line">    <span class="meta">#<span class="keyword">define</span> printScore() printf(<span class="string">&quot;良好&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">    <span class="meta">#<span class="keyword">define</span> printScore() printf(<span class="string">&quot;不及格&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 根据圆的半径计radius算周长</span></span><br><span class="line"><span class="type">float</span> <span class="title function_">girth</span><span class="params">(<span class="type">float</span> radius)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">2</span> * PI * radius;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">float</span> g = girth(<span class="number">2</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;周长为：%f\n&quot;</span>, g);</span><br><span class="line"></span><br><span class="line">    String str = <span class="string">&quot;123&quot;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;str: %s\n&quot;</span>, str);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;avg: %d\n&quot;</span>, average(<span class="number">1</span>, <span class="number">2</span>));</span><br><span class="line"></span><br><span class="line">    printScore();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="malloc"><a href="#malloc" class="headerlink" title="malloc"></a>malloc</h3><ul>
-<li>malloc 和 free 成对使用</li>
-</ul>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 存储在栈中, 内存地址从大到小</span></span><br><span class="line">    <span class="type">int</span> a = <span class="number">10</span>;</span><br><span class="line">    <span class="type">int</span> b = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;a = %p\n&quot;</span>, &amp;a); <span class="comment">// &amp;a = 0x16b90eb68</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;b = %p\n&quot;</span>, &amp;b); <span class="comment">// &amp;b = 0x16b90eb64</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 存储在栈中, 内存地址从小到大</span></span><br><span class="line">    <span class="type">int</span>* p1 = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    *p1 = <span class="number">10</span>;</span><br><span class="line">    <span class="type">int</span>* p2 = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    *p2 = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p1 = %p\n&quot;</span>, p1); <span class="comment">//  p1 = 00762F48</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p2 = %p\n&quot;</span>, p2); <span class="comment">// p2 = 00762F58</span></span><br><span class="line">    <span class="built_in">free</span>(p1);</span><br><span class="line">    <span class="built_in">free</span>(p2);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// malloc 所在文件:stdlib.h</span></span><br><span class="line">    <span class="comment">// 申请堆内存空间并返回,所申请的空间并未初始化。</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * malloc</span></span><br><span class="line"><span class="comment">     * 第一个参数: 需要申请多少个字节空间</span></span><br><span class="line"><span class="comment">     * 返回值类型: void *</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">int</span>* p = <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p); <span class="comment">// *p可能是垃圾数据</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * 第一个参数: 需要初始化的内存地址</span></span><br><span class="line"><span class="comment">     * 第二个初始: 需要初始化的值</span></span><br><span class="line"><span class="comment">     * 第三个参数: 需要初始化对少个字节</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="built_in">memset</span>(p, <span class="number">0</span>, <span class="keyword">sizeof</span>(<span class="type">int</span>)); <span class="comment">// 对申请的内存空间进行初始化</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p); <span class="comment">// 初始化为0</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;p = %p\n&quot;</span>, p);</span><br><span class="line">    *p = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// realloc 扩容/缩容</span></span><br><span class="line">    <span class="comment">// 返回的指针，可能与 ptr 的值相同，也有可能不同。</span></span><br><span class="line">    <span class="comment">// 若相同，则说明在原空间后面申请，否则，则可能后续空间不足，重新申请的新的连续空间，原数据拷贝到新空间， 原有空间自动释放</span></span><br><span class="line">    p = <span class="built_in">realloc</span>(p, <span class="keyword">sizeof</span>(<span class="type">int</span>) * <span class="number">2</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;&amp;p = %p\n&quot;</span>, p);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;p = %i\n&quot;</span>, *p);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// free stdlib.h</span></span><br><span class="line">    <span class="comment">// 通过malloc申请的存储空间一定要释放, 所以malloc和free函数总是成对出现</span></span><br><span class="line">    <span class="comment">// 释放申请的堆内存</span></span><br><span class="line">    <span class="built_in">free</span>(p);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="链表实现"><a href="#链表实现" class="headerlink" title="链表实现"></a>链表实现</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">node</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">int</span> data;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">node</span>* <span class="title">next</span>;</span></span><br><span class="line">&#125; Node;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NODE_SIZE sizeof(Node)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建一个空链表，包含一个头结点</span></span><br><span class="line">Node* <span class="title function_">createNodeList</span><span class="params">()</span>;</span><br><span class="line"><span class="comment">// 尾插法</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertTail</span><span class="params">(Node* head, <span class="type">int</span> data)</span>;</span><br><span class="line"><span class="comment">// 头插法</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertHead</span><span class="params">(Node* head, <span class="type">int</span> data)</span>;</span><br><span class="line"><span class="comment">// 打印链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">printNodeList</span><span class="params">(Node* node)</span>;</span><br><span class="line"><span class="comment">// 释放一个链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">freeNode</span><span class="params">(Node* head)</span>;</span><br><span class="line"><span class="comment">// 计算链表长度</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">listLength</span><span class="params">(<span class="type">const</span> Node* head)</span>;</span><br><span class="line"><span class="comment">// 链表查找</span></span><br><span class="line">Node* <span class="title function_">searchList</span><span class="params">(Node* head, <span class="type">int</span> key)</span>;</span><br><span class="line"><span class="comment">// 链表删除</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">deleteNodeList</span><span class="params">(Node* head, Node* find)</span>;</span><br><span class="line"><span class="comment">// 反转链表</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">reverseList</span><span class="params">(Node* head)</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = createNodeList();</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    insertHead(head, <span class="number">1</span>);</span><br><span class="line">    insertHead(head, <span class="number">2</span>);</span><br><span class="line">    insertTail(head, <span class="number">3</span>);</span><br><span class="line">    insertTail(head, <span class="number">4</span>);</span><br><span class="line">    printNodeList(head);</span><br><span class="line">    reverseList(head);</span><br><span class="line">    printNodeList(head);</span><br><span class="line">    <span class="type">int</span> length = listLength(head);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;链表长度: %i\n&quot;</span>, length);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (searchList(head, <span class="number">4</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;找到了值为%i的节点\n&quot;</span>, <span class="number">4</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (searchList(head, <span class="number">2</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;找到了值为%i的节点\n&quot;</span>, <span class="number">2</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!searchList(head, <span class="number">100</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;没找到值为%i的节点\n&quot;</span>, <span class="number">100</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    deleteNodeList(head, searchList(head, <span class="number">4</span>));</span><br><span class="line">    deleteNodeList(head, searchList(head, <span class="number">2</span>));</span><br><span class="line"></span><br><span class="line">    printNodeList(head);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">free</span>(head);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Node* <span class="title function_">createNodeList</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    head-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">return</span> head;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertTail</span><span class="params">(Node* head, <span class="type">int</span> data)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 找到尾结点</span></span><br><span class="line">    Node* pre = head;</span><br><span class="line">    <span class="keyword">while</span> (pre != <span class="literal">NULL</span> &amp;&amp; pre-&gt;next != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        pre = pre-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (pre == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Node* node = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    node-&gt;data = data;</span><br><span class="line">    node-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    pre-&gt;next = node;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">insertHead</span><span class="params">(Node* head, <span class="type">int</span> data)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* node = <span class="built_in">malloc</span>(NODE_SIZE);</span><br><span class="line">    node-&gt;data = data;</span><br><span class="line">    node-&gt;next = head-&gt;next;</span><br><span class="line">    head-&gt;next = node;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">printNodeList</span><span class="params">(Node* node)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node* head = node-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">int</span> currentData = head-&gt;data;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;currentData = %i\n&quot;</span>, currentData);</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">freeNode</span><span class="params">(Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Node* cur = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">while</span> (head != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        cur = head-&gt;next;</span><br><span class="line">        <span class="built_in">free</span>(head);</span><br><span class="line">        head = cur;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// const Node* head 表示指针指向的内容不能修改</span></span><br><span class="line"><span class="comment">// Node* const head 表示这个指针不能修改</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">listLength</span><span class="params">(<span class="type">const</span> Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (head == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span> count = <span class="number">0</span>;</span><br><span class="line">    head = head-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        count++;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> count;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Node* <span class="title function_">searchList</span><span class="params">(Node* head, <span class="type">int</span> key)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    head = head-&gt;next;</span><br><span class="line">    <span class="keyword">while</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (key == head-&gt;data)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> head;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">deleteNodeList</span><span class="params">(Node* head, Node* find)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!head)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">while</span> (head-&gt;next != find)</span><br><span class="line">    &#123;</span><br><span class="line">        head = head-&gt;next;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (head)</span><br><span class="line">    &#123;</span><br><span class="line">        head-&gt;next = find-&gt;next;</span><br><span class="line">        <span class="built_in">free</span>(find);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">reverseList</span><span class="params">(Node* head)</span></span><br><span class="line">&#123;</span><br><span class="line">    Node *pre, *cur;</span><br><span class="line">    pre = head-&gt;next;</span><br><span class="line">    <span class="comment">// 把head置为一个空链表</span></span><br><span class="line">    head-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">while</span> (pre)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 反转链表，相当于头插法</span></span><br><span class="line">        cur = pre-&gt;next;</span><br><span class="line">        pre-&gt;next = head-&gt;next;</span><br><span class="line">        head-&gt;next = pre;</span><br><span class="line">        pre = cur;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>C</category>
-      </categories>
-      <tags>
-        <tag>C</tag>
       </tags>
   </entry>
   <entry>
@@ -1898,74 +1898,6 @@
       </tags>
   </entry>
   <entry>
-    <title>接口安全</title>
-    <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://www.bilibili.com/opus/917872422844104721">前后端安全性页面与接口设计</a></li>
-<li><a href="https://www.bilibili.com/read/cv33868282/?opus_fallback=1">防刷机制</a></li>
-</ul>
-<h2 id="前后端安全性页面与接口设计"><a href="#前后端安全性页面与接口设计" class="headerlink" title="前后端安全性页面与接口设计"></a>前后端安全性页面与接口设计</h2><h3 id="接口安全密钥交换"><a href="#接口安全密钥交换" class="headerlink" title="接口安全密钥交换"></a>接口安全密钥交换</h3><blockquote>
-<p>分为 web&#x2F;wap（轻客户端），android&#x2F;ios（受信任客户端） 两大类。</p>
-</blockquote>
-<ul>
-<li>针对 web&#x2F;wap，首先通过 csrf 获取 RSA public key，然后通过 RSA public key，解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。首先 csrf 一定要内嵌在页面，不能放在 cookie，否则意义不大。这样 csrf 可以起到一定的保证页面是服务端渲染生成的效果csrf 需要加密，每次返回的不一样（将时间戳嵌入进去），但是其实对应的后台 csrf token 是同一个。公钥需要轮换：这是一个定时任务，就是后台保存的 wap&#x2F;web 密钥对，定时更新，上一个设置过期时间为 1 个月（我们前端 session 公钥过期时间最多是 2 周，无续期，保险点 1 个月）</li>
-<li>针对 android&#x2F;ios，public key 针对每个版本会生成一个新的带到 app 里面服务端记录好，直接解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。由于 app 一般是受信任客户端，并且每个版本 public key 不一样，一般不用 csrf版本强制升级，也可以通过这个机制去实现。</li>
-</ul>
-<h4 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h4><ul>
-<li>https 是为了防止 wifi 劫持抓包直接能看到 http header 和 body</li>
-<li>接口加密是为了防止机器人爬取，请求伪造，客户端模拟</li>
-<li>android&#x2F;ios 通过 public key 基本能确定是哪个版本并且是我们信任的客户端，浏览器不能，所以加入 csrf token 在一定程度上确保一定是我们渲染的页面发的请求</li>
-</ul>
-<h3 id="安全-Header"><a href="#安全-Header" class="headerlink" title="安全 Header"></a>安全 Header</h3><ul>
-<li>Strict-Transport-Security: max-age&#x3D;31536000; includeSubDomains; preload这个头部用于启用HTTP严格传输安全（HSTS），它告诉浏览器只能通过HTTPS来访问网站。max-age&#x3D;31536000 指定浏览器应该在接下来的31,536,000秒（1年）内记住只通过HTTPS访问站点。includeSubDomains 指令扩展了这个规则，使其也适用于当前域名的所有子域。preload 指令表示网站想要被包含在预加载的HSTS列表中，这些列表内置于浏览器中，即使是第一次请求也会强制使用HTTPS。</li>
-<li>X-Content-Type-Options: nosniff这个头部是一个安全功能，用于防止浏览器尝试猜测（”嗅探”）资源的MIME类型，它强制浏览器遵守服务器提供的Content-Type头。nosniff选项可以防止一些基于MIME类型混淆的攻击，例如防止浏览器将非脚本文件解释为脚本文件。</li>
-<li>X-Frame-Options: SAMEORIGIN这个头部可以防止页面被其他站点通过、、或嵌套，从而防止点击劫持攻击。SAMEORIGIN仅允许来自同一源的页面将当前页面作为、等嵌入。</li>
-<li>Content-Security-Policy: 内容很长，这里省略这个拦截可能会导致某些三方埋点，图片等等显示失败，需要监控（即最后加上 report-uri &#x2F;api&#x2F;csp-report-endpoint?version&#x3D;5）这个上报的都是被拦截的，包括拦截的那些 js，css，jpg，长链接，视频资源等等这个 Header 变化很频繁，所以在 CDN 维护，随时修改。例如搜索引擎跳转你的网页，会嵌入 js 等，以及投放新的广告渠道商会嵌入其他东西等等&#x2F;api&#x2F;csp-report-endpoint 需要自己实现加入 version 参数，用于在你修改添加了新的白名单后，增加版本号，老的版本号的上报可以忽略（因为加这个 header 一般在 CDN 加，比如 Cloudflare，但是一般有很长缓存）</li>
-</ul>
-<h4 id="一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例"><a href="#一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例" class="headerlink" title="一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例"></a>一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">default-src &#x27;self&#x27; data: &#x27;unsafe-inline&#x27; blob: &#x27;unsafe-eval&#x27; *.google-analytics.com *.googletagmanager.com *.gstatic.com *.googleapis.com *.google.co *.google.com *.google.ad *.google.ae *.google.com.af *.google.com.ag *.google.al *.google.am *.google.co.ao *.google.com.ar *.google.as *.google.at *.google.com.au *.google.az *.google.ba *.google.com.bd *.google.be *.google.bf *.google.bg *.google.com.bh *.google.bi *.google.bj *.google.com.bn *.google.com.bo *.google.com.br *.google.bs *.google.bt *.google.co.bw *.google.by *.google.com.bz *.google.ca *.google.cd *.google.cf *.google.cg *.google.ch *.google.ci *.google.co.ck *.google.cl *.google.cm *.google.cn *.google.com.co *.google.co.cr *.google.com.cu *.google.cv *.google.com.cy *.google.cz *.google.de *.google.dj *.google.dk *.google.dm *.google.com.do *.google.dz *.google.com.ec *.google.ee *.google.com.eg *.google.es *.google.com.et *.google.fi *.google.com.fj *.google.fm *.google.fr *.google.ga *.google.ge *.google.gg *.google.com.gh *.google.com.gi *.google.gl *.google.gm *.google.gr *.google.com.gt *.google.gy *.google.com.hk *.google.hn *.google.hr *.google.ht *.google.hu *.google.co.id *.google.ie *.google.co.il *.google.im *.google.co.in *.google.iq *.google.is *.google.it *.google.je *.google.com.jm *.google.jo *.google.co.jp *.google.co.ke *.google.com.kh *.google.ki *.google.kg *.google.co.kr *.google.com.kw *.google.kz *.google.la *.google.com.lb *.google.li *.google.lk *.google.co.ls *.google.lt *.google.lu *.google.lv *.google.com.ly *.google.co.ma *.google.md *.google.me *.google.mg *.google.mk *.google.ml *.google.com.mm *.google.mn *.google.com.mt *.google.mu *.google.mv *.google.mw *.google.com.mx *.google.com.my *.google.co.mz *.google.com.na *.google.com.ng *.google.com.ni *.google.ne *.google.nl *.google.no *.google.com.np *.google.nr *.google.nu *.google.co.nz *.google.com.om *.google.com.pa *.google.com.pe *.google.com.pg *.google.com.ph *.google.com.pk *.google.pl *.google.pn *.google.com.pr *.google.ps *.google.pt *.google.com.py *.google.com.qa *.google.ro *.google.ru *.google.rw *.google.com.sa *.google.com.sb *.google.sc *.google.se *.google.com.sg *.google.sh *.google.si *.google.sk *.google.com.sl *.google.sn *.google.so *.google.sm *.google.sr *.google.st *.google.com.sv *.google.td *.google.tg *.google.co.th *.google.com.tj *.google.tl *.google.tm *.google.tn *.google.to *.google.com.tr *.google.tt *.google.com.tw *.google.co.tz *.google.com.ua *.google.co.ug *.google.co.uk *.google.com.uy *.google.co.uz *.google.com.vc *.google.co.ve *.google.co.vi *.google.com.vn *.google.vu *.google.ws *.google.rs *.google.co.za *.google.co.zm *.google.co.zw *.google.cat *.googleadservices.com facebook.net *.facebook.net facebook.com *.facebook.com; report-uri /api/csp-report-endpoint?version=2</span><br></pre></td></tr></table></figure>
-
-<h3 id="一些反思"><a href="#一些反思" class="headerlink" title="一些反思"></a>一些反思</h3><ul>
-<li>针对渲染的页面，内嵌 csrf token（注意不能放在 cookie，否则意义不大），至于服务器渲染，这个我们也是前后端分离，前端自己维护自己的 nodejs 服务器。前后端分离，但是最好还是有一个类似于中台的前端服务器前端自己维护，这样 SEO 更好做。</li>
-<li>这些只是加固了安全性，但是并不能保证 100% 安全。但是复杂度已经很高了，目前够用了。</li>
-<li>并且在这些机制的基础上，去做 <strong>2FA 或者 MFA 也更好做</strong>，有利于减少 2FA 对于用户的打扰。</li>
-</ul>
-<h2 id="防刷机制"><a href="#防刷机制" class="headerlink" title="防刷机制"></a>防刷机制</h2><h3 id="防刷子机制"><a href="#防刷子机制" class="headerlink" title="防刷子机制"></a>防刷子机制</h3><p>主要分为两种场景：</p>
-<ol>
-<li><strong>针对未登录或者未注册用户</strong>，对于注册，各种验证码等类似的接口进行防刷机制，同时尽量减少对于用户的打扰。</li>
-<li><strong>针对已经登陆的用户</strong>：<ol>
-<li>参与活动设置必要的门槛：比如最近交易量。</li>
-<li>引入 MFA 之后，限制用户只能通过绑定的 MFA 的设备参与活动。</li>
-</ol>
-</li>
-</ol>
-<p><strong>针对 2 其实主要是从业务的角度考虑</strong>，MFA 机制不仅是安全性的保证，MFA 更是利于验证用户设备有效，从而可以使用设备做一些业务的限制。</p>
-<p><strong>针对 1，可以使用以下的机制减少验证码对于用户的打扰</strong>：</p>
-<ol>
-<li>使用类似于 Google reCAPTCHA Enterprise（reCAPTCHA v3）或者国内可以用 hCAPTCHA Enterprise 服务，针对敏感接口，例如注册，短信 OTP 接口等等接入，每次请求会带上一个 Google Recaptcha Enterprise 的评分：<ol>
-<li>reCAPTCHA v3 在用户浏览网站时连续地评估用户行为。这包括用户与页面的交互方式（如鼠标移动、滚动、点击等）、设备和浏览器的信息。它还可能分析用户在整个会话中的行为，包括访问多个页面的顺序和速度。</li>
-<li>基于这些行为分析，reCAPTCHA v3 为每个用户请求分配一个分数，范围从 0.0 到 1.0。分数越接近 1.0 表示系统越认为该行为来自真实人类，分数越低则越可能是由自动化脚本或机器人产生。这里是一个分数分布的例子：</li>
-</ol>
-</li>
-</ol>
-<p><img data-src="/images/security/01.avif" alt="img"></p>
-<ol start="2">
-<li><p>你的后台根据这个分数（笔者这里是针对所有低于 0.8 的请求），请求响应是需要验证码才能继续。这里的验证码实现方案就很多很多了，笔者就不赘述了。</p>
-</li>
-<li><p>也就是，对于大部分用户，注册的时候，其实连验证码都不需要输入。对于评分比较低的用户才去让用户接受挑战（challenge），或者是输入验证码，或者是其他挑战方式。</p>
-</li>
-</ol>
-<p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
-<p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>安全</category>
-      </categories>
-      <tags>
-        <tag>安全</tag>
-        <tag>防刷</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spring Boot 单元测试最佳实践</title>
     <url>/2025/02/19/spring/springboot-dan-yuan-ce-shi-zui-jia-shi-jian/posts/undefined/</url>
     <content><![CDATA[<blockquote>
@@ -2049,6 +1981,74 @@
       <tags>
         <tag>spring boot</tag>
         <tag>单元测试</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>接口安全</title>
+    <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://www.bilibili.com/opus/917872422844104721">前后端安全性页面与接口设计</a></li>
+<li><a href="https://www.bilibili.com/read/cv33868282/?opus_fallback=1">防刷机制</a></li>
+</ul>
+<h2 id="前后端安全性页面与接口设计"><a href="#前后端安全性页面与接口设计" class="headerlink" title="前后端安全性页面与接口设计"></a>前后端安全性页面与接口设计</h2><h3 id="接口安全密钥交换"><a href="#接口安全密钥交换" class="headerlink" title="接口安全密钥交换"></a>接口安全密钥交换</h3><blockquote>
+<p>分为 web&#x2F;wap（轻客户端），android&#x2F;ios（受信任客户端） 两大类。</p>
+</blockquote>
+<ul>
+<li>针对 web&#x2F;wap，首先通过 csrf 获取 RSA public key，然后通过 RSA public key，解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。首先 csrf 一定要内嵌在页面，不能放在 cookie，否则意义不大。这样 csrf 可以起到一定的保证页面是服务端渲染生成的效果csrf 需要加密，每次返回的不一样（将时间戳嵌入进去），但是其实对应的后台 csrf token 是同一个。公钥需要轮换：这是一个定时任务，就是后台保存的 wap&#x2F;web 密钥对，定时更新，上一个设置过期时间为 1 个月（我们前端 session 公钥过期时间最多是 2 周，无续期，保险点 1 个月）</li>
+<li>针对 android&#x2F;ios，public key 针对每个版本会生成一个新的带到 app 里面服务端记录好，直接解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。由于 app 一般是受信任客户端，并且每个版本 public key 不一样，一般不用 csrf版本强制升级，也可以通过这个机制去实现。</li>
+</ul>
+<h4 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h4><ul>
+<li>https 是为了防止 wifi 劫持抓包直接能看到 http header 和 body</li>
+<li>接口加密是为了防止机器人爬取，请求伪造，客户端模拟</li>
+<li>android&#x2F;ios 通过 public key 基本能确定是哪个版本并且是我们信任的客户端，浏览器不能，所以加入 csrf token 在一定程度上确保一定是我们渲染的页面发的请求</li>
+</ul>
+<h3 id="安全-Header"><a href="#安全-Header" class="headerlink" title="安全 Header"></a>安全 Header</h3><ul>
+<li>Strict-Transport-Security: max-age&#x3D;31536000; includeSubDomains; preload这个头部用于启用HTTP严格传输安全（HSTS），它告诉浏览器只能通过HTTPS来访问网站。max-age&#x3D;31536000 指定浏览器应该在接下来的31,536,000秒（1年）内记住只通过HTTPS访问站点。includeSubDomains 指令扩展了这个规则，使其也适用于当前域名的所有子域。preload 指令表示网站想要被包含在预加载的HSTS列表中，这些列表内置于浏览器中，即使是第一次请求也会强制使用HTTPS。</li>
+<li>X-Content-Type-Options: nosniff这个头部是一个安全功能，用于防止浏览器尝试猜测（”嗅探”）资源的MIME类型，它强制浏览器遵守服务器提供的Content-Type头。nosniff选项可以防止一些基于MIME类型混淆的攻击，例如防止浏览器将非脚本文件解释为脚本文件。</li>
+<li>X-Frame-Options: SAMEORIGIN这个头部可以防止页面被其他站点通过、、或嵌套，从而防止点击劫持攻击。SAMEORIGIN仅允许来自同一源的页面将当前页面作为、等嵌入。</li>
+<li>Content-Security-Policy: 内容很长，这里省略这个拦截可能会导致某些三方埋点，图片等等显示失败，需要监控（即最后加上 report-uri &#x2F;api&#x2F;csp-report-endpoint?version&#x3D;5）这个上报的都是被拦截的，包括拦截的那些 js，css，jpg，长链接，视频资源等等这个 Header 变化很频繁，所以在 CDN 维护，随时修改。例如搜索引擎跳转你的网页，会嵌入 js 等，以及投放新的广告渠道商会嵌入其他东西等等&#x2F;api&#x2F;csp-report-endpoint 需要自己实现加入 version 参数，用于在你修改添加了新的白名单后，增加版本号，老的版本号的上报可以忽略（因为加这个 header 一般在 CDN 加，比如 Cloudflare，但是一般有很长缓存）</li>
+</ul>
+<h4 id="一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例"><a href="#一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例" class="headerlink" title="一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例"></a>一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">default-src &#x27;self&#x27; data: &#x27;unsafe-inline&#x27; blob: &#x27;unsafe-eval&#x27; *.google-analytics.com *.googletagmanager.com *.gstatic.com *.googleapis.com *.google.co *.google.com *.google.ad *.google.ae *.google.com.af *.google.com.ag *.google.al *.google.am *.google.co.ao *.google.com.ar *.google.as *.google.at *.google.com.au *.google.az *.google.ba *.google.com.bd *.google.be *.google.bf *.google.bg *.google.com.bh *.google.bi *.google.bj *.google.com.bn *.google.com.bo *.google.com.br *.google.bs *.google.bt *.google.co.bw *.google.by *.google.com.bz *.google.ca *.google.cd *.google.cf *.google.cg *.google.ch *.google.ci *.google.co.ck *.google.cl *.google.cm *.google.cn *.google.com.co *.google.co.cr *.google.com.cu *.google.cv *.google.com.cy *.google.cz *.google.de *.google.dj *.google.dk *.google.dm *.google.com.do *.google.dz *.google.com.ec *.google.ee *.google.com.eg *.google.es *.google.com.et *.google.fi *.google.com.fj *.google.fm *.google.fr *.google.ga *.google.ge *.google.gg *.google.com.gh *.google.com.gi *.google.gl *.google.gm *.google.gr *.google.com.gt *.google.gy *.google.com.hk *.google.hn *.google.hr *.google.ht *.google.hu *.google.co.id *.google.ie *.google.co.il *.google.im *.google.co.in *.google.iq *.google.is *.google.it *.google.je *.google.com.jm *.google.jo *.google.co.jp *.google.co.ke *.google.com.kh *.google.ki *.google.kg *.google.co.kr *.google.com.kw *.google.kz *.google.la *.google.com.lb *.google.li *.google.lk *.google.co.ls *.google.lt *.google.lu *.google.lv *.google.com.ly *.google.co.ma *.google.md *.google.me *.google.mg *.google.mk *.google.ml *.google.com.mm *.google.mn *.google.com.mt *.google.mu *.google.mv *.google.mw *.google.com.mx *.google.com.my *.google.co.mz *.google.com.na *.google.com.ng *.google.com.ni *.google.ne *.google.nl *.google.no *.google.com.np *.google.nr *.google.nu *.google.co.nz *.google.com.om *.google.com.pa *.google.com.pe *.google.com.pg *.google.com.ph *.google.com.pk *.google.pl *.google.pn *.google.com.pr *.google.ps *.google.pt *.google.com.py *.google.com.qa *.google.ro *.google.ru *.google.rw *.google.com.sa *.google.com.sb *.google.sc *.google.se *.google.com.sg *.google.sh *.google.si *.google.sk *.google.com.sl *.google.sn *.google.so *.google.sm *.google.sr *.google.st *.google.com.sv *.google.td *.google.tg *.google.co.th *.google.com.tj *.google.tl *.google.tm *.google.tn *.google.to *.google.com.tr *.google.tt *.google.com.tw *.google.co.tz *.google.com.ua *.google.co.ug *.google.co.uk *.google.com.uy *.google.co.uz *.google.com.vc *.google.co.ve *.google.co.vi *.google.com.vn *.google.vu *.google.ws *.google.rs *.google.co.za *.google.co.zm *.google.co.zw *.google.cat *.googleadservices.com facebook.net *.facebook.net facebook.com *.facebook.com; report-uri /api/csp-report-endpoint?version=2</span><br></pre></td></tr></table></figure>
+
+<h3 id="一些反思"><a href="#一些反思" class="headerlink" title="一些反思"></a>一些反思</h3><ul>
+<li>针对渲染的页面，内嵌 csrf token（注意不能放在 cookie，否则意义不大），至于服务器渲染，这个我们也是前后端分离，前端自己维护自己的 nodejs 服务器。前后端分离，但是最好还是有一个类似于中台的前端服务器前端自己维护，这样 SEO 更好做。</li>
+<li>这些只是加固了安全性，但是并不能保证 100% 安全。但是复杂度已经很高了，目前够用了。</li>
+<li>并且在这些机制的基础上，去做 <strong>2FA 或者 MFA 也更好做</strong>，有利于减少 2FA 对于用户的打扰。</li>
+</ul>
+<h2 id="防刷机制"><a href="#防刷机制" class="headerlink" title="防刷机制"></a>防刷机制</h2><h3 id="防刷子机制"><a href="#防刷子机制" class="headerlink" title="防刷子机制"></a>防刷子机制</h3><p>主要分为两种场景：</p>
+<ol>
+<li><strong>针对未登录或者未注册用户</strong>，对于注册，各种验证码等类似的接口进行防刷机制，同时尽量减少对于用户的打扰。</li>
+<li><strong>针对已经登陆的用户</strong>：<ol>
+<li>参与活动设置必要的门槛：比如最近交易量。</li>
+<li>引入 MFA 之后，限制用户只能通过绑定的 MFA 的设备参与活动。</li>
+</ol>
+</li>
+</ol>
+<p><strong>针对 2 其实主要是从业务的角度考虑</strong>，MFA 机制不仅是安全性的保证，MFA 更是利于验证用户设备有效，从而可以使用设备做一些业务的限制。</p>
+<p><strong>针对 1，可以使用以下的机制减少验证码对于用户的打扰</strong>：</p>
+<ol>
+<li>使用类似于 Google reCAPTCHA Enterprise（reCAPTCHA v3）或者国内可以用 hCAPTCHA Enterprise 服务，针对敏感接口，例如注册，短信 OTP 接口等等接入，每次请求会带上一个 Google Recaptcha Enterprise 的评分：<ol>
+<li>reCAPTCHA v3 在用户浏览网站时连续地评估用户行为。这包括用户与页面的交互方式（如鼠标移动、滚动、点击等）、设备和浏览器的信息。它还可能分析用户在整个会话中的行为，包括访问多个页面的顺序和速度。</li>
+<li>基于这些行为分析，reCAPTCHA v3 为每个用户请求分配一个分数，范围从 0.0 到 1.0。分数越接近 1.0 表示系统越认为该行为来自真实人类，分数越低则越可能是由自动化脚本或机器人产生。这里是一个分数分布的例子：</li>
+</ol>
+</li>
+</ol>
+<p><img data-src="/images/security/01.avif" alt="img"></p>
+<ol start="2">
+<li><p>你的后台根据这个分数（笔者这里是针对所有低于 0.8 的请求），请求响应是需要验证码才能继续。这里的验证码实现方案就很多很多了，笔者就不赘述了。</p>
+</li>
+<li><p>也就是，对于大部分用户，注册的时候，其实连验证码都不需要输入。对于评分比较低的用户才去让用户接受挑战（challenge），或者是输入验证码，或者是其他挑战方式。</p>
+</li>
+</ol>
+<p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
+<p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>安全</category>
+      </categories>
+      <tags>
+        <tag>安全</tag>
+        <tag>防刷</tag>
       </tags>
   </entry>
   <entry>
@@ -2862,383 +2862,6 @@ sequenceDiagram
       <tags>
         <tag>数据库</tag>
         <tag>ES</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>rocksdb</title>
-    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
-    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
-<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
-<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
-<thead>
-<tr>
-<th>类别</th>
-<th>属性名</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>总体统计</td>
-<td>rocksdb.stats</td>
-<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
-</tr>
-<tr>
-<td>数据库大小</td>
-<td>rocksdb.total-sst-files-size</td>
-<td>所有 SST 文件的总大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-table-readers-mem</td>
-<td>估计表读取器使用的内存</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-live-data-size</td>
-<td>估计的活跃数据大小</td>
-</tr>
-<tr>
-<td>内存使用</td>
-<td>rocksdb.cur-size-all-mem-tables</td>
-<td>所有 MemTable 的当前大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.block-cache-usage</td>
-<td>块缓存的使用量</td>
-</tr>
-<tr>
-<td>压缩</td>
-<td>rocksdb.background-errors</td>
-<td>后台工作（如压缩）中的错误数</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.num-running-compactions</td>
-<td>当前运行的压缩任务数</td>
-</tr>
-<tr>
-<td>写入</td>
-<td>rocksdb.num-immutable-mem-table</td>
-<td>不可变 MemTable 的数量</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.mem-table-flush-pending</td>
-<td>是否有待处理的 MemTable 刷新</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.is-write-stopped</td>
-<td>写入是否已停止</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.actual-delayed-write-rate</td>
-<td>实际的延迟写入速率</td>
-</tr>
-<tr>
-<td>读取</td>
-<td>rocksdb.estimate-num-keys</td>
-<td>估计的键数量</td>
-</tr>
-<tr>
-<td>文件</td>
-<td>rocksdb.num-files-at-level<N></td>
-<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.live-sst-files-size</td>
-<td>活跃 SST 文件的大小</td>
-</tr>
-</tbody></table>
-<p>注意：</p>
-<ol>
-<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
-<li>某些属性可能会影响性能，应谨慎使用。</li>
-<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
-<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
-</ol>
-<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
-<li>为单个 key 提供并发控制<ol>
-<li>事务开始时获取逻辑锁</li>
-<li>提交时检查冲突</li>
-<li>避免显式锁定，提高并发性</li>
-<li>减少死锁风险</li>
-<li>计数器更新</li>
-<li>用户状态修改</li>
-</ol>
-</li>
-<li>确保多个 key 的一致性更新<ol>
-<li>将多个 key 操作组合为单一事务</li>
-<li>全部成功或全部失败</li>
-<li>维护相关数据的一致性</li>
-<li>简化复杂操作的实现</li>
-<li>用户注册（创建账户 + 初始化设置）</li>
-<li>订单处理（更新库存 + 记录订单）</li>
-</ol>
-</li>
-</ul>
-<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
-<li>触发时机：事务提交时</li>
-<li>检测对象：活跃事务之间的写集</li>
-<li>检测方式：<ol>
-<li>每个事务的 put 操作都会记录在写集中</li>
-<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
-<li>结果：如果发现冲突，后提交的事务通常会失败</li>
-</ol>
-</li>
-</ol>
-<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
-<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
-<li>检测对象：所有活跃事务的锁和写意图</li>
-<li>检测方式：<ol>
-<li>检查目标键是否被任何活跃事务锁定</li>
-<li>检查是否有活跃事务对该键有写意图</li>
-<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
-</ol>
-</li>
-</ol>
-<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
-<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
-<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
-<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
-<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
-<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
-</ol>
-<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
-<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
-<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
-<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
-<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
-<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
-<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
-<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>方面</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>全局序列号</td>
-<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
-</tr>
-<tr>
-<td>事务开始</td>
-<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
-</tr>
-<tr>
-<td>读操作</td>
-<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
-</tr>
-<tr>
-<td>写操作</td>
-<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
-</tr>
-<tr>
-<td>事务提交</td>
-<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
-</tr>
-<tr>
-<td>回滚处理</td>
-<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
-</tr>
-<tr>
-<td>冲突检测</td>
-<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
-</tr>
-<tr>
-<td>OptimisticTransactionDB</td>
-<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
-</tr>
-<tr>
-<td>TransactionDB</td>
-<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
-</tr>
-<tr>
-<td>隔离级别影响</td>
-<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
-</tr>
-<tr>
-<td>注意事项</td>
-<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
-</tr>
-</tbody></table>
-<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
-<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
-<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
-<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>rocksdb</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>rocksdb</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-consumer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 反序列化 实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 反序列化实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>group.id</strong></td>
-<td align="left"></td>
-<td align="left">消费组 ID</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>enable.auto.commit</strong></td>
-<td align="left">true</td>
-<td align="left">是否开启自动提交默认为 true</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.commit.interval.ms</strong></td>
-<td align="left">5000</td>
-<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.offset.reset</strong></td>
-<td align="left">latest</td>
-<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.records</strong></td>
-<td align="left">500</td>
-<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.interval.ms</strong></td>
-<td align="left">5 * 60 * 1000</td>
-<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>heartbeat.interval.ms</strong></td>
-<td align="left">3 * 1000</td>
-<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>session.timeout.ms</strong></td>
-<td align="left">10 * 1000</td>
-<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">fetch.max.bytes</td>
-<td align="left">50 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">max.partition.fetch.bytes</td>
-<td align="left">1 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">receive.buffer.bytes</td>
-<td align="left">64 * 1024</td>
-<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
-<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
-<li>发生再平衡的场景<ul>
-<li>消费者加入或离开</li>
-<li>消费者遇到暂时故障或网络中断</li>
-<li>消费者闲置时间过长</li>
-<li>扩大了主题分区</li>
-</ul>
-</li>
-<li>再平衡的副作用<ul>
-<li>延迟增加</li>
-<li>吞吐量降低</li>
-<li>资源使用量增加</li>
-<li>潜在的数据重复和丢失</li>
-<li>复杂性增加</li>
-</ul>
-</li>
-<li>减少再平衡的措施<ul>
-<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
-<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
-<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
-<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
-</ul>
-</li>
-<li>增量合作再平衡<ul>
-<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
-<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
-<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
-</ul>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
@@ -4425,6 +4048,383 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>rocksdb</title>
+    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
+    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
+<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
+<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>属性名</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>总体统计</td>
+<td>rocksdb.stats</td>
+<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
+</tr>
+<tr>
+<td>数据库大小</td>
+<td>rocksdb.total-sst-files-size</td>
+<td>所有 SST 文件的总大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-table-readers-mem</td>
+<td>估计表读取器使用的内存</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-live-data-size</td>
+<td>估计的活跃数据大小</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>rocksdb.cur-size-all-mem-tables</td>
+<td>所有 MemTable 的当前大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.block-cache-usage</td>
+<td>块缓存的使用量</td>
+</tr>
+<tr>
+<td>压缩</td>
+<td>rocksdb.background-errors</td>
+<td>后台工作（如压缩）中的错误数</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.num-running-compactions</td>
+<td>当前运行的压缩任务数</td>
+</tr>
+<tr>
+<td>写入</td>
+<td>rocksdb.num-immutable-mem-table</td>
+<td>不可变 MemTable 的数量</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.mem-table-flush-pending</td>
+<td>是否有待处理的 MemTable 刷新</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.is-write-stopped</td>
+<td>写入是否已停止</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.actual-delayed-write-rate</td>
+<td>实际的延迟写入速率</td>
+</tr>
+<tr>
+<td>读取</td>
+<td>rocksdb.estimate-num-keys</td>
+<td>估计的键数量</td>
+</tr>
+<tr>
+<td>文件</td>
+<td>rocksdb.num-files-at-level<N></td>
+<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.live-sst-files-size</td>
+<td>活跃 SST 文件的大小</td>
+</tr>
+</tbody></table>
+<p>注意：</p>
+<ol>
+<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
+<li>某些属性可能会影响性能，应谨慎使用。</li>
+<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
+<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
+</ol>
+<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
+<li>为单个 key 提供并发控制<ol>
+<li>事务开始时获取逻辑锁</li>
+<li>提交时检查冲突</li>
+<li>避免显式锁定，提高并发性</li>
+<li>减少死锁风险</li>
+<li>计数器更新</li>
+<li>用户状态修改</li>
+</ol>
+</li>
+<li>确保多个 key 的一致性更新<ol>
+<li>将多个 key 操作组合为单一事务</li>
+<li>全部成功或全部失败</li>
+<li>维护相关数据的一致性</li>
+<li>简化复杂操作的实现</li>
+<li>用户注册（创建账户 + 初始化设置）</li>
+<li>订单处理（更新库存 + 记录订单）</li>
+</ol>
+</li>
+</ul>
+<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
+<li>触发时机：事务提交时</li>
+<li>检测对象：活跃事务之间的写集</li>
+<li>检测方式：<ol>
+<li>每个事务的 put 操作都会记录在写集中</li>
+<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
+<li>结果：如果发现冲突，后提交的事务通常会失败</li>
+</ol>
+</li>
+</ol>
+<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
+<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
+<li>检测对象：所有活跃事务的锁和写意图</li>
+<li>检测方式：<ol>
+<li>检查目标键是否被任何活跃事务锁定</li>
+<li>检查是否有活跃事务对该键有写意图</li>
+<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
+</ol>
+</li>
+</ol>
+<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
+<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
+<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
+<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
+<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
+<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
+</ol>
+<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
+<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
+<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
+<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
+<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
+<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
+<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
+<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全局序列号</td>
+<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
+</tr>
+<tr>
+<td>事务开始</td>
+<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
+</tr>
+<tr>
+<td>读操作</td>
+<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
+</tr>
+<tr>
+<td>写操作</td>
+<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
+</tr>
+<tr>
+<td>事务提交</td>
+<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
+</tr>
+<tr>
+<td>回滚处理</td>
+<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
+</tr>
+<tr>
+<td>冲突检测</td>
+<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
+</tr>
+<tr>
+<td>OptimisticTransactionDB</td>
+<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
+</tr>
+<tr>
+<td>TransactionDB</td>
+<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
+</tr>
+<tr>
+<td>隔离级别影响</td>
+<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
+</tr>
+<tr>
+<td>注意事项</td>
+<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
+</tr>
+</tbody></table>
+<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
+<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
+<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
+<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>rocksdb</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>rocksdb</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-consumer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 反序列化 实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 反序列化实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>group.id</strong></td>
+<td align="left"></td>
+<td align="left">消费组 ID</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>enable.auto.commit</strong></td>
+<td align="left">true</td>
+<td align="left">是否开启自动提交默认为 true</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.commit.interval.ms</strong></td>
+<td align="left">5000</td>
+<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.offset.reset</strong></td>
+<td align="left">latest</td>
+<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.records</strong></td>
+<td align="left">500</td>
+<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.interval.ms</strong></td>
+<td align="left">5 * 60 * 1000</td>
+<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>heartbeat.interval.ms</strong></td>
+<td align="left">3 * 1000</td>
+<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>session.timeout.ms</strong></td>
+<td align="left">10 * 1000</td>
+<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">fetch.max.bytes</td>
+<td align="left">50 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">max.partition.fetch.bytes</td>
+<td align="left">1 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">receive.buffer.bytes</td>
+<td align="left">64 * 1024</td>
+<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
+<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
+<li>发生再平衡的场景<ul>
+<li>消费者加入或离开</li>
+<li>消费者遇到暂时故障或网络中断</li>
+<li>消费者闲置时间过长</li>
+<li>扩大了主题分区</li>
+</ul>
+</li>
+<li>再平衡的副作用<ul>
+<li>延迟增加</li>
+<li>吞吐量降低</li>
+<li>资源使用量增加</li>
+<li>潜在的数据重复和丢失</li>
+<li>复杂性增加</li>
+</ul>
+</li>
+<li>减少再平衡的措施<ul>
+<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
+<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
+<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
+<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
+</ul>
+</li>
+<li>增量合作再平衡<ul>
+<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
+<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
+<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
+</ul>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
