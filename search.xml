@@ -691,7 +691,7 @@
   </entry>
   <entry>
     <title>JVM与JFR事件-Java Application/Object Allocation In New TLAB</title>
-    <url>/2025/02/20/jfr/jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/</url>
+    <url>/2025/02/22/jfr/jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/</url>
     <content><![CDATA[<p><img data-src="/images/jfr/04.png" alt="img"><br><img data-src="/images/jfr/05.png" alt="img"></p>
 <h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul>
 <li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationInNewTLAB</li>
@@ -756,7 +756,7 @@
   </entry>
   <entry>
     <title>JVM与JFR事件-Java Application/Object Allocation Outside TLAB</title>
-    <url>/2025/02/20/jfr/jvm-yu-jfr-shi-jian-object-allocation-outside-tlab/posts/undefined/</url>
+    <url>/2025/02/22/jfr/jvm-yu-jfr-shi-jian-object-allocation-outside-tlab/posts/undefined/</url>
     <content><![CDATA[<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul>
 <li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationOutsideTLAB</li>
 <li>Label(Event Type，用于显示): Object Allocation Outside TLAB</li>
@@ -908,6 +908,38 @@
       </tags>
   </entry>
   <entry>
+    <title>JVM内存相关的监控指标</title>
+    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
+    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
+<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
+<p>JVM Heap代表存放Java Objects的Heap</p>
+</blockquote>
+<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
+<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+</blockquote>
+<ul>
+<li>CodeCache</li>
+<li>Metaspace</li>
+<li>CompressedClassSpace</li>
+<li>DirectBuffer</li>
+<li>Thread Stacks</li>
+</ul>
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
+<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
+<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>监控</tag>
+        <tag>内存</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>JVM重要参数</title>
     <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
     <content><![CDATA[<h2 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h2><table>
@@ -952,38 +984,6 @@
       <tags>
         <tag>JVM</tag>
         <tag>参数</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>JVM内存相关的监控指标</title>
-    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
-<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
-<p>JVM Heap代表存放Java Objects的Heap</p>
-</blockquote>
-<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
-<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
-</blockquote>
-<ul>
-<li>CodeCache</li>
-<li>Metaspace</li>
-<li>CompressedClassSpace</li>
-<li>DirectBuffer</li>
-<li>Thread Stacks</li>
-</ul>
-<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
-<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
-<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>监控</tag>
-        <tag>内存</tag>
       </tags>
   </entry>
   <entry>
@@ -2025,6 +2025,74 @@
       </tags>
   </entry>
   <entry>
+    <title>接口安全</title>
+    <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://www.bilibili.com/opus/917872422844104721">前后端安全性页面与接口设计</a></li>
+<li><a href="https://www.bilibili.com/read/cv33868282/?opus_fallback=1">防刷机制</a></li>
+</ul>
+<h2 id="前后端安全性页面与接口设计"><a href="#前后端安全性页面与接口设计" class="headerlink" title="前后端安全性页面与接口设计"></a>前后端安全性页面与接口设计</h2><h3 id="接口安全密钥交换"><a href="#接口安全密钥交换" class="headerlink" title="接口安全密钥交换"></a>接口安全密钥交换</h3><blockquote>
+<p>分为 web&#x2F;wap（轻客户端），android&#x2F;ios（受信任客户端） 两大类。</p>
+</blockquote>
+<ul>
+<li>针对 web&#x2F;wap，首先通过 csrf 获取 RSA public key，然后通过 RSA public key，解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。首先 csrf 一定要内嵌在页面，不能放在 cookie，否则意义不大。这样 csrf 可以起到一定的保证页面是服务端渲染生成的效果csrf 需要加密，每次返回的不一样（将时间戳嵌入进去），但是其实对应的后台 csrf token 是同一个。公钥需要轮换：这是一个定时任务，就是后台保存的 wap&#x2F;web 密钥对，定时更新，上一个设置过期时间为 1 个月（我们前端 session 公钥过期时间最多是 2 周，无续期，保险点 1 个月）</li>
+<li>针对 android&#x2F;ios，public key 针对每个版本会生成一个新的带到 app 里面服务端记录好，直接解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。由于 app 一般是受信任客户端，并且每个版本 public key 不一样，一般不用 csrf版本强制升级，也可以通过这个机制去实现。</li>
+</ul>
+<h4 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h4><ul>
+<li>https 是为了防止 wifi 劫持抓包直接能看到 http header 和 body</li>
+<li>接口加密是为了防止机器人爬取，请求伪造，客户端模拟</li>
+<li>android&#x2F;ios 通过 public key 基本能确定是哪个版本并且是我们信任的客户端，浏览器不能，所以加入 csrf token 在一定程度上确保一定是我们渲染的页面发的请求</li>
+</ul>
+<h3 id="安全-Header"><a href="#安全-Header" class="headerlink" title="安全 Header"></a>安全 Header</h3><ul>
+<li>Strict-Transport-Security: max-age&#x3D;31536000; includeSubDomains; preload这个头部用于启用HTTP严格传输安全（HSTS），它告诉浏览器只能通过HTTPS来访问网站。max-age&#x3D;31536000 指定浏览器应该在接下来的31,536,000秒（1年）内记住只通过HTTPS访问站点。includeSubDomains 指令扩展了这个规则，使其也适用于当前域名的所有子域。preload 指令表示网站想要被包含在预加载的HSTS列表中，这些列表内置于浏览器中，即使是第一次请求也会强制使用HTTPS。</li>
+<li>X-Content-Type-Options: nosniff这个头部是一个安全功能，用于防止浏览器尝试猜测（”嗅探”）资源的MIME类型，它强制浏览器遵守服务器提供的Content-Type头。nosniff选项可以防止一些基于MIME类型混淆的攻击，例如防止浏览器将非脚本文件解释为脚本文件。</li>
+<li>X-Frame-Options: SAMEORIGIN这个头部可以防止页面被其他站点通过、、或嵌套，从而防止点击劫持攻击。SAMEORIGIN仅允许来自同一源的页面将当前页面作为、等嵌入。</li>
+<li>Content-Security-Policy: 内容很长，这里省略这个拦截可能会导致某些三方埋点，图片等等显示失败，需要监控（即最后加上 report-uri &#x2F;api&#x2F;csp-report-endpoint?version&#x3D;5）这个上报的都是被拦截的，包括拦截的那些 js，css，jpg，长链接，视频资源等等这个 Header 变化很频繁，所以在 CDN 维护，随时修改。例如搜索引擎跳转你的网页，会嵌入 js 等，以及投放新的广告渠道商会嵌入其他东西等等&#x2F;api&#x2F;csp-report-endpoint 需要自己实现加入 version 参数，用于在你修改添加了新的白名单后，增加版本号，老的版本号的上报可以忽略（因为加这个 header 一般在 CDN 加，比如 Cloudflare，但是一般有很长缓存）</li>
+</ul>
+<h4 id="一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例"><a href="#一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例" class="headerlink" title="一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例"></a>一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">default-src &#x27;self&#x27; data: &#x27;unsafe-inline&#x27; blob: &#x27;unsafe-eval&#x27; *.google-analytics.com *.googletagmanager.com *.gstatic.com *.googleapis.com *.google.co *.google.com *.google.ad *.google.ae *.google.com.af *.google.com.ag *.google.al *.google.am *.google.co.ao *.google.com.ar *.google.as *.google.at *.google.com.au *.google.az *.google.ba *.google.com.bd *.google.be *.google.bf *.google.bg *.google.com.bh *.google.bi *.google.bj *.google.com.bn *.google.com.bo *.google.com.br *.google.bs *.google.bt *.google.co.bw *.google.by *.google.com.bz *.google.ca *.google.cd *.google.cf *.google.cg *.google.ch *.google.ci *.google.co.ck *.google.cl *.google.cm *.google.cn *.google.com.co *.google.co.cr *.google.com.cu *.google.cv *.google.com.cy *.google.cz *.google.de *.google.dj *.google.dk *.google.dm *.google.com.do *.google.dz *.google.com.ec *.google.ee *.google.com.eg *.google.es *.google.com.et *.google.fi *.google.com.fj *.google.fm *.google.fr *.google.ga *.google.ge *.google.gg *.google.com.gh *.google.com.gi *.google.gl *.google.gm *.google.gr *.google.com.gt *.google.gy *.google.com.hk *.google.hn *.google.hr *.google.ht *.google.hu *.google.co.id *.google.ie *.google.co.il *.google.im *.google.co.in *.google.iq *.google.is *.google.it *.google.je *.google.com.jm *.google.jo *.google.co.jp *.google.co.ke *.google.com.kh *.google.ki *.google.kg *.google.co.kr *.google.com.kw *.google.kz *.google.la *.google.com.lb *.google.li *.google.lk *.google.co.ls *.google.lt *.google.lu *.google.lv *.google.com.ly *.google.co.ma *.google.md *.google.me *.google.mg *.google.mk *.google.ml *.google.com.mm *.google.mn *.google.com.mt *.google.mu *.google.mv *.google.mw *.google.com.mx *.google.com.my *.google.co.mz *.google.com.na *.google.com.ng *.google.com.ni *.google.ne *.google.nl *.google.no *.google.com.np *.google.nr *.google.nu *.google.co.nz *.google.com.om *.google.com.pa *.google.com.pe *.google.com.pg *.google.com.ph *.google.com.pk *.google.pl *.google.pn *.google.com.pr *.google.ps *.google.pt *.google.com.py *.google.com.qa *.google.ro *.google.ru *.google.rw *.google.com.sa *.google.com.sb *.google.sc *.google.se *.google.com.sg *.google.sh *.google.si *.google.sk *.google.com.sl *.google.sn *.google.so *.google.sm *.google.sr *.google.st *.google.com.sv *.google.td *.google.tg *.google.co.th *.google.com.tj *.google.tl *.google.tm *.google.tn *.google.to *.google.com.tr *.google.tt *.google.com.tw *.google.co.tz *.google.com.ua *.google.co.ug *.google.co.uk *.google.com.uy *.google.co.uz *.google.com.vc *.google.co.ve *.google.co.vi *.google.com.vn *.google.vu *.google.ws *.google.rs *.google.co.za *.google.co.zm *.google.co.zw *.google.cat *.googleadservices.com facebook.net *.facebook.net facebook.com *.facebook.com; report-uri /api/csp-report-endpoint?version=2</span><br></pre></td></tr></table></figure>
+
+<h3 id="一些反思"><a href="#一些反思" class="headerlink" title="一些反思"></a>一些反思</h3><ul>
+<li>针对渲染的页面，内嵌 csrf token（注意不能放在 cookie，否则意义不大），至于服务器渲染，这个我们也是前后端分离，前端自己维护自己的 nodejs 服务器。前后端分离，但是最好还是有一个类似于中台的前端服务器前端自己维护，这样 SEO 更好做。</li>
+<li>这些只是加固了安全性，但是并不能保证 100% 安全。但是复杂度已经很高了，目前够用了。</li>
+<li>并且在这些机制的基础上，去做 <strong>2FA 或者 MFA 也更好做</strong>，有利于减少 2FA 对于用户的打扰。</li>
+</ul>
+<h2 id="防刷机制"><a href="#防刷机制" class="headerlink" title="防刷机制"></a>防刷机制</h2><h3 id="防刷子机制"><a href="#防刷子机制" class="headerlink" title="防刷子机制"></a>防刷子机制</h3><p>主要分为两种场景：</p>
+<ol>
+<li><strong>针对未登录或者未注册用户</strong>，对于注册，各种验证码等类似的接口进行防刷机制，同时尽量减少对于用户的打扰。</li>
+<li><strong>针对已经登陆的用户</strong>：<ol>
+<li>参与活动设置必要的门槛：比如最近交易量。</li>
+<li>引入 MFA 之后，限制用户只能通过绑定的 MFA 的设备参与活动。</li>
+</ol>
+</li>
+</ol>
+<p><strong>针对 2 其实主要是从业务的角度考虑</strong>，MFA 机制不仅是安全性的保证，MFA 更是利于验证用户设备有效，从而可以使用设备做一些业务的限制。</p>
+<p><strong>针对 1，可以使用以下的机制减少验证码对于用户的打扰</strong>：</p>
+<ol>
+<li>使用类似于 Google reCAPTCHA Enterprise（reCAPTCHA v3）或者国内可以用 hCAPTCHA Enterprise 服务，针对敏感接口，例如注册，短信 OTP 接口等等接入，每次请求会带上一个 Google Recaptcha Enterprise 的评分：<ol>
+<li>reCAPTCHA v3 在用户浏览网站时连续地评估用户行为。这包括用户与页面的交互方式（如鼠标移动、滚动、点击等）、设备和浏览器的信息。它还可能分析用户在整个会话中的行为，包括访问多个页面的顺序和速度。</li>
+<li>基于这些行为分析，reCAPTCHA v3 为每个用户请求分配一个分数，范围从 0.0 到 1.0。分数越接近 1.0 表示系统越认为该行为来自真实人类，分数越低则越可能是由自动化脚本或机器人产生。这里是一个分数分布的例子：</li>
+</ol>
+</li>
+</ol>
+<p><img data-src="/images/security/01.avif" alt="img"></p>
+<ol start="2">
+<li><p>你的后台根据这个分数（笔者这里是针对所有低于 0.8 的请求），请求响应是需要验证码才能继续。这里的验证码实现方案就很多很多了，笔者就不赘述了。</p>
+</li>
+<li><p>也就是，对于大部分用户，注册的时候，其实连验证码都不需要输入。对于评分比较低的用户才去让用户接受挑战（challenge），或者是输入验证码，或者是其他挑战方式。</p>
+</li>
+</ol>
+<p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
+<p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>安全</category>
+      </categories>
+      <tags>
+        <tag>安全</tag>
+        <tag>防刷</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>BitMap</title>
     <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
     <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
@@ -2134,74 +2202,6 @@
         <tag>网关</tag>
         <tag>spring cloud gateway</tag>
         <tag>spring cloud</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>接口安全</title>
-    <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://www.bilibili.com/opus/917872422844104721">前后端安全性页面与接口设计</a></li>
-<li><a href="https://www.bilibili.com/read/cv33868282/?opus_fallback=1">防刷机制</a></li>
-</ul>
-<h2 id="前后端安全性页面与接口设计"><a href="#前后端安全性页面与接口设计" class="headerlink" title="前后端安全性页面与接口设计"></a>前后端安全性页面与接口设计</h2><h3 id="接口安全密钥交换"><a href="#接口安全密钥交换" class="headerlink" title="接口安全密钥交换"></a>接口安全密钥交换</h3><blockquote>
-<p>分为 web&#x2F;wap（轻客户端），android&#x2F;ios（受信任客户端） 两大类。</p>
-</blockquote>
-<ul>
-<li>针对 web&#x2F;wap，首先通过 csrf 获取 RSA public key，然后通过 RSA public key，解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。首先 csrf 一定要内嵌在页面，不能放在 cookie，否则意义不大。这样 csrf 可以起到一定的保证页面是服务端渲染生成的效果csrf 需要加密，每次返回的不一样（将时间戳嵌入进去），但是其实对应的后台 csrf token 是同一个。公钥需要轮换：这是一个定时任务，就是后台保存的 wap&#x2F;web 密钥对，定时更新，上一个设置过期时间为 1 个月（我们前端 session 公钥过期时间最多是 2 周，无续期，保险点 1 个月）</li>
-<li>针对 android&#x2F;ios，public key 针对每个版本会生成一个新的带到 app 里面服务端记录好，直接解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。由于 app 一般是受信任客户端，并且每个版本 public key 不一样，一般不用 csrf版本强制升级，也可以通过这个机制去实现。</li>
-</ul>
-<h4 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h4><ul>
-<li>https 是为了防止 wifi 劫持抓包直接能看到 http header 和 body</li>
-<li>接口加密是为了防止机器人爬取，请求伪造，客户端模拟</li>
-<li>android&#x2F;ios 通过 public key 基本能确定是哪个版本并且是我们信任的客户端，浏览器不能，所以加入 csrf token 在一定程度上确保一定是我们渲染的页面发的请求</li>
-</ul>
-<h3 id="安全-Header"><a href="#安全-Header" class="headerlink" title="安全 Header"></a>安全 Header</h3><ul>
-<li>Strict-Transport-Security: max-age&#x3D;31536000; includeSubDomains; preload这个头部用于启用HTTP严格传输安全（HSTS），它告诉浏览器只能通过HTTPS来访问网站。max-age&#x3D;31536000 指定浏览器应该在接下来的31,536,000秒（1年）内记住只通过HTTPS访问站点。includeSubDomains 指令扩展了这个规则，使其也适用于当前域名的所有子域。preload 指令表示网站想要被包含在预加载的HSTS列表中，这些列表内置于浏览器中，即使是第一次请求也会强制使用HTTPS。</li>
-<li>X-Content-Type-Options: nosniff这个头部是一个安全功能，用于防止浏览器尝试猜测（”嗅探”）资源的MIME类型，它强制浏览器遵守服务器提供的Content-Type头。nosniff选项可以防止一些基于MIME类型混淆的攻击，例如防止浏览器将非脚本文件解释为脚本文件。</li>
-<li>X-Frame-Options: SAMEORIGIN这个头部可以防止页面被其他站点通过、、或嵌套，从而防止点击劫持攻击。SAMEORIGIN仅允许来自同一源的页面将当前页面作为、等嵌入。</li>
-<li>Content-Security-Policy: 内容很长，这里省略这个拦截可能会导致某些三方埋点，图片等等显示失败，需要监控（即最后加上 report-uri &#x2F;api&#x2F;csp-report-endpoint?version&#x3D;5）这个上报的都是被拦截的，包括拦截的那些 js，css，jpg，长链接，视频资源等等这个 Header 变化很频繁，所以在 CDN 维护，随时修改。例如搜索引擎跳转你的网页，会嵌入 js 等，以及投放新的广告渠道商会嵌入其他东西等等&#x2F;api&#x2F;csp-report-endpoint 需要自己实现加入 version 参数，用于在你修改添加了新的白名单后，增加版本号，老的版本号的上报可以忽略（因为加这个 header 一般在 CDN 加，比如 Cloudflare，但是一般有很长缓存）</li>
-</ul>
-<h4 id="一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例"><a href="#一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例" class="headerlink" title="一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例"></a>一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">default-src &#x27;self&#x27; data: &#x27;unsafe-inline&#x27; blob: &#x27;unsafe-eval&#x27; *.google-analytics.com *.googletagmanager.com *.gstatic.com *.googleapis.com *.google.co *.google.com *.google.ad *.google.ae *.google.com.af *.google.com.ag *.google.al *.google.am *.google.co.ao *.google.com.ar *.google.as *.google.at *.google.com.au *.google.az *.google.ba *.google.com.bd *.google.be *.google.bf *.google.bg *.google.com.bh *.google.bi *.google.bj *.google.com.bn *.google.com.bo *.google.com.br *.google.bs *.google.bt *.google.co.bw *.google.by *.google.com.bz *.google.ca *.google.cd *.google.cf *.google.cg *.google.ch *.google.ci *.google.co.ck *.google.cl *.google.cm *.google.cn *.google.com.co *.google.co.cr *.google.com.cu *.google.cv *.google.com.cy *.google.cz *.google.de *.google.dj *.google.dk *.google.dm *.google.com.do *.google.dz *.google.com.ec *.google.ee *.google.com.eg *.google.es *.google.com.et *.google.fi *.google.com.fj *.google.fm *.google.fr *.google.ga *.google.ge *.google.gg *.google.com.gh *.google.com.gi *.google.gl *.google.gm *.google.gr *.google.com.gt *.google.gy *.google.com.hk *.google.hn *.google.hr *.google.ht *.google.hu *.google.co.id *.google.ie *.google.co.il *.google.im *.google.co.in *.google.iq *.google.is *.google.it *.google.je *.google.com.jm *.google.jo *.google.co.jp *.google.co.ke *.google.com.kh *.google.ki *.google.kg *.google.co.kr *.google.com.kw *.google.kz *.google.la *.google.com.lb *.google.li *.google.lk *.google.co.ls *.google.lt *.google.lu *.google.lv *.google.com.ly *.google.co.ma *.google.md *.google.me *.google.mg *.google.mk *.google.ml *.google.com.mm *.google.mn *.google.com.mt *.google.mu *.google.mv *.google.mw *.google.com.mx *.google.com.my *.google.co.mz *.google.com.na *.google.com.ng *.google.com.ni *.google.ne *.google.nl *.google.no *.google.com.np *.google.nr *.google.nu *.google.co.nz *.google.com.om *.google.com.pa *.google.com.pe *.google.com.pg *.google.com.ph *.google.com.pk *.google.pl *.google.pn *.google.com.pr *.google.ps *.google.pt *.google.com.py *.google.com.qa *.google.ro *.google.ru *.google.rw *.google.com.sa *.google.com.sb *.google.sc *.google.se *.google.com.sg *.google.sh *.google.si *.google.sk *.google.com.sl *.google.sn *.google.so *.google.sm *.google.sr *.google.st *.google.com.sv *.google.td *.google.tg *.google.co.th *.google.com.tj *.google.tl *.google.tm *.google.tn *.google.to *.google.com.tr *.google.tt *.google.com.tw *.google.co.tz *.google.com.ua *.google.co.ug *.google.co.uk *.google.com.uy *.google.co.uz *.google.com.vc *.google.co.ve *.google.co.vi *.google.com.vn *.google.vu *.google.ws *.google.rs *.google.co.za *.google.co.zm *.google.co.zw *.google.cat *.googleadservices.com facebook.net *.facebook.net facebook.com *.facebook.com; report-uri /api/csp-report-endpoint?version=2</span><br></pre></td></tr></table></figure>
-
-<h3 id="一些反思"><a href="#一些反思" class="headerlink" title="一些反思"></a>一些反思</h3><ul>
-<li>针对渲染的页面，内嵌 csrf token（注意不能放在 cookie，否则意义不大），至于服务器渲染，这个我们也是前后端分离，前端自己维护自己的 nodejs 服务器。前后端分离，但是最好还是有一个类似于中台的前端服务器前端自己维护，这样 SEO 更好做。</li>
-<li>这些只是加固了安全性，但是并不能保证 100% 安全。但是复杂度已经很高了，目前够用了。</li>
-<li>并且在这些机制的基础上，去做 <strong>2FA 或者 MFA 也更好做</strong>，有利于减少 2FA 对于用户的打扰。</li>
-</ul>
-<h2 id="防刷机制"><a href="#防刷机制" class="headerlink" title="防刷机制"></a>防刷机制</h2><h3 id="防刷子机制"><a href="#防刷子机制" class="headerlink" title="防刷子机制"></a>防刷子机制</h3><p>主要分为两种场景：</p>
-<ol>
-<li><strong>针对未登录或者未注册用户</strong>，对于注册，各种验证码等类似的接口进行防刷机制，同时尽量减少对于用户的打扰。</li>
-<li><strong>针对已经登陆的用户</strong>：<ol>
-<li>参与活动设置必要的门槛：比如最近交易量。</li>
-<li>引入 MFA 之后，限制用户只能通过绑定的 MFA 的设备参与活动。</li>
-</ol>
-</li>
-</ol>
-<p><strong>针对 2 其实主要是从业务的角度考虑</strong>，MFA 机制不仅是安全性的保证，MFA 更是利于验证用户设备有效，从而可以使用设备做一些业务的限制。</p>
-<p><strong>针对 1，可以使用以下的机制减少验证码对于用户的打扰</strong>：</p>
-<ol>
-<li>使用类似于 Google reCAPTCHA Enterprise（reCAPTCHA v3）或者国内可以用 hCAPTCHA Enterprise 服务，针对敏感接口，例如注册，短信 OTP 接口等等接入，每次请求会带上一个 Google Recaptcha Enterprise 的评分：<ol>
-<li>reCAPTCHA v3 在用户浏览网站时连续地评估用户行为。这包括用户与页面的交互方式（如鼠标移动、滚动、点击等）、设备和浏览器的信息。它还可能分析用户在整个会话中的行为，包括访问多个页面的顺序和速度。</li>
-<li>基于这些行为分析，reCAPTCHA v3 为每个用户请求分配一个分数，范围从 0.0 到 1.0。分数越接近 1.0 表示系统越认为该行为来自真实人类，分数越低则越可能是由自动化脚本或机器人产生。这里是一个分数分布的例子：</li>
-</ol>
-</li>
-</ol>
-<p><img data-src="/images/security/01.avif" alt="img"></p>
-<ol start="2">
-<li><p>你的后台根据这个分数（笔者这里是针对所有低于 0.8 的请求），请求响应是需要验证码才能继续。这里的验证码实现方案就很多很多了，笔者就不赘述了。</p>
-</li>
-<li><p>也就是，对于大部分用户，注册的时候，其实连验证码都不需要输入。对于评分比较低的用户才去让用户接受挑战（challenge），或者是输入验证码，或者是其他挑战方式。</p>
-</li>
-</ol>
-<p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
-<p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>安全</category>
-      </categories>
-      <tags>
-        <tag>安全</tag>
-        <tag>防刷</tag>
       </tags>
   </entry>
   <entry>
@@ -3121,144 +3121,6 @@ sequenceDiagram
       <tags>
         <tag>数据库</tag>
         <tag>rocksdb</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-producer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>acks</strong></td>
-<td align="left">1</td>
-<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retries</strong></td>
-<td align="left"></td>
-<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retry.backoff.ms</strong></td>
-<td align="left"></td>
-<td align="left">重试的时间间隔</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
-<td align="left">5</td>
-<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">linger.ms</td>
-<td align="left">0</td>
-<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">interceptor.classes</td>
-<td align="left"></td>
-<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left">buffer.memory</td>
-<td align="left">32 * 1024 * 1024</td>
-<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
-<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
-</tr>
-<tr>
-<td align="left">max.block.ms</td>
-<td align="left">60 * 1000</td>
-<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
-<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">batch.size</td>
-<td align="left">16 * 1024</td>
-<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">max.request.size</td>
-<td align="left">1024 * 1024</td>
-<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">compression.type</td>
-<td align="left">none</td>
-<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
-<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
-</ul>
-<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
-<ul>
-<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
-</ul>
-<p>NetworkClient:</p>
-<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
-<p>​      </p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
@@ -4604,6 +4466,144 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-producer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>acks</strong></td>
+<td align="left">1</td>
+<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retries</strong></td>
+<td align="left"></td>
+<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retry.backoff.ms</strong></td>
+<td align="left"></td>
+<td align="left">重试的时间间隔</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
+<td align="left">5</td>
+<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">linger.ms</td>
+<td align="left">0</td>
+<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">interceptor.classes</td>
+<td align="left"></td>
+<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left">buffer.memory</td>
+<td align="left">32 * 1024 * 1024</td>
+<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
+<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
+</tr>
+<tr>
+<td align="left">max.block.ms</td>
+<td align="left">60 * 1000</td>
+<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
+<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">batch.size</td>
+<td align="left">16 * 1024</td>
+<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">max.request.size</td>
+<td align="left">1024 * 1024</td>
+<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">compression.type</td>
+<td align="left">none</td>
+<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
+<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
+</ul>
+<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
+<ul>
+<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
+</ul>
+<p>NetworkClient:</p>
+<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
+<p>​      </p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
