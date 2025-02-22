@@ -25,9 +25,16 @@
     display: block;
     font-size: $font-size-smaller;
     transition: border-color $transition-ease;
+    color: #FFFFFF;  /* 默认白色 */
 
-    &:hover, &.menu-item-active {
-      background: var(--menu-item-bg-color);
+    &:hover {
+      background: transparent;
+      color: #B088FF;  /* 只在悬停时变为紫色 */
+    }
+
+    &.menu-item-active {
+      background: transparent;
+      color: #FFFFFF;  /* 激活状态保持白色 */
     }
   }
 

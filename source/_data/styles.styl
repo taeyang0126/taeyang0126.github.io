@@ -84,9 +84,12 @@ a {
 body {
     background:url(/images/body.png);
     background-repeat: no-repeat;
-    background-attachment:fixed; //不重复
-    background-size: cover;      //填充
-    background-position:50% 50%;
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center;
+    min-height: 100vh;
+    width: 100%;
+    object-fit: cover;  /* 添加这个 */
 }
 
 // 响应式调整
