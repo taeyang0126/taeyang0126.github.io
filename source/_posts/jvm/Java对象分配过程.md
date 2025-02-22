@@ -3,7 +3,8 @@ title: Java对象分配过程
 abbrlink: 19346
 date: 2025-02-22 14:13:52
 tags: [JVM, JFR, 对象分配]
-categories: [JFR, JVM, JAVA]
+categories:
+  - JVM
 ---
 
 ### 路径一 TLAB 内分配
