@@ -38,9 +38,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
-    
     <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
+    
+    <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
     
     <category term="OOM" scheme="https://taeyang0126.github.io/tags/OOM/"/>
     
