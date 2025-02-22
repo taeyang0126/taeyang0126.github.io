@@ -23,6 +23,7 @@ custom_file_path:
   #head: source/_data/head.njk
   #header: source/_data/header.njk /Users/wulei/blog/
   #sidebar: themes/next/layout/_custom/sidebar-calendar.njk
+  sidebar: source/_data/sidebar.njk
   #postMeta: source/_data/post-meta.njk
   #postBodyStart: source/_data/post-body-start.njk
   #postBodyEnd: source/_data/post-body-end.njk
@@ -951,3 +952,11 @@ live2d:
     height: 150
   mobile:
     show: true
+
+recent_posts:
+  # 块标题
+  title: 最近文章
+  # 图标
+  icon: fa fa-history
+  # 最多多少文章链接
+  max_count: 5
