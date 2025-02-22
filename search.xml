@@ -263,41 +263,6 @@
       </tags>
   </entry>
   <entry>
-    <title>LoadBalancerClient 自定义</title>
-    <url>/2025/02/09/feign/loadbalancerclient-zi-ding-yi/posts/undefined/</url>
-    <content><![CDATA[<h2 id="自定义路由信息"><a href="#自定义路由信息" class="headerlink" title="自定义路由信息"></a>自定义路由信息</h2><blockquote>
-<p>日常开发中 loadBalancer 一般是基于服务发现，不需要我们显示的指定；某些场景下（比如单元测试、联调）需要我们自定义 LoadBalancerClient，不走默认的服务发现，而是自定义路由信息</p>
-</blockquote>
-<ul>
-<li><code>LoadBalancerClient</code> 默认的配置是 <code>LoadBalancerClientConfiguration</code></li>
-<li>仿造 <code>LoadBalancerClientConfiguration</code> 实现自己的配置</li>
-</ul>
-<blockquote>
-<p>由于<code>LoadBalancerClientConfiguration</code>也是基于 NamedContextFactory，所以我们只需要实现需要修改的配置，其他配置会默认读取<code>LoadBalancerClientConfiguration</code></p>
-<p>比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceLoadBalanceConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ReactorLoadBalancer&lt;ServiceInstance&gt; <span class="title function_">reactorServiceInstanceLoadBalancer</span><span class="params">(Environment environment,</span></span><br><span class="line"><span class="params">                                                                                   LoadBalancerClientFactory loadBalancerClientFactory)</span> &#123;</span><br><span class="line">        <span class="comment">// 获取当前 loadBalance 的 client name</span></span><br><span class="line">        <span class="comment">// 由于此配置用在 UserRegistrationService 上，所以这里默认 = user-service</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RoundRobinLoadBalancer</span>(</span><br><span class="line">                <span class="comment">// 这里相当于根据这个name，找到对应的子context，从里面获取到 ServiceInstanceListSupplier 对应的bean</span></span><br><span class="line">                <span class="comment">// 也就是相当于这个 UserRegistrationServiceLoadBalanceConfiguration 下配置的 ServiceInstanceListSupplier -&gt; 也就是 ServiceInstanceListSupplier</span></span><br><span class="line">                loadBalancerClientFactory.getLazyProvider(name, ServiceInstanceListSupplier.class),</span><br><span class="line">                name</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ServiceInstanceListSupplier <span class="title function_">userServiceClientServiceInstanceListSupplier</span><span class="params">(</span></span><br><span class="line"><span class="params">            ConfigurableApplicationContext context)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span>(context.getEnvironment());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span> <span class="keyword">implements</span> <span class="title class_">ServiceInstanceListSupplier</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Environment environment;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">UserServiceServiceInstanceListSupplier</span><span class="params">(Environment environment)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.environment = environment;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getServiceId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> environment.getProperty(<span class="string">&quot;user-service-name&quot;</span>, <span class="string">&quot;user-service&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Flux&lt;List&lt;ServiceInstance&gt;&gt; <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">DefaultServiceInstance</span> <span class="variable">defaultServiceInstance</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultServiceInstance</span>();</span><br><span class="line">        defaultServiceInstance.setServiceId(getServiceId());</span><br><span class="line">        defaultServiceInstance.setHost(environment.getProperty(<span class="string">&quot;user-service-host&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">        defaultServiceInstance.setPort(Integer.parseInt(environment.getProperty(<span class="string">&quot;user-service-port&quot;</span>, <span class="string">&quot;8080&quot;</span>)));</span><br><span class="line">        <span class="keyword">return</span> Flux.just(Arrays.asList(defaultServiceInstance));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>使用，注解上指定配置即可</li>
-</ul>
-<blockquote>
-<p>@LoadBalancerClient(name &#x3D; “user-service”, configuration &#x3D; UserServiceLoadBalanceConfiguration.class)</p>
-</blockquote>
-<ul>
-<li>以上就能实现自定义路由的功能</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>feign</category>
-      </categories>
-      <tags>
-        <tag>feign</tag>
-        <tag>rpc</tag>
-        <tag>微服务</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Feign、Hystrix、Ribbon 超时机制</title>
     <url>/2025/02/09/feign/feign-hystrix-ribbon-chao-shi-ji-zhi/posts/undefined/</url>
     <content><![CDATA[<h2 id="使用版本"><a href="#使用版本" class="headerlink" title="使用版本"></a>使用版本</h2><ul>
@@ -410,6 +375,41 @@
       </tags>
   </entry>
   <entry>
+    <title>LoadBalancerClient 自定义</title>
+    <url>/2025/02/09/feign/loadbalancerclient-zi-ding-yi/posts/undefined/</url>
+    <content><![CDATA[<h2 id="自定义路由信息"><a href="#自定义路由信息" class="headerlink" title="自定义路由信息"></a>自定义路由信息</h2><blockquote>
+<p>日常开发中 loadBalancer 一般是基于服务发现，不需要我们显示的指定；某些场景下（比如单元测试、联调）需要我们自定义 LoadBalancerClient，不走默认的服务发现，而是自定义路由信息</p>
+</blockquote>
+<ul>
+<li><code>LoadBalancerClient</code> 默认的配置是 <code>LoadBalancerClientConfiguration</code></li>
+<li>仿造 <code>LoadBalancerClientConfiguration</code> 实现自己的配置</li>
+</ul>
+<blockquote>
+<p>由于<code>LoadBalancerClientConfiguration</code>也是基于 NamedContextFactory，所以我们只需要实现需要修改的配置，其他配置会默认读取<code>LoadBalancerClientConfiguration</code></p>
+<p>比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceLoadBalanceConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ReactorLoadBalancer&lt;ServiceInstance&gt; <span class="title function_">reactorServiceInstanceLoadBalancer</span><span class="params">(Environment environment,</span></span><br><span class="line"><span class="params">                                                                                   LoadBalancerClientFactory loadBalancerClientFactory)</span> &#123;</span><br><span class="line">        <span class="comment">// 获取当前 loadBalance 的 client name</span></span><br><span class="line">        <span class="comment">// 由于此配置用在 UserRegistrationService 上，所以这里默认 = user-service</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> environment.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RoundRobinLoadBalancer</span>(</span><br><span class="line">                <span class="comment">// 这里相当于根据这个name，找到对应的子context，从里面获取到 ServiceInstanceListSupplier 对应的bean</span></span><br><span class="line">                <span class="comment">// 也就是相当于这个 UserRegistrationServiceLoadBalanceConfiguration 下配置的 ServiceInstanceListSupplier -&gt; 也就是 ServiceInstanceListSupplier</span></span><br><span class="line">                loadBalancerClientFactory.getLazyProvider(name, ServiceInstanceListSupplier.class),</span><br><span class="line">                name</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> ServiceInstanceListSupplier <span class="title function_">userServiceClientServiceInstanceListSupplier</span><span class="params">(</span></span><br><span class="line"><span class="params">            ConfigurableApplicationContext context)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span>(context.getEnvironment());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserServiceServiceInstanceListSupplier</span> <span class="keyword">implements</span> <span class="title class_">ServiceInstanceListSupplier</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Environment environment;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">UserServiceServiceInstanceListSupplier</span><span class="params">(Environment environment)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.environment = environment;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getServiceId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> environment.getProperty(<span class="string">&quot;user-service-name&quot;</span>, <span class="string">&quot;user-service&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Flux&lt;List&lt;ServiceInstance&gt;&gt; <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">DefaultServiceInstance</span> <span class="variable">defaultServiceInstance</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultServiceInstance</span>();</span><br><span class="line">        defaultServiceInstance.setServiceId(getServiceId());</span><br><span class="line">        defaultServiceInstance.setHost(environment.getProperty(<span class="string">&quot;user-service-host&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">        defaultServiceInstance.setPort(Integer.parseInt(environment.getProperty(<span class="string">&quot;user-service-port&quot;</span>, <span class="string">&quot;8080&quot;</span>)));</span><br><span class="line">        <span class="keyword">return</span> Flux.just(Arrays.asList(defaultServiceInstance));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>使用，注解上指定配置即可</li>
+</ul>
+<blockquote>
+<p>@LoadBalancerClient(name &#x3D; “user-service”, configuration &#x3D; UserServiceLoadBalanceConfiguration.class)</p>
+</blockquote>
+<ul>
+<li>以上就能实现自定义路由的功能</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>feign</category>
+      </categories>
+      <tags>
+        <tag>feign</tag>
+        <tag>rpc</tag>
+        <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>多线程异常处理</title>
     <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
     <content><![CDATA[<blockquote>
@@ -466,73 +466,8 @@
       </tags>
   </entry>
   <entry>
-    <title>JVM与JFR事件-Java Application/Object Allocation In New TLAB</title>
-    <url>/2025/02/22/jfr/jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/</url>
-    <content><![CDATA[<p><img data-src="/images/jfr/04.png" alt="img"><br><img data-src="/images/jfr/05.png" alt="img"></p>
-<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul>
-<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationInNewTLAB</li>
-<li>Label(Event Type，用于显示): Object Allocation In New TLAB</li>
-<li>Category(用于分类显示): Java Application</li>
-<li>事件从哪个版本引入？<ul>
-<li>Java11：即一开始就存在</li>
-</ul>
-</li>
-<li>事件类型<ul>
-<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
-<li><code>JVM内部事件</code></li>
-</ul>
-</li>
-<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>此事件对应 <code>Java对象分配过程</code> 中的路径二</li>
-<li>事件字段<ul>
-<li>Event Thread：发生路径二分配的线程的名称</li>
-<li>Allocation Size：触发路径二分配的对象大小（实际占用，考虑了对象对其）</li>
-<li>Object Class：触发路径二分配的对象类型</li>
-<li>TLAB Size：触发路径二分配，申请新的TLAB的大小</li>
-<li>线程栈：发生路径二的线程栈，默认是采集的<br><img data-src="/images/jfr/06.png" alt="img"></li>
-</ul>
-</li>
-<li>测试代码 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocInNewTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 对于字节数组对象头占用16字节</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">BYTE_ARRAY_OVERHEAD</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line">  <span class="comment">// 测试的对象大小是KB</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">OBJECT_SIZE</span> <span class="operator">=</span> <span class="number">1024</span>;</span><br><span class="line">  <span class="comment">// 字节数组对象名称</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">BYTE_ARRAY_CLASS_NAME</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">0</span>].getClass().getName();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 需要使用静态field，而不是方法内本地变量，否则编译后循环内的new byte[] 会被全部省略，只剩最后一次的</span></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">byte</span>[] tmp;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小1KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">512</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 强制 fullgc 回收所以 TLAB</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小100KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">200</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE * <span class="number">100</span> - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">      <span class="comment">// 统计事件类型</span></span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf1KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf100KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="comment">// 读取文件中的所有 JFR 事件</span></span><br><span class="line">      <span class="keyword">for</span> (RecordedEvent event : RecordingFile.readAllEvents(path)) &#123;</span><br><span class="line">          <span class="comment">// 获取分配的对象类型</span></span><br><span class="line">          <span class="type">String</span> <span class="variable">className</span> <span class="operator">=</span> event.getString(<span class="string">&quot;objectClass.name&quot;</span>);</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 确保分配类型是byte</span></span><br><span class="line">          <span class="keyword">if</span> (BYTE_ARRAY_CLASS_NAME.equals(className)) &#123;</span><br><span class="line">              <span class="type">RecordedFrame</span> <span class="variable">recordedFrame</span> <span class="operator">=</span> event.getStackTrace().getFrames().get(<span class="number">0</span>);</span><br><span class="line">              <span class="comment">// 同时必须是main方法分配的对象，并且是java堆栈中的main方法</span></span><br><span class="line">              <span class="keyword">if</span> (</span><br><span class="line">                      recordedFrame.isJavaFrame()</span><br><span class="line">                              &amp;&amp; <span class="string">&quot;main&quot;</span>.equalsIgnoreCase(recordedFrame.getMethod().getName())</span><br><span class="line">              ) &#123;</span><br><span class="line">                  <span class="comment">// 获取分配对象大小</span></span><br><span class="line">                  <span class="type">long</span> <span class="variable">allocationSize</span> <span class="operator">=</span> event.getLong(<span class="string">&quot;allocationSize&quot;</span>);</span><br><span class="line">                  <span class="keyword">if</span> (EVENT_TYPE.equalsIgnoreCase(event.getEventType().getName())) &#123;</span><br><span class="line">                      <span class="keyword">if</span> (allocationSize == OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf1KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (allocationSize == <span class="number">100</span> * OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf100KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125;</span><br><span class="line"></span><br><span class="line">                  &#125;</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Exception</span>(<span class="string">&quot;unexpected size of TLAB event&quot;</span>);</span><br><span class="line">              &#125;</span><br><span class="line">              System.out.println(event);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      System.out.println(<span class="string">&quot;countOf1KBObjectAllocationInNewTLAB: &quot;</span> + countOf1KBObjectAllocationInNewTLAB);</span><br><span class="line">      System.out.println(<span class="string">&quot;countOf100KBObjectAllocationInNewTLAB: &quot;</span> + countOf100KBObjectAllocationInNewTLAB);</span><br><span class="line">  &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="为什么针对大部分应用不建议开启这个事件的采集"><a href="#为什么针对大部分应用不建议开启这个事件的采集" class="headerlink" title="为什么针对大部分应用不建议开启这个事件的采集?"></a>为什么针对大部分应用不建议开启这个事件的采集?</h3><ul>
-<li><code>路径二分配一般不是核心问题点</code><ul>
-<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
-<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
-</ul>
-</li>
-<li><code>对于大部分应用，没有啥必要性</code><ul>
-<li>重新申请 TLAB 分配，对于热点线程来说，虽然不如TLAB内分配那么多，但是也是比较频繁的</li>
-<li>如果重新申请 TLAB 分配的次数，和 TLAB 内分配的次数差不多，这才会是问题</li>
-<li>但是 TLAB 的大小是根据线程的分配情况动态调整的，所以 TLAB 内的分配的次数会比较多，而重新申请 TLAB 分配的次数会比较少</li>
-<li>所以这个事件的采集，对于大部分的应用来说，并不是很有必要</li>
-</ul>
-</li>
-<li><code>性能损耗</code><ul>
-<li>这个事件的采集，会捕获堆栈信息，堆栈信息是比较耗性能的，如果开启这个事件的采集，会导致性能损耗比较大。并且这个事件的采集也相对频繁</li>
-</ul>
-</li>
-</ul>
-<h3 id="哪种情况下才会考虑开启这个事件的采集"><a href="#哪种情况下才会考虑开启这个事件的采集" class="headerlink" title="哪种情况下才会考虑开启这个事件的采集?"></a>哪种情况下才会考虑开启这个事件的采集?</h3><ul>
-<li>正常的应用场景下，不需要调整TLAB的配置参数。一般情况下，JVM会根据应用的情况自动调整TLAB的大小</li>
-<li>如果确实怀疑TLAB的配置参数有问题，第一步是开启 Java Application -&gt; Allocation In New TLAB(jdk.ObjectAllocationInNewTLAB) 和 Java Application -&gt;  Allocation outside TLAB(jdk.ObjectAllocationOutsideTLAB)</li>
-<li>确认有大量的 Object Allocation Outside TLAB 事件发生（一般在应用稳定之后，如果很多线程的 Object Allocation Outside TLAB 相对于 Allocation In New TLAB 大于 5%以上就需要调整 TLAB 相关参数了），然后再考虑是否需要调整 TLAB 的配置参数。</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JFR</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>JFR</tag>
-        <tag>监控</tag>
-        <tag>对象分配</tag>
-        <tag>TLAB</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>JFR入门</title>
-    <url>/2025/02/09/jfr/jfr-ru-men/posts/undefined/</url>
+    <url>/2025/02/09/jfr/1.jfr-ru-men/posts/undefined/</url>
     <content><![CDATA[<h3 id="学习资料"><a href="#学习资料" class="headerlink" title="学习资料"></a>学习资料</h3><ul>
 <li><a href="https://www.zhihu.com/column/c_1264859821121355776">hashcon JFR 全解</a></li>
 </ul>
@@ -755,76 +690,8 @@
       </tags>
   </entry>
   <entry>
-    <title>JVM与JFR事件-Java Application/Object Allocation Outside TLAB</title>
-    <url>/2025/02/22/jfr/jvm-yu-jfr-shi-jian-object-allocation-outside-tlab/posts/undefined/</url>
-    <content><![CDATA[<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul>
-<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationOutsideTLAB</li>
-<li>Label(Event Type，用于显示): Object Allocation Outside TLAB</li>
-<li>Category(用于分类显示): Java Application</li>
-<li>事件从哪个版本引入？<ul>
-<li>Java11：即一开始就存在</li>
-</ul>
-</li>
-<li>事件类型<ul>
-<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
-<li><code>JVM内部事件</code></li>
-</ul>
-</li>
-<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>此事件对应 <code>Java 对象分配过程</code> 中的路径三</li>
-<li>事件字段<ul>
-<li>Event Thread：发生路径三分配的线程的名称</li>
-<li>Allocation Size：触发路径三分配的对象大小（实际占用，考虑了对象对其）</li>
-<li>Object Class：触发路径三分配的对象类型</li>
-<li>线程栈：发生路径三的线程栈，默认是采集的<br><img data-src="/images/jfr/07.png" alt="img"></li>
-</ul>
-</li>
-<li>编写代码模拟内存泄漏业务<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">  <span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocOutsideTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, IOException &#123;</span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 模拟正常业务运行分配对象</span></span><br><span class="line">      runBiz(<span class="literal">true</span>);</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">3</span>);</span><br><span class="line">      System.out.println(<span class="string">&quot;Start to create OOM&quot;</span>);</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM，看看 Allocation  Outside TLAB 是否可以捕捉到</span></span><br><span class="line">      runOOM(<span class="literal">true</span>);</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runBiz</span><span class="params">(<span class="type">boolean</span> virtualThreadFlag)</span> &#123;</span><br><span class="line">      <span class="comment">// 模拟正常业务运行，三个线程并发分配对象，朝生夕死</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">3</span>];</span><br><span class="line">      <span class="type">Runnable</span> <span class="variable">bizRunnable</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">          List&lt;Object&gt; objects = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">          <span class="keyword">while</span> (!Thread.currentThread().isInterrupted()) &#123;</span><br><span class="line">              objects.add(<span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">              <span class="keyword">if</span> (objects.size() &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">                  objects.clear();</span><br><span class="line">              &#125;</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;;</span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          <span class="keyword">if</span> (virtualThreadFlag) &#123;</span><br><span class="line">              threads[i] = Thread.ofVirtual().name(<span class="string">&quot;biz-&quot;</span> + i)</span><br><span class="line">                      .unstarted(bizRunnable);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(bizRunnable);</span><br><span class="line">          &#125;</span><br><span class="line">          threads[i].start();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">          <span class="keyword">try</span> &#123;</span><br><span class="line">              TimeUnit.SECONDS.sleep(<span class="number">10</span>);</span><br><span class="line">              <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">                  threads[i].interrupt();</span><br><span class="line">              &#125;</span><br><span class="line">          &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">              <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">      thread.start();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runOOM</span><span class="params">(<span class="type">boolean</span> virtualThreadFlag)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">3</span>];</span><br><span class="line">      Map&lt;Object, Object&gt; map = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">      <span class="type">Runnable</span> <span class="variable">oomRun</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">          <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> <span class="number">0</span>; j &lt; <span class="number">1000000</span>; j++) &#123;</span><br><span class="line">              map.put(<span class="keyword">new</span> <span class="title class_">Object</span>(), <span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          <span class="keyword">if</span> (virtualThreadFlag) &#123;</span><br><span class="line">              threads[i] = Thread.ofVirtual().name(<span class="string">&quot;oom-&quot;</span> + i)</span><br><span class="line">                      .unstarted(oomRun);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(oomRun);</span><br><span class="line">          &#125;</span><br><span class="line">          threads[i].start();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          threads[i].join();</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="是否建议开启这个事件的采集"><a href="#是否建议开启这个事件的采集" class="headerlink" title="是否建议开启这个事件的采集"></a>是否建议开启这个事件的采集</h3><ul>
-<li>建议开启<ul>
-<li>上面提到的Java内存分配路径，对于一般的JVM应用，<code>TLAB</code>内分配的量远大于申请新的TLAB分配的量，同时申请新的TLAB的量又远大于在TLAB外分配的量。除非你的应用分配大量的大对象，否则这个事件发生的应该比较少</li>
-<li>对于一般的JVM应用，建议还是开启这个事件的采集，这样能采集到在你应用的所有大对象分配。只要你的应用不是大对象分配过多，这个事件的采集对于性能的影响应该是可以接受的。</li>
-<li>路径三分配一般会包含核心问题点：<ul>
-<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
-<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>与其他哪些事件是否有重合<ul>
-<li><code>Object Allocation Sample</code>: 虽然 Object Allocation Sample 官方默认开启，但是对于大部分小对象朝生夕死的应用，其实更应该开启 Object Allocation Outside TLAB，而不是Object Allocation Sample。大部分应用，采集到的 Object Allocation Outside TLAB 会比默认的 Object Allocation Sample 少很多很多，性能消耗小很多很多。建议将 Object Allocation Sample 的采样率调很低，主要用于看意向不到的对象分配。</li>
-<li><code>Allocation Requiring GC 以及 ZAllocation Stall</code>: 后续分析这些事件我们会看到，有内存泄漏嫌疑的对象分配相关的对象分配路径，基本上很少会被这两个事件以及 Object Allocation Outside TLAB 采集到</li>
-</ul>
-</li>
-</ul>
-<h3 id="这个事件适合定位什么问题？"><a href="#这个事件适合定位什么问题？" class="headerlink" title="这个事件适合定位什么问题？"></a>这个事件适合定位什么问题？</h3><ul>
-<li>大对象分配：适合度70%<ul>
-<li>对于大于TLAB大小的对象，如果分配成功一定可以采集到</li>
-<li>对于大于TLAB最大浪费比例的对象，分配成功有概率可以采集到，因为有一部分在TLAB内分配成功</li>
-<li>这个<code>只会采集分配成功</code>的对象，对于大对象分配，如果触发 <code>OutOfMemoryError</code> 代表分配失败，那采集不到</li>
-<li>比如前面的代码示例，可以看到 HashMap 不断扩容，但是如果扩容触发 OutOfMemoryError，那这次就采集不到，但是通过前面的事件也能推测出来</li>
-</ul>
-</li>
-<li>Java 堆对象内存泄漏: 适合度50%。针对不断分配小对象并且不释放的场景比较合适。比如多线程不断向一个 ConcurrentHashMap 塞入对象，但是不释放，这个事件可以采集 ConcurrentHashMap 在不断扩容。</li>
-<li><code>意想不到的大对象分配</code>: 适合度100%。可以定期回顾下这个事件的采集，看看有没有意想不到的大对象分配，以及是否可以优化，或者有利于加深对于JDK的理解</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JFR</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>JFR</tag>
-        <tag>监控</tag>
-        <tag>对象分配</tag>
-        <tag>TLAB</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>JVM与JFR事件-准备工作</title>
-    <url>/2025/02/20/jfr/jvm-yu-jfr-shi-jian-zhun-bei-gong-zuo/posts/undefined/</url>
+    <url>/2025/02/20/jfr/2.jvm-yu-jfr-shi-jian-zhun-bei-gong-zuo/posts/undefined/</url>
     <content><![CDATA[<ul>
 <li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本系列参考张哥JFR全系列</a></li>
 </ul>
@@ -905,6 +772,139 @@
         <tag>JVM</tag>
         <tag>JFR</tag>
         <tag>监控</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM与JFR事件-Java Application/Object Allocation In New TLAB</title>
+    <url>/2025/02/22/jfr/3.jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/</url>
+    <content><![CDATA[<p><img data-src="/images/jfr/04.png" alt="img"><br><img data-src="/images/jfr/05.png" alt="img"></p>
+<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul>
+<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationInNewTLAB</li>
+<li>Label(Event Type，用于显示): Object Allocation In New TLAB</li>
+<li>Category(用于分类显示): Java Application</li>
+<li>事件从哪个版本引入？<ul>
+<li>Java11：即一开始就存在</li>
+</ul>
+</li>
+<li>事件类型<ul>
+<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
+<li><code>JVM内部事件</code></li>
+</ul>
+</li>
+<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>此事件对应 <code>Java对象分配过程</code> 中的路径二</li>
+<li>事件字段<ul>
+<li>Event Thread：发生路径二分配的线程的名称</li>
+<li>Allocation Size：触发路径二分配的对象大小（实际占用，考虑了对象对其）</li>
+<li>Object Class：触发路径二分配的对象类型</li>
+<li>TLAB Size：触发路径二分配，申请新的TLAB的大小</li>
+<li>线程栈：发生路径二的线程栈，默认是采集的<br><img data-src="/images/jfr/06.png" alt="img"></li>
+</ul>
+</li>
+<li>测试代码 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocInNewTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 对于字节数组对象头占用16字节</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">BYTE_ARRAY_OVERHEAD</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line">  <span class="comment">// 测试的对象大小是KB</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">OBJECT_SIZE</span> <span class="operator">=</span> <span class="number">1024</span>;</span><br><span class="line">  <span class="comment">// 字节数组对象名称</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">BYTE_ARRAY_CLASS_NAME</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">0</span>].getClass().getName();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 需要使用静态field，而不是方法内本地变量，否则编译后循环内的new byte[] 会被全部省略，只剩最后一次的</span></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">byte</span>[] tmp;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小1KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">512</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 强制 fullgc 回收所以 TLAB</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小100KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">200</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE * <span class="number">100</span> - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">      <span class="comment">// 统计事件类型</span></span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf1KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf100KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="comment">// 读取文件中的所有 JFR 事件</span></span><br><span class="line">      <span class="keyword">for</span> (RecordedEvent event : RecordingFile.readAllEvents(path)) &#123;</span><br><span class="line">          <span class="comment">// 获取分配的对象类型</span></span><br><span class="line">          <span class="type">String</span> <span class="variable">className</span> <span class="operator">=</span> event.getString(<span class="string">&quot;objectClass.name&quot;</span>);</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 确保分配类型是byte</span></span><br><span class="line">          <span class="keyword">if</span> (BYTE_ARRAY_CLASS_NAME.equals(className)) &#123;</span><br><span class="line">              <span class="type">RecordedFrame</span> <span class="variable">recordedFrame</span> <span class="operator">=</span> event.getStackTrace().getFrames().get(<span class="number">0</span>);</span><br><span class="line">              <span class="comment">// 同时必须是main方法分配的对象，并且是java堆栈中的main方法</span></span><br><span class="line">              <span class="keyword">if</span> (</span><br><span class="line">                      recordedFrame.isJavaFrame()</span><br><span class="line">                              &amp;&amp; <span class="string">&quot;main&quot;</span>.equalsIgnoreCase(recordedFrame.getMethod().getName())</span><br><span class="line">              ) &#123;</span><br><span class="line">                  <span class="comment">// 获取分配对象大小</span></span><br><span class="line">                  <span class="type">long</span> <span class="variable">allocationSize</span> <span class="operator">=</span> event.getLong(<span class="string">&quot;allocationSize&quot;</span>);</span><br><span class="line">                  <span class="keyword">if</span> (EVENT_TYPE.equalsIgnoreCase(event.getEventType().getName())) &#123;</span><br><span class="line">                      <span class="keyword">if</span> (allocationSize == OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf1KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (allocationSize == <span class="number">100</span> * OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf100KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125;</span><br><span class="line"></span><br><span class="line">                  &#125;</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Exception</span>(<span class="string">&quot;unexpected size of TLAB event&quot;</span>);</span><br><span class="line">              &#125;</span><br><span class="line">              System.out.println(event);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      System.out.println(<span class="string">&quot;countOf1KBObjectAllocationInNewTLAB: &quot;</span> + countOf1KBObjectAllocationInNewTLAB);</span><br><span class="line">      System.out.println(<span class="string">&quot;countOf100KBObjectAllocationInNewTLAB: &quot;</span> + countOf100KBObjectAllocationInNewTLAB);</span><br><span class="line">  &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="为什么针对大部分应用不建议开启这个事件的采集"><a href="#为什么针对大部分应用不建议开启这个事件的采集" class="headerlink" title="为什么针对大部分应用不建议开启这个事件的采集?"></a>为什么针对大部分应用不建议开启这个事件的采集?</h3><ul>
+<li><code>路径二分配一般不是核心问题点</code><ul>
+<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
+<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
+</ul>
+</li>
+<li><code>对于大部分应用，没有啥必要性</code><ul>
+<li>重新申请 TLAB 分配，对于热点线程来说，虽然不如TLAB内分配那么多，但是也是比较频繁的</li>
+<li>如果重新申请 TLAB 分配的次数，和 TLAB 内分配的次数差不多，这才会是问题</li>
+<li>但是 TLAB 的大小是根据线程的分配情况动态调整的，所以 TLAB 内的分配的次数会比较多，而重新申请 TLAB 分配的次数会比较少</li>
+<li>所以这个事件的采集，对于大部分的应用来说，并不是很有必要</li>
+</ul>
+</li>
+<li><code>性能损耗</code><ul>
+<li>这个事件的采集，会捕获堆栈信息，堆栈信息是比较耗性能的，如果开启这个事件的采集，会导致性能损耗比较大。并且这个事件的采集也相对频繁</li>
+</ul>
+</li>
+</ul>
+<h3 id="哪种情况下才会考虑开启这个事件的采集"><a href="#哪种情况下才会考虑开启这个事件的采集" class="headerlink" title="哪种情况下才会考虑开启这个事件的采集?"></a>哪种情况下才会考虑开启这个事件的采集?</h3><ul>
+<li>正常的应用场景下，不需要调整TLAB的配置参数。一般情况下，JVM会根据应用的情况自动调整TLAB的大小</li>
+<li>如果确实怀疑TLAB的配置参数有问题，第一步是开启 Java Application -&gt; Allocation In New TLAB(jdk.ObjectAllocationInNewTLAB) 和 Java Application -&gt;  Allocation outside TLAB(jdk.ObjectAllocationOutsideTLAB)</li>
+<li>确认有大量的 Object Allocation Outside TLAB 事件发生（一般在应用稳定之后，如果很多线程的 Object Allocation Outside TLAB 相对于 Allocation In New TLAB 大于 5%以上就需要调整 TLAB 相关参数了），然后再考虑是否需要调整 TLAB 的配置参数。</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JFR</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>JFR</tag>
+        <tag>监控</tag>
+        <tag>对象分配</tag>
+        <tag>TLAB</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM与JFR事件-Java Application/Object Allocation Outside TLAB</title>
+    <url>/2025/02/22/jfr/4.jvm-yu-jfr-shi-jian-object-allocation-outside-tlab/posts/undefined/</url>
+    <content><![CDATA[<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul>
+<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationOutsideTLAB</li>
+<li>Label(Event Type，用于显示): Object Allocation Outside TLAB</li>
+<li>Category(用于分类显示): Java Application</li>
+<li>事件从哪个版本引入？<ul>
+<li>Java11：即一开始就存在</li>
+</ul>
+</li>
+<li>事件类型<ul>
+<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
+<li><code>JVM内部事件</code></li>
+</ul>
+</li>
+<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>此事件对应 <code>Java 对象分配过程</code> 中的路径三</li>
+<li>事件字段<ul>
+<li>Event Thread：发生路径三分配的线程的名称</li>
+<li>Allocation Size：触发路径三分配的对象大小（实际占用，考虑了对象对其）</li>
+<li>Object Class：触发路径三分配的对象类型</li>
+<li>线程栈：发生路径三的线程栈，默认是采集的<br><img data-src="/images/jfr/07.png" alt="img"></li>
+</ul>
+</li>
+<li>编写代码模拟内存泄漏业务<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">  <span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocOutsideTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, IOException &#123;</span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 模拟正常业务运行分配对象</span></span><br><span class="line">      runBiz(<span class="literal">true</span>);</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">3</span>);</span><br><span class="line">      System.out.println(<span class="string">&quot;Start to create OOM&quot;</span>);</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM，看看 Allocation  Outside TLAB 是否可以捕捉到</span></span><br><span class="line">      runOOM(<span class="literal">true</span>);</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runBiz</span><span class="params">(<span class="type">boolean</span> virtualThreadFlag)</span> &#123;</span><br><span class="line">      <span class="comment">// 模拟正常业务运行，三个线程并发分配对象，朝生夕死</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">3</span>];</span><br><span class="line">      <span class="type">Runnable</span> <span class="variable">bizRunnable</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">          List&lt;Object&gt; objects = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">          <span class="keyword">while</span> (!Thread.currentThread().isInterrupted()) &#123;</span><br><span class="line">              objects.add(<span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">              <span class="keyword">if</span> (objects.size() &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">                  objects.clear();</span><br><span class="line">              &#125;</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;;</span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          <span class="keyword">if</span> (virtualThreadFlag) &#123;</span><br><span class="line">              threads[i] = Thread.ofVirtual().name(<span class="string">&quot;biz-&quot;</span> + i)</span><br><span class="line">                      .unstarted(bizRunnable);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(bizRunnable);</span><br><span class="line">          &#125;</span><br><span class="line">          threads[i].start();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">          <span class="keyword">try</span> &#123;</span><br><span class="line">              TimeUnit.SECONDS.sleep(<span class="number">10</span>);</span><br><span class="line">              <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">                  threads[i].interrupt();</span><br><span class="line">              &#125;</span><br><span class="line">          &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">              <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">      thread.start();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runOOM</span><span class="params">(<span class="type">boolean</span> virtualThreadFlag)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">3</span>];</span><br><span class="line">      Map&lt;Object, Object&gt; map = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">      <span class="type">Runnable</span> <span class="variable">oomRun</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">          <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> <span class="number">0</span>; j &lt; <span class="number">1000000</span>; j++) &#123;</span><br><span class="line">              map.put(<span class="keyword">new</span> <span class="title class_">Object</span>(), <span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          <span class="keyword">if</span> (virtualThreadFlag) &#123;</span><br><span class="line">              threads[i] = Thread.ofVirtual().name(<span class="string">&quot;oom-&quot;</span> + i)</span><br><span class="line">                      .unstarted(oomRun);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(oomRun);</span><br><span class="line">          &#125;</span><br><span class="line">          threads[i].start();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          threads[i].join();</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="是否建议开启这个事件的采集"><a href="#是否建议开启这个事件的采集" class="headerlink" title="是否建议开启这个事件的采集"></a>是否建议开启这个事件的采集</h3><ul>
+<li>建议开启<ul>
+<li>上面提到的Java内存分配路径，对于一般的JVM应用，<code>TLAB</code>内分配的量远大于申请新的TLAB分配的量，同时申请新的TLAB的量又远大于在TLAB外分配的量。除非你的应用分配大量的大对象，否则这个事件发生的应该比较少</li>
+<li>对于一般的JVM应用，建议还是开启这个事件的采集，这样能采集到在你应用的所有大对象分配。只要你的应用不是大对象分配过多，这个事件的采集对于性能的影响应该是可以接受的。</li>
+<li>路径三分配一般会包含核心问题点：<ul>
+<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
+<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>与其他哪些事件是否有重合<ul>
+<li><code>Object Allocation Sample</code>: 虽然 Object Allocation Sample 官方默认开启，但是对于大部分小对象朝生夕死的应用，其实更应该开启 Object Allocation Outside TLAB，而不是Object Allocation Sample。大部分应用，采集到的 Object Allocation Outside TLAB 会比默认的 Object Allocation Sample 少很多很多，性能消耗小很多很多。建议将 Object Allocation Sample 的采样率调很低，主要用于看意向不到的对象分配。</li>
+<li><code>Allocation Requiring GC 以及 ZAllocation Stall</code>: 后续分析这些事件我们会看到，有内存泄漏嫌疑的对象分配相关的对象分配路径，基本上很少会被这两个事件以及 Object Allocation Outside TLAB 采集到</li>
+</ul>
+</li>
+</ul>
+<h3 id="这个事件适合定位什么问题？"><a href="#这个事件适合定位什么问题？" class="headerlink" title="这个事件适合定位什么问题？"></a>这个事件适合定位什么问题？</h3><ul>
+<li>大对象分配：适合度70%<ul>
+<li>对于大于TLAB大小的对象，如果分配成功一定可以采集到</li>
+<li>对于大于TLAB最大浪费比例的对象，分配成功有概率可以采集到，因为有一部分在TLAB内分配成功</li>
+<li>这个<code>只会采集分配成功</code>的对象，对于大对象分配，如果触发 <code>OutOfMemoryError</code> 代表分配失败，那采集不到</li>
+<li>比如前面的代码示例，可以看到 HashMap 不断扩容，但是如果扩容触发 OutOfMemoryError，那这次就采集不到，但是通过前面的事件也能推测出来</li>
+</ul>
+</li>
+<li>Java 堆对象内存泄漏: 适合度50%。针对不断分配小对象并且不释放的场景比较合适。比如多线程不断向一个 ConcurrentHashMap 塞入对象，但是不释放，这个事件可以采集 ConcurrentHashMap 在不断扩容。</li>
+<li><code>意想不到的大对象分配</code>: 适合度100%。可以定期回顾下这个事件的采集，看看有没有意想不到的大对象分配，以及是否可以优化，或者有利于加深对于JDK的理解</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JFR</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>JFR</tag>
+        <tag>监控</tag>
+        <tag>对象分配</tag>
+        <tag>TLAB</tag>
       </tags>
   </entry>
   <entry>
@@ -1901,44 +1901,6 @@
       </tags>
   </entry>
   <entry>
-    <title>protobuf</title>
-    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
-    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
-<li>所有字段都有默认值，比如string默认为空串</li>
-<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
-<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
-<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
-<li>对于较小范围的数字，用 int32 而不是 int64</li>
-<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
-<li>对于负数多的场景用 sint32&#x2F;sint64</li>
-<li>字段更新规则！！<ol>
-<li>添加新字段</li>
-<li>删除字段(但保留字段号)</li>
-<li>重命名字段(字段号不变)</li>
-<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
-</ol>
-</li>
-<li>字段不能做的更新规则！！<ol>
-<li>改变已有字段的类型</li>
-<li>复用已删除的字段号</li>
-<li>改变已有字段的编号</li>
-</ol>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>protobuf</category>
-      </categories>
-      <tags>
-        <tag>protobuf</tag>
-        <tag>序列化</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spring Boot 单元测试最佳实践</title>
     <url>/2025/02/19/spring/springboot-dan-yuan-ce-shi-zui-jia-shi-jian/posts/undefined/</url>
     <content><![CDATA[<blockquote>
@@ -2025,6 +1987,109 @@
       </tags>
   </entry>
   <entry>
+    <title>BitMap</title>
+    <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
+    <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
+<p>Roaring Bitmaps 是一种高效的压缩位图数据结构，它在保持快速操作性能的同时，显著减少了内存使用。这种数据结构特别适用于表示和操作大型稀疏数据集</p>
+</blockquote>
+<p>基本结构： </p>
+<ul>
+<li>Roaring Bitmap 将 32 位整数空间分割成 2^16 &#x3D; 65536 个块。</li>
+<li>每个块负责管理 2^16 个连续的整数。</li>
+</ul>
+<p>数据表示方法： </p>
+<ul>
+<li>对于稀疏的块（包含少量元素），使用简单的整数数组。<ul>
+<li>用于存储稀疏数据（少量元素）</li>
+<li>直接存储 16 位整数值</li>
+<li>当元素数量小于 4,096 时使用</li>
+</ul>
+</li>
+<li>对于稠密的块（包含大量元素），使用传统的位图。<ul>
+<li>用于存储稠密数据（大量元素）</li>
+<li>使用传统的位图表示，即 8,192 字节（65,536 位）</li>
+<li>当元素数量大于等于 4,096 时使用</li>
+</ul>
+</li>
+<li>对于连续的长整数序列，使用范围编码。<ul>
+<li>用于存储连续的整数序列</li>
+<li>存储开始和结束值的对</li>
+<li>在特定情况下可以更节省空间</li>
+</ul>
+</li>
+</ul>
+<p>自适应性： </p>
+<ul>
+<li>Roaring Bitmap 会根据数据的分布自动选择最合适的容器类型，并在需要时动态转换容器类型。</li>
+<li>这种自适应性使得 Roaring 在各种数据分布下都能保持高效。</li>
+</ul>
+<p>索引结构:</p>
+<ul>
+<li>使用一个高层索引（通常是一个数组）来快速定位到特定的容器。这个索引存储 16 位的高位值和指向相应容器的指针</li>
+</ul>
+<p>操作效率： </p>
+<ul>
+<li>支持快速的交集、并集、差集等集合操作。</li>
+<li>这些操作可以直接在压缩的表示上执行，无需完全解压。</li>
+</ul>
+<p>内存效率： </p>
+<ul>
+<li>相比传统位图，Roaring 通常可以显著减少内存使用。</li>
+<li>特别是对于稀疏数据集，节省的空间可能高达数百倍。</li>
+</ul>
+<p>使用场景： </p>
+<ul>
+<li>广泛应用于搜索引擎、数据库系统和大数据处理框架。</li>
+<li>特别适合需要高效处理大量整数集合的应用。</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>BitMap</category>
+      </categories>
+      <tags>
+        <tag>BitMap</tag>
+        <tag>数据库</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>protobuf</title>
+    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
+    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
+<li>所有字段都有默认值，比如string默认为空串</li>
+<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
+<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
+<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
+<li>对于较小范围的数字，用 int32 而不是 int64</li>
+<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
+<li>对于负数多的场景用 sint32&#x2F;sint64</li>
+<li>字段更新规则！！<ol>
+<li>添加新字段</li>
+<li>删除字段(但保留字段号)</li>
+<li>重命名字段(字段号不变)</li>
+<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
+</ol>
+</li>
+<li>字段不能做的更新规则！！<ol>
+<li>改变已有字段的类型</li>
+<li>复用已删除的字段号</li>
+<li>改变已有字段的编号</li>
+</ol>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>protobuf</category>
+      </categories>
+      <tags>
+        <tag>protobuf</tag>
+        <tag>序列化</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>接口安全</title>
     <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2093,71 +2158,6 @@
       </tags>
   </entry>
   <entry>
-    <title>BitMap</title>
-    <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
-    <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
-<p>Roaring Bitmaps 是一种高效的压缩位图数据结构，它在保持快速操作性能的同时，显著减少了内存使用。这种数据结构特别适用于表示和操作大型稀疏数据集</p>
-</blockquote>
-<p>基本结构： </p>
-<ul>
-<li>Roaring Bitmap 将 32 位整数空间分割成 2^16 &#x3D; 65536 个块。</li>
-<li>每个块负责管理 2^16 个连续的整数。</li>
-</ul>
-<p>数据表示方法： </p>
-<ul>
-<li>对于稀疏的块（包含少量元素），使用简单的整数数组。<ul>
-<li>用于存储稀疏数据（少量元素）</li>
-<li>直接存储 16 位整数值</li>
-<li>当元素数量小于 4,096 时使用</li>
-</ul>
-</li>
-<li>对于稠密的块（包含大量元素），使用传统的位图。<ul>
-<li>用于存储稠密数据（大量元素）</li>
-<li>使用传统的位图表示，即 8,192 字节（65,536 位）</li>
-<li>当元素数量大于等于 4,096 时使用</li>
-</ul>
-</li>
-<li>对于连续的长整数序列，使用范围编码。<ul>
-<li>用于存储连续的整数序列</li>
-<li>存储开始和结束值的对</li>
-<li>在特定情况下可以更节省空间</li>
-</ul>
-</li>
-</ul>
-<p>自适应性： </p>
-<ul>
-<li>Roaring Bitmap 会根据数据的分布自动选择最合适的容器类型，并在需要时动态转换容器类型。</li>
-<li>这种自适应性使得 Roaring 在各种数据分布下都能保持高效。</li>
-</ul>
-<p>索引结构:</p>
-<ul>
-<li>使用一个高层索引（通常是一个数组）来快速定位到特定的容器。这个索引存储 16 位的高位值和指向相应容器的指针</li>
-</ul>
-<p>操作效率： </p>
-<ul>
-<li>支持快速的交集、并集、差集等集合操作。</li>
-<li>这些操作可以直接在压缩的表示上执行，无需完全解压。</li>
-</ul>
-<p>内存效率： </p>
-<ul>
-<li>相比传统位图，Roaring 通常可以显著减少内存使用。</li>
-<li>特别是对于稀疏数据集，节省的空间可能高达数百倍。</li>
-</ul>
-<p>使用场景： </p>
-<ul>
-<li>广泛应用于搜索引擎、数据库系统和大数据处理框架。</li>
-<li>特别适合需要高效处理大量整数集合的应用。</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>BitMap</category>
-      </categories>
-      <tags>
-        <tag>BitMap</tag>
-        <tag>数据库</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spring Cloud Gateway</title>
     <url>/2025/02/09/wang-guan/spring-cloud-gateway/posts/undefined/</url>
     <content><![CDATA[<h2 id="重要属性"><a href="#重要属性" class="headerlink" title="重要属性"></a>重要属性</h2><ol>
@@ -2202,94 +2202,6 @@
         <tag>网关</tag>
         <tag>spring cloud gateway</tag>
         <tag>spring cloud</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Socket</title>
-    <url>/2025/02/09/wang-luo/socket/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://zhuanlan.zhihu.com/p/455352339">聊聊Netty那些事儿之从内核角度看IO模型</a></li>
-</ul>
-<h3 id="Socket-数据接收到-Epoll-处理流程"><a href="#Socket-数据接收到-Epoll-处理流程" class="headerlink" title="Socket 数据接收到 Epoll 处理流程"></a>Socket 数据接收到 Epoll 处理流程</h3><pre>
-<code class="mermaid">
-
-sequenceDiagram
-    participant S as Socket
-    participant WQ as Wait Queue
-    participant CB as Callback (ep_poll_callback)
-    participant EP as eppoll_entry
-    participant EI as epitem
-    participant EPL as eventpoll
-
-    S-&gt;&gt;S: 接收数据
-    S-&gt;&gt;WQ: 触发等待队列
-    WQ-&gt;&gt;CB: 调用回调函数
-    CB-&gt;&gt;EP: container_of 找到 eppoll_entry
-    EP-&gt;&gt;EI: 访问 base 指针找到 epitem
-    EI-&gt;&gt;EPL: 将 epitem 加入活跃队列
-</code>
-</pre>
-
-
-<ol>
-<li><p>数据到达和初始处理： </p>
-<ul>
-<li>网卡接收数据，通过 DMA 将数据放入 Ring Buffer。</li>
-<li>触发软中断，内核将数据包（sk_buff）放入 socket 的接收队列。</li>
-</ul>
-</li>
-<li><p>Socket 唤醒等待队列： </p>
-<ul>
-<li>Socket 检测到有新数据，开始唤醒其等待队列（wait_queue）中的等待者。</li>
-<li>获取其中一个 wait_queue_entry_t，这里不获取全部一是避免惊群效应，二是 epoll 场景下一般也只会有一个 wait_queue_entry_t</li>
-</ul>
-</li>
-<li><p>回调函数触发： </p>
-<ul>
-<li>对于 epoll 添加的等待项，其 wait_queue_entry_t 的回调函数是 ep_poll_callback。</li>
-<li>内核调用这个回调函数，传入 wait_queue_entry_t 指针作为参数。</li>
-</ul>
-</li>
-<li><p>找到 eppoll_entry： </p>
-<ul>
-<li>在 ep_poll_callback 函数中，使用 container_of 宏。</li>
-<li>通过 wait_queue_entry_t 指针，找到包含它的 eppoll_entry 结构。</li>
-</ul>
- <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eppoll_entry</span> *<span class="title">pwq</span> =</span> container_of(wait, <span class="keyword">struct</span> eppoll_entry, wait);</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>从 eppoll_entry 到 epitem： </p>
-<ul>
-<li>eppoll_entry 结构中有一个 base 指针，直接指向关联的 epitem。</li>
-</ul>
- <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epitem</span> *<span class="title">epi</span> =</span> pwq-&gt;base;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>获取 eventpoll 结构： </p>
-<ul>
-<li>epitem 结构中包含指向其关联的 eventpoll 结构的指针。</li>
-</ul>
- <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> *<span class="title">ep</span> =</span> epi-&gt;ep;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>将 epitem 加入活跃队列： </p>
-<ul>
-<li>检查 epitem 是否已经在活跃队列中。</li>
-<li>如果不在，则将其添加到 eventpoll 的活跃队列（rdllist）中。</li>
-</ul>
- <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (!ep_is_linked(&amp;epi-&gt;rdllink))</span><br><span class="line">    list_add_tail(&amp;epi-&gt;rdllink, &amp;ep-&gt;rdllist);</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>唤醒等待的进程： </p>
-<ul>
-<li>如果有进程正在等待 epoll 事件（通过 epoll_wait），唤醒它。</li>
-</ul>
-</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>socket</tag>
       </tags>
   </entry>
   <entry>
@@ -2445,73 +2357,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>linux内核接收网络包</title>
-    <url>/2025/02/09/wang-luo/linux-nei-he-jie-shou-wang-luo-bao/posts/undefined/</url>
-    <content><![CDATA[<h3 id="RingBuffer"><a href="#RingBuffer" class="headerlink" title="RingBuffer"></a>RingBuffer</h3><h4 id="RingBuffer到底是什么"><a href="#RingBuffer到底是什么" class="headerlink" title="RingBuffer到底是什么?"></a>RingBuffer到底是什么?</h4><blockquote>
-<p>是内存中的一块特殊区域，环形队列是笼统的说法，实际上包括<code>igb_rx_buffer</code> 环形队列数组、<code>e1000_adv_rx_desc</code> 环形队列数组及众多的skb</p>
-</blockquote>
-<p><img data-src="/images/socket_02_01.png" alt="img"></p>
-<p>网卡在收到数据的时候以<code>DMA</code> 方式将包写到RingBuffer中。软中断收包的时候来这里将skb取走，并申请新的skb重新挂上去。</p>
-<p>RingBuffer内存是预先分配的还是动态分配的？</p>
-<p>指针数组是预先分配好的，而skb虽然也会预先分配好，但是在后面的收包过程中会不断的动态地分配申请</p>
-<h4 id="RingBuffer为什么会丢包？"><a href="#RingBuffer为什么会丢包？" class="headerlink" title="RingBuffer为什么会丢包？"></a>RingBuffer为什么会丢包？</h4><ul>
-<li>RingBuffer是有大小和长度限制的</li>
-<li>使用 <code>ethtool -g eth0</code> 命令查看长度，Pre-set maximums 指的是最大值，Current hardware settings 表示当前设置，下图表示最大允许1024，目前设置为1024</li>
-</ul>
-<p><img data-src="/images/socket_02_02.png" alt="img"></p>
-<ul>
-<li>查看是否有溢出情况发生  <code>ethtool -S eth0</code>，如果有溢出情况发生(ifconfig中体现为overruns指标增长)，表示有包因为RingBuffer装不下而被丢弃了，解决思路有两种<ul>
-<li>加大RingBuffer长度 <code>ethtool -G eth0 rx 4096 tx 4096</code> ，此种方式只是临时解决，治标不治本</li>
-<li>开启多队列提升网络性能，打散队列的亲核性</li>
-<li>现在主流网卡基本上都支持多队列，通过<code>ethtool -l eth0</code> 进行查看，下图表示当前网卡支持的最大队列数是2，当前开启的也是2，通过sysfs也可以看到真正生效的队列数量。</li>
-<li><img data-src="/images/socket_02_03.png" alt="img"></li>
-<li><img data-src="/images/socket_02_04.png" alt="img"></li>
-<li>加大队列数量，可以使用 <code>ethtool -L eth0 combined 32</code> </li>
-<li>如果发现某个cpu核心si特别高，可以考虑调整队列亲和的cpu核心<ul>
-<li><code>cat /proc/interrupts</code>查看队列的硬件硬中断，下图显示输入队列0的中断号是25，队列1的中断号是27，通过这个中断号对应的<code>smp_affinity</code>可以查看到亲和的cpu核是哪个。下图显示的2在二进制中代表第二位是1，所以表示第2个cpu核心——CPU2</li>
-<li><img data-src="/images/socket_02_05.png" alt="img"></li>
-<li><img data-src="/images/socket_02_06.png" alt="img"></li>
-<li>每个队列都会有独立的、不同的中断号。所以不同的队列在将数据收取到自己的RingBuffer后，可以分别向不同的CPU发起硬中断通知。而在硬中断的处理中，发起软中断是基于当前核心的，这意味着<strong>哪个核响应的硬中断，那么该硬中断发起的软中断任务就必然由这个核来处理</strong>。</li>
-<li>通过设置每个队列中断号上的<code>smp_affinity</code>，将各个队列的硬中断打散到不同的cpu上。</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h3 id="网络相关的硬中断、软中断都是什么"><a href="#网络相关的硬中断、软中断都是什么" class="headerlink" title="网络相关的硬中断、软中断都是什么?"></a>网络相关的硬中断、软中断都是什么?</h3><p> 在网卡将数据放到<code>RingBuffer</code> 之后，接着就发起<code>硬中断</code>，通知cpu进行处理。不过在硬中断的上下文里做的工作很少，将传过来的<code>poll_list</code> 添加到每个cpu变量<code>softnet_data</code> 的 <code>poll_list</code> 里面，接着触发<code>软中断</code> <code>NET_RX_SOFTIRQ</code>。在软中断中对softnet_data的设备列表poll_list进行遍历，执行网卡驱动提供的poll来收取网络包。处理完成后会送到协议栈的ip_rcv、udp_rcv、tcp_rcv_v4等函数中</p>
-<p>poll_list 是个双向链表，存储待处理NAPI实例的链表。</p>
-<p>一个网卡驱动程序通常会注册一个NAPI结构(struct napi_struct)，这个结构基本约等于一个接收队列，目的是为了减少硬中断的次数。在高并发网络中，频繁的接收到网络包导致频繁触发硬中断，浪费了CPU性能，通过NAPI一个队列中接收到网络包后将此队列信息传递给软中断，软中断处理程序在处理的时候先停止触发硬中断，专注接收包的处理，处理完成后再打开硬中断触发，大大减少了硬中断的触发。</p>
-<h3 id="ksoftirqd内核线程是用来干嘛的"><a href="#ksoftirqd内核线程是用来干嘛的" class="headerlink" title="ksoftirqd内核线程是用来干嘛的?"></a>ksoftirqd内核线程是用来干嘛的?</h3><ul>
-<li>机器上有几核，内核就会创建几个ksoftirqd线程出来</li>
-<li>内核线程ksoftirqd包含了所有的软中断处理逻辑，软中断信息可以通过 <code>cat /proc/softirqs</code> 命令进行查看</li>
-</ul>
-<p><img data-src="/images/socket_02_07.png" alt="img"></p>
-<h3 id="tcpdump是如何工作的？"><a href="#tcpdump是如何工作的？" class="headerlink" title="tcpdump是如何工作的？"></a>tcpdump是如何工作的？</h3><blockquote>
-<p>tcpdump工作在设备层，是通过虚拟协议的方式工作的。通过调用packet_create将抓包函数以协议的形式挂到ptype_all上。这个函数会将包送到协议栈函数(ip_rcv、arp_rcv)之前，将包先送到ptype_all抓包点。</p>
-</blockquote>
-<ul>
-<li>iptable&#x2F;netfilter 主要是在IP、ARP等层实现的。如果配置过于复杂的规则，则会消耗过多的cpu，加大网络延迟</li>
-<li>tcpdump工作在设备层，将包送到ip层以前就能处理，而netfilter工作在IP、ARP等层，从下图来看，netfilter工作在tcpdump之后，所以iptable封禁规则不影响tcpdump抓包；但是发包过程恰恰相反，发包的时候netfilter先进行工作，在协议层就被过滤掉了，所以tcpdump什么都看不到。</li>
-</ul>
-<p><img data-src="/images/socket_02_08.png" alt="img"></p>
-<h3 id="网络接收过程中的CPU开销如何查看？"><a href="#网络接收过程中的CPU开销如何查看？" class="headerlink" title="网络接收过程中的CPU开销如何查看？"></a>网络接收过程中的CPU开销如何查看？</h3><blockquote>
-<p>在网络包的接收过程中，主要工作集中在硬中断和软中断上，二者的消耗可以通过top命令进行查看</p>
-</blockquote>
-<ul>
-<li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
-</ul>
-<p><img data-src="/images/socket_02_09.png" alt="img"></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
-      <tags>
-        <tag>linux</tag>
-        <tag>网络</tag>
-        <tag>socket</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>抓包相关</title>
     <url>/2025/02/09/wang-luo/zhua-bao-xiang-guan/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2615,6 +2460,73 @@ sequenceDiagram
         <tag>网络</tag>
         <tag>tcp</tag>
         <tag>抓包</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>linux内核接收网络包</title>
+    <url>/2025/02/09/wang-luo/linux-nei-he-jie-shou-wang-luo-bao/posts/undefined/</url>
+    <content><![CDATA[<h3 id="RingBuffer"><a href="#RingBuffer" class="headerlink" title="RingBuffer"></a>RingBuffer</h3><h4 id="RingBuffer到底是什么"><a href="#RingBuffer到底是什么" class="headerlink" title="RingBuffer到底是什么?"></a>RingBuffer到底是什么?</h4><blockquote>
+<p>是内存中的一块特殊区域，环形队列是笼统的说法，实际上包括<code>igb_rx_buffer</code> 环形队列数组、<code>e1000_adv_rx_desc</code> 环形队列数组及众多的skb</p>
+</blockquote>
+<p><img data-src="/images/socket_02_01.png" alt="img"></p>
+<p>网卡在收到数据的时候以<code>DMA</code> 方式将包写到RingBuffer中。软中断收包的时候来这里将skb取走，并申请新的skb重新挂上去。</p>
+<p>RingBuffer内存是预先分配的还是动态分配的？</p>
+<p>指针数组是预先分配好的，而skb虽然也会预先分配好，但是在后面的收包过程中会不断的动态地分配申请</p>
+<h4 id="RingBuffer为什么会丢包？"><a href="#RingBuffer为什么会丢包？" class="headerlink" title="RingBuffer为什么会丢包？"></a>RingBuffer为什么会丢包？</h4><ul>
+<li>RingBuffer是有大小和长度限制的</li>
+<li>使用 <code>ethtool -g eth0</code> 命令查看长度，Pre-set maximums 指的是最大值，Current hardware settings 表示当前设置，下图表示最大允许1024，目前设置为1024</li>
+</ul>
+<p><img data-src="/images/socket_02_02.png" alt="img"></p>
+<ul>
+<li>查看是否有溢出情况发生  <code>ethtool -S eth0</code>，如果有溢出情况发生(ifconfig中体现为overruns指标增长)，表示有包因为RingBuffer装不下而被丢弃了，解决思路有两种<ul>
+<li>加大RingBuffer长度 <code>ethtool -G eth0 rx 4096 tx 4096</code> ，此种方式只是临时解决，治标不治本</li>
+<li>开启多队列提升网络性能，打散队列的亲核性</li>
+<li>现在主流网卡基本上都支持多队列，通过<code>ethtool -l eth0</code> 进行查看，下图表示当前网卡支持的最大队列数是2，当前开启的也是2，通过sysfs也可以看到真正生效的队列数量。</li>
+<li><img data-src="/images/socket_02_03.png" alt="img"></li>
+<li><img data-src="/images/socket_02_04.png" alt="img"></li>
+<li>加大队列数量，可以使用 <code>ethtool -L eth0 combined 32</code> </li>
+<li>如果发现某个cpu核心si特别高，可以考虑调整队列亲和的cpu核心<ul>
+<li><code>cat /proc/interrupts</code>查看队列的硬件硬中断，下图显示输入队列0的中断号是25，队列1的中断号是27，通过这个中断号对应的<code>smp_affinity</code>可以查看到亲和的cpu核是哪个。下图显示的2在二进制中代表第二位是1，所以表示第2个cpu核心——CPU2</li>
+<li><img data-src="/images/socket_02_05.png" alt="img"></li>
+<li><img data-src="/images/socket_02_06.png" alt="img"></li>
+<li>每个队列都会有独立的、不同的中断号。所以不同的队列在将数据收取到自己的RingBuffer后，可以分别向不同的CPU发起硬中断通知。而在硬中断的处理中，发起软中断是基于当前核心的，这意味着<strong>哪个核响应的硬中断，那么该硬中断发起的软中断任务就必然由这个核来处理</strong>。</li>
+<li>通过设置每个队列中断号上的<code>smp_affinity</code>，将各个队列的硬中断打散到不同的cpu上。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="网络相关的硬中断、软中断都是什么"><a href="#网络相关的硬中断、软中断都是什么" class="headerlink" title="网络相关的硬中断、软中断都是什么?"></a>网络相关的硬中断、软中断都是什么?</h3><p> 在网卡将数据放到<code>RingBuffer</code> 之后，接着就发起<code>硬中断</code>，通知cpu进行处理。不过在硬中断的上下文里做的工作很少，将传过来的<code>poll_list</code> 添加到每个cpu变量<code>softnet_data</code> 的 <code>poll_list</code> 里面，接着触发<code>软中断</code> <code>NET_RX_SOFTIRQ</code>。在软中断中对softnet_data的设备列表poll_list进行遍历，执行网卡驱动提供的poll来收取网络包。处理完成后会送到协议栈的ip_rcv、udp_rcv、tcp_rcv_v4等函数中</p>
+<p>poll_list 是个双向链表，存储待处理NAPI实例的链表。</p>
+<p>一个网卡驱动程序通常会注册一个NAPI结构(struct napi_struct)，这个结构基本约等于一个接收队列，目的是为了减少硬中断的次数。在高并发网络中，频繁的接收到网络包导致频繁触发硬中断，浪费了CPU性能，通过NAPI一个队列中接收到网络包后将此队列信息传递给软中断，软中断处理程序在处理的时候先停止触发硬中断，专注接收包的处理，处理完成后再打开硬中断触发，大大减少了硬中断的触发。</p>
+<h3 id="ksoftirqd内核线程是用来干嘛的"><a href="#ksoftirqd内核线程是用来干嘛的" class="headerlink" title="ksoftirqd内核线程是用来干嘛的?"></a>ksoftirqd内核线程是用来干嘛的?</h3><ul>
+<li>机器上有几核，内核就会创建几个ksoftirqd线程出来</li>
+<li>内核线程ksoftirqd包含了所有的软中断处理逻辑，软中断信息可以通过 <code>cat /proc/softirqs</code> 命令进行查看</li>
+</ul>
+<p><img data-src="/images/socket_02_07.png" alt="img"></p>
+<h3 id="tcpdump是如何工作的？"><a href="#tcpdump是如何工作的？" class="headerlink" title="tcpdump是如何工作的？"></a>tcpdump是如何工作的？</h3><blockquote>
+<p>tcpdump工作在设备层，是通过虚拟协议的方式工作的。通过调用packet_create将抓包函数以协议的形式挂到ptype_all上。这个函数会将包送到协议栈函数(ip_rcv、arp_rcv)之前，将包先送到ptype_all抓包点。</p>
+</blockquote>
+<ul>
+<li>iptable&#x2F;netfilter 主要是在IP、ARP等层实现的。如果配置过于复杂的规则，则会消耗过多的cpu，加大网络延迟</li>
+<li>tcpdump工作在设备层，将包送到ip层以前就能处理，而netfilter工作在IP、ARP等层，从下图来看，netfilter工作在tcpdump之后，所以iptable封禁规则不影响tcpdump抓包；但是发包过程恰恰相反，发包的时候netfilter先进行工作，在协议层就被过滤掉了，所以tcpdump什么都看不到。</li>
+</ul>
+<p><img data-src="/images/socket_02_08.png" alt="img"></p>
+<h3 id="网络接收过程中的CPU开销如何查看？"><a href="#网络接收过程中的CPU开销如何查看？" class="headerlink" title="网络接收过程中的CPU开销如何查看？"></a>网络接收过程中的CPU开销如何查看？</h3><blockquote>
+<p>在网络包的接收过程中，主要工作集中在硬中断和软中断上，二者的消耗可以通过top命令进行查看</p>
+</blockquote>
+<ul>
+<li>输入top命令后，再输入1即可查看。其中hi是CPU处理硬中断的开销，si是处理软中断的开销，都是以百分比的形式展现的。</li>
+</ul>
+<p><img data-src="/images/socket_02_09.png" alt="img"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
       </tags>
   </entry>
   <entry>
@@ -2807,6 +2719,94 @@ sequenceDiagram
         <tag>分布式</tag>
         <tag>算法</tag>
         <tag>raft</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Socket</title>
+    <url>/2025/02/09/wang-luo/socket/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://zhuanlan.zhihu.com/p/455352339">聊聊Netty那些事儿之从内核角度看IO模型</a></li>
+</ul>
+<h3 id="Socket-数据接收到-Epoll-处理流程"><a href="#Socket-数据接收到-Epoll-处理流程" class="headerlink" title="Socket 数据接收到 Epoll 处理流程"></a>Socket 数据接收到 Epoll 处理流程</h3><pre>
+<code class="mermaid">
+
+sequenceDiagram
+    participant S as Socket
+    participant WQ as Wait Queue
+    participant CB as Callback (ep_poll_callback)
+    participant EP as eppoll_entry
+    participant EI as epitem
+    participant EPL as eventpoll
+
+    S-&gt;&gt;S: 接收数据
+    S-&gt;&gt;WQ: 触发等待队列
+    WQ-&gt;&gt;CB: 调用回调函数
+    CB-&gt;&gt;EP: container_of 找到 eppoll_entry
+    EP-&gt;&gt;EI: 访问 base 指针找到 epitem
+    EI-&gt;&gt;EPL: 将 epitem 加入活跃队列
+</code>
+</pre>
+
+
+<ol>
+<li><p>数据到达和初始处理： </p>
+<ul>
+<li>网卡接收数据，通过 DMA 将数据放入 Ring Buffer。</li>
+<li>触发软中断，内核将数据包（sk_buff）放入 socket 的接收队列。</li>
+</ul>
+</li>
+<li><p>Socket 唤醒等待队列： </p>
+<ul>
+<li>Socket 检测到有新数据，开始唤醒其等待队列（wait_queue）中的等待者。</li>
+<li>获取其中一个 wait_queue_entry_t，这里不获取全部一是避免惊群效应，二是 epoll 场景下一般也只会有一个 wait_queue_entry_t</li>
+</ul>
+</li>
+<li><p>回调函数触发： </p>
+<ul>
+<li>对于 epoll 添加的等待项，其 wait_queue_entry_t 的回调函数是 ep_poll_callback。</li>
+<li>内核调用这个回调函数，传入 wait_queue_entry_t 指针作为参数。</li>
+</ul>
+</li>
+<li><p>找到 eppoll_entry： </p>
+<ul>
+<li>在 ep_poll_callback 函数中，使用 container_of 宏。</li>
+<li>通过 wait_queue_entry_t 指针，找到包含它的 eppoll_entry 结构。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eppoll_entry</span> *<span class="title">pwq</span> =</span> container_of(wait, <span class="keyword">struct</span> eppoll_entry, wait);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>从 eppoll_entry 到 epitem： </p>
+<ul>
+<li>eppoll_entry 结构中有一个 base 指针，直接指向关联的 epitem。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epitem</span> *<span class="title">epi</span> =</span> pwq-&gt;base;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取 eventpoll 结构： </p>
+<ul>
+<li>epitem 结构中包含指向其关联的 eventpoll 结构的指针。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> *<span class="title">ep</span> =</span> epi-&gt;ep;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将 epitem 加入活跃队列： </p>
+<ul>
+<li>检查 epitem 是否已经在活跃队列中。</li>
+<li>如果不在，则将其添加到 eventpoll 的活跃队列（rdllist）中。</li>
+</ul>
+ <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (!ep_is_linked(&amp;epi-&gt;rdllink))</span><br><span class="line">    list_add_tail(&amp;epi-&gt;rdllink, &amp;ep-&gt;rdllist);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>唤醒等待的进程： </p>
+<ul>
+<li>如果有进程正在等待 epoll 事件（通过 epoll_wait），唤醒它。</li>
+</ul>
+</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>网络</tag>
+        <tag>socket</tag>
       </tags>
   </entry>
   <entry>
@@ -3280,6 +3280,185 @@ sequenceDiagram
         <tag>消息队列</tag>
         <tag>中间件</tag>
         <tag>kafka</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>spring-kafka</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> Spring kafka 版本 2.8.4</p>
+</blockquote>
+<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
+<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
+<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
+</ul>
+<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
+<li>enable.auto.commit&#x3D;true</li>
+<li>auto-commit-interval 自动提交的时间间隔</li>
+</ul>
+<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
+<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
+
+  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
+
+  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
+</code></pre>
+<ul>
+<li>自动提交流程</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
+<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
+<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
+<li>ackMode &#x3D; <em>RECORD</em></li>
+</ul>
+<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
+<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
+<ul>
+<li>ackMode !&#x3D; <em>RECORD</em></li>
+</ul>
+<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
+<ul>
+<li>AckMode 解析</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">类型</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><em>RECORD</em></td>
+<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>BATCH</em></td>
+<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
+</tr>
+<tr>
+<td align="left"><em>TIME</em></td>
+<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT</em></td>
+<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT_TIME</em></td>
+<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL_IMMEDIATE</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
+</tr>
+</tbody></table>
+<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
+<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
+<li>异步提交 syncCommits&#x3D;false</li>
+</ul>
+<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
+<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
+<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
+<li>默认重试 9 次，每次重试之前没有间隔</li>
+</ul>
+<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
+<ul>
+<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
+</ul>
+<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
+<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
+<ul>
+<li>定义重试次数 &amp; 重试间隔</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
+
+<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
+<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
+
+<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
+<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
+<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
+<li>autoCommit &#x3D; false</li>
+<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
+<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
+</ul>
+</li>
+</ul>
+<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+        <tag>spring</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>pulsar-使用</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
+    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
+<li>docker 单机创建</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>可视化 pulsar-manager</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
+</ul>
+<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
+<ul>
+<li>创建租户</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 namespace</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>显示某个 namespace 下的 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>pulsar</tag>
       </tags>
   </entry>
   <entry>
@@ -4604,185 +4783,6 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>spring-kafka</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> Spring kafka 版本 2.8.4</p>
-</blockquote>
-<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
-<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
-<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
-</ul>
-<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
-<li>enable.auto.commit&#x3D;true</li>
-<li>auto-commit-interval 自动提交的时间间隔</li>
-</ul>
-<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
-<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
-
-  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
-
-  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
-</code></pre>
-<ul>
-<li>自动提交流程</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
-<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
-<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
-<li>ackMode &#x3D; <em>RECORD</em></li>
-</ul>
-<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
-<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
-<ul>
-<li>ackMode !&#x3D; <em>RECORD</em></li>
-</ul>
-<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
-<ul>
-<li>AckMode 解析</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th align="left">类型</th>
-<th align="left">说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><em>RECORD</em></td>
-<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>BATCH</em></td>
-<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
-</tr>
-<tr>
-<td align="left"><em>TIME</em></td>
-<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT</em></td>
-<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT_TIME</em></td>
-<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL_IMMEDIATE</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
-</tr>
-</tbody></table>
-<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
-<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
-<li>异步提交 syncCommits&#x3D;false</li>
-</ul>
-<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
-<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
-<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
-<li>默认重试 9 次，每次重试之前没有间隔</li>
-</ul>
-<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
-<ul>
-<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
-</ul>
-<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
-<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
-<ul>
-<li>定义重试次数 &amp; 重试间隔</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
-
-<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
-<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
-
-<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
-<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
-<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
-<li>autoCommit &#x3D; false</li>
-<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
-<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
-</ul>
-</li>
-</ul>
-<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-        <tag>spring</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>pulsar-使用</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
-    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
-<li>docker 单机创建</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>可视化 pulsar-manager</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
-</ul>
-<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
-<ul>
-<li>创建租户</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 namespace</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>显示某个 namespace 下的 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>pulsar</tag>
       </tags>
   </entry>
 </search>

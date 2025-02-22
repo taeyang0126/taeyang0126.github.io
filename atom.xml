@@ -18,8 +18,8 @@
   
   <entry>
     <title>JVM与JFR事件-Java Application/Object Allocation Outside TLAB</title>
-    <link href="https://taeyang0126.github.io/2025/02/22/jfr/jvm-yu-jfr-shi-jian-object-allocation-outside-tlab/posts/undefined/"/>
-    <id>https://taeyang0126.github.io/2025/02/22/jfr/jvm-yu-jfr-shi-jian-object-allocation-outside-tlab/posts/undefined/</id>
+    <link href="https://taeyang0126.github.io/2025/02/22/jfr/4.jvm-yu-jfr-shi-jian-object-allocation-outside-tlab/posts/undefined/"/>
+    <id>https://taeyang0126.github.io/2025/02/22/jfr/4.jvm-yu-jfr-shi-jian-object-allocation-outside-tlab/posts/undefined/</id>
     <published>2025-02-22T06:25:52.000Z</published>
     <updated>2025-02-22T06:25:52.000Z</updated>
     
@@ -72,8 +72,8 @@
   
   <entry>
     <title>JVM与JFR事件-Java Application/Object Allocation In New TLAB</title>
-    <link href="https://taeyang0126.github.io/2025/02/22/jfr/jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/"/>
-    <id>https://taeyang0126.github.io/2025/02/22/jfr/jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/</id>
+    <link href="https://taeyang0126.github.io/2025/02/22/jfr/3.jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/"/>
+    <id>https://taeyang0126.github.io/2025/02/22/jfr/3.jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/</id>
     <published>2025-02-22T06:20:52.000Z</published>
     <updated>2025-02-22T06:20:52.000Z</updated>
     
@@ -156,8 +156,8 @@
   
   <entry>
     <title>JVM与JFR事件-准备工作</title>
-    <link href="https://taeyang0126.github.io/2025/02/20/jfr/jvm-yu-jfr-shi-jian-zhun-bei-gong-zuo/posts/undefined/"/>
-    <id>https://taeyang0126.github.io/2025/02/20/jfr/jvm-yu-jfr-shi-jian-zhun-bei-gong-zuo/posts/undefined/</id>
+    <link href="https://taeyang0126.github.io/2025/02/20/jfr/2.jvm-yu-jfr-shi-jian-zhun-bei-gong-zuo/posts/undefined/"/>
+    <id>https://taeyang0126.github.io/2025/02/20/jfr/2.jvm-yu-jfr-shi-jian-zhun-bei-gong-zuo/posts/undefined/</id>
     <published>2025-02-20T06:13:52.000Z</published>
     <updated>2025-02-20T06:13:52.000Z</updated>
     
