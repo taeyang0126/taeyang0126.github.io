@@ -1,7 +1,7 @@
 ---
 title: JVM与JFR事件-Java Application/Object Allocation Outside TLAB
 abbrlink: 19346
-date: 2025-02-20 14:25:52
+date: 2025-02-22 14:25:52
 tags: [JVM, JFR, 监控, 对象分配, TLAB]
 categories: [JFR]
 ---
