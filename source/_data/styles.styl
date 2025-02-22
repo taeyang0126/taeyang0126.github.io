@@ -344,14 +344,7 @@ body::-webkit-scrollbar-track {
 }
 
 // 文章内的标题颜色
-.post-body h1,
-.post-body h2,
-.post-body h3,
-.post-body h4,
-.post-body h5,
-.post-body h6 {
-  color: #fff !important;
-}
+
 
 /* 移除代码块内部的深色背景 */
 .highlight pre,
@@ -387,3 +380,54 @@ code {
   /* 可选：添加边框 */
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
+
+/* 现代渐变色标题方案 */
+h1 {
+  background: linear-gradient(90deg, #FF416C, #FF4B2B);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+h2 {
+  background: linear-gradient(90deg, #FF4B2B, #F7B733);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+h3 {
+  background: linear-gradient(90deg, #F7B733, #FC4A1A);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+h4 {
+  background: linear-gradient(90deg, #FC4A1A, #F85032);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+h5 {
+  background: linear-gradient(90deg, #F85032, #E73827);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+h6 {
+  background: linear-gradient(90deg, #E73827, #FF416C);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+/* 标题悬停效果 */
+h1:hover, h2:hover, h3:hover {
+  transform: translateX(10px);
+  transition: transform 0.3s ease;
+}
+
+
