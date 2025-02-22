@@ -41,32 +41,30 @@ categories: [JFR]
 
 ### 为什么觉得 90% 以上的内存泄漏问题没必要 Heap Dump 就能通过 JFR 定位到？
 
-#### 大对象分配导致的问题
-
-##### jfr配置
+#### jfr配置
 - jfc配置文件
-  ```xml
-  <configuration version="2.0">
-	<event name="jdk.ObjectAllocationOutsideTLAB">
-		<setting name="enabled">true</setting>
-		<setting name="stackTrace">true</setting>
-	</event>
-	<event name="jdk.ObjectAllocationSample">
-		<setting name="enabled" control="object-allocation-enabled">true</setting>
-		<setting name="throttle" control="allocation-profiling">5/s</setting>
-		<setting name="stackTrace">true</setting>
-	</event>
-	<event name="jdk.AllocationRequiringGC">
-		<setting name="enabled" control="gc-enabled-high">true</setting>
-		<setting name="stackTrace">true</setting>
-	</event>
-	<event name="jdk.ZAllocationStall">
-		<setting name="enabled">true</setting>
-		<setting name="stackTrace">true</setting>
-		<setting name="threshold">0 ms</setting>
-	</event>
-  </configuration>
-  ```
+```xml
+<configuration version="2.0">
+  <event name="jdk.ObjectAllocationOutsideTLAB">
+      <setting name="enabled">true</setting>
+      <setting name="stackTrace">true</setting>
+  </event>
+  <event name="jdk.ObjectAllocationSample">
+      <setting name="enabled" control="object-allocation-enabled">true</setting>
+      <setting name="throttle" control="allocation-profiling">5/s</setting>
+      <setting name="stackTrace">true</setting>
+  </event>
+  <event name="jdk.AllocationRequiringGC">
+      <setting name="enabled" control="gc-enabled-high">true</setting>
+      <setting name="stackTrace">true</setting>
+  </event>
+  <event name="jdk.ZAllocationStall">
+      <setting name="enabled">true</setting>
+      <setting name="stackTrace">true</setting>
+      <setting name="threshold">0 ms</setting>
+  </event>
+</configuration>
+```
 - ObjectAllocationOutsideTLAB：TLAB外的分配
 - ObjectAllocationSample：TLAB外的以及申请新的TLAB的采样
 - AllocationRequiringGC：某个对象分配失败导致gc采集，针对serial、parallel、G1 gc
@@ -81,9 +79,10 @@ categories: [JFR]
   -XX:FlightRecorderOptions=maxchunksize=128m,repository=./,stackdepth=256
   ```
 
+#### 大对象分配导致的问题
+
 ##### 问题1
-> 某个请求有 bug，导致全表扫描，冲爆了 Java 对象堆内存。抛出了 OutOfMemoryError ，但是这是异常情况，可能无法输出堆栈日志，在茫
-茫众多的请求中很难找到这个请求
+> 某个请求有 bug，导致全表扫描，冲爆了 Java 对象堆内存。抛出了 OutOfMemoryError ，但是这是异常情况，可能无法输出堆栈日志，在茫茫众多的请求中很难找到这个请求
 - 模拟了一个方法，从db返回结果非常大，直接导致OOM，输出的jfr如下
 - ![img](/images/jfr/08.png)
 - ![img](/images/jfr/09.png)
@@ -91,8 +90,7 @@ categories: [JFR]
   ![img](/images/jfr/10.png)
 
 ##### 问题2
-> 用户累计订单量随着你的系统成熟越来越多，大历史订单量的用户越来越多。之前的代码有 bug ，用户订单列表实际是拉取每个用户的所有订单
-内存分页。可能两个大历史订单量的用户同时查询的时候就会抛出 OutOfMemoryError ，就算不抛出也会频繁 GC 影响性能。
+> 用户累计订单量随着你的系统成熟越来越多，大历史订单量的用户越来越多。之前的代码有 bug ，用户订单列表实际是拉取每个用户的所有订单 内存分页。可能两个大历史订单量的用户同时查询的时候就会抛出 OutOfMemoryError ，就算不抛出也会频繁 GC 影响性能。
 - 模拟了一个方法，多个大订单量的用户并发查询，可能没有导致OOM，但是会频繁的GC，输出的jfr如下
 - ![img](/images/jfr/11.png)
 - ![img](/images/jfr/12.png)
@@ -102,8 +100,7 @@ categories: [JFR]
 ##### 问题3
 > 某个请求会触发分配一个小对象放入类似于缓存的地方，但是这个小对象一直没有被回收，日积月累导致 FullGC 越来越频繁，最后
 OutOfMemoryError
-- 这种情况，可能导致 JFR 事件丢失，但是大概率不影响我们定位问题，因为是一连串的趋势可以看
-  出来
+- 这种情况，可能导致 JFR 事件丢失，但是大概率不影响我们定位问题，因为是一连串的趋势可以看出来
 - ![img](/images/jfr/13.png)
 - ![img](/images/jfr/14.png)
 
