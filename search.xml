@@ -1288,68 +1288,6 @@
       </tags>
   </entry>
   <entry>
-    <title>loom-springboot</title>
-    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
-    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
-<li>jdk 22.0.1-graal</li>
-<li>maven 3.6.3</li>
-<li>内置容器 tomcat，最大线程数量 256</li>
-<li>Xms200M Xmx300M</li>
-<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
-<li>M1 max 64g</li>
-<li>SpringBoot 3.3.0</li>
-</ul>
-<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
-</ul>
-<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
-<ul>
-<li>内存、线程占用情况</li>
-</ul>
-<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
-<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
-</ul>
-<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
-<ul>
-<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
-</ul>
-<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
-<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
-<li>版本9.0.60</li>
-<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
-<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
-<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
-</ul>
-<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
-<li>版本10.1.24</li>
-<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
-<li>此版本下如何启用虚拟线程?<ol>
-<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol start="2">
-<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
-<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
-</ol>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
-        <tag>spring boot</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>1-Netty Reactor启动流程</title>
     <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
@@ -1452,164 +1390,6 @@
 <p>io.netty.channel.nio.AbstractNioChannel#doBeginRead</p>
 </blockquote>
 <p><img data-src="/images/netty_01_21.png" alt="netty"></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>loom</title>
-    <url>/2025/02/19/loom/loom/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
-<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
-<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
-<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
-<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
-</ul>
-<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
-<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
-</blockquote>
-<ul>
-<li>Java 代码调用本地代码 (JNI)</li>
-<li>synchronized 块或方法</li>
-</ul>
-<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
-<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
-</ul>
-<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
-<li>Synchronization<ul>
-<li>synchronized最终会解决，但是JNI不会处理</li>
-<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
-</ul>
-</li>
-<li>I&#x2F;O<ul>
-<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
-<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
-<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
-<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
-</ul>
-</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>3-Netty接收网络连接</title>
-    <url>/2025/02/12/netty/3.netty-jie-shou-wang-luo-lian-jie/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
-<li><a href="https://zhuanlan.zhihu.com/p/466019443">Netty是如何高效接收网络连接的</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/471122992">ByteBuffer动态自适应扩缩容机制</a></li>
-</ul>
-<h2 id="Main-Reactor-处理-OP-ACCEPT-事件"><a href="#Main-Reactor-处理-OP-ACCEPT-事件" class="headerlink" title="Main Reactor 处理 OP_ACCEPT 事件"></a>Main Reactor 处理 OP_ACCEPT 事件</h2><ul>
-<li>Netty 将<code>OP_ACCEPT事件</code>处理的入口函数封装在<code>NioServerSocketChannel</code>里的底层操作类 Unsafe 的<code>read</code>方法中 –&gt; <code>AbstractNioMessageChannel</code></li>
-</ul>
-<blockquote>
-<p>io.netty.channel.nio.AbstractNioMessageChannel.NioMessageUnsafe#read</p>
-</blockquote>
-<ul>
-<li>接收连接过程如下</li>
-</ul>
-<p><img data-src="/images/netty/03_01.PNG" alt="netty"></p>
-<ul>
-<li><strong><code>MaxMessageHandle#maxMessagePerRead</code></strong>： 用于控制每次 read loop 里最大可以循环读取的次数，默认为 16 次，可在启动配置类<code>ServerBootstrap</code>中通过<code>ChannelOption.MAX_MESSAGES_PER_READ</code>选项设置。</li>
-<li>客户端<code>NioSocketChannel</code>继承的是<code>AbstractNioByteChannel</code>，而服务端<code>NioServerSocketChannel</code>继承的是<code>AbstractNioMessageChannel</code></li>
-</ul>
-<blockquote>
-<p>客户端<code>NioSocketChannel</code>主要处理的是服务端与客户端的通信，这里涉及到接收客户端发送来的数据，而<code>Sub Reactor线程</code>从<code>NioSocketChannel</code>中读取的正是网络通信数据单位为<code>Byte</code>。 服务端<code>NioServerSocketChannel</code>主要负责处理<code>OP_ACCEPT事件</code>，创建用于通信的客户端<code>NioSocketChannel</code>。这时候客户端与服务端还没开始通信，所以<code>Main Reactor线程</code>从<code>NioServerSocketChannel</code>的读取对象为<code>Message</code>。这里的<code>Message</code>指的就是底层的<code>SocketChannel</code>客户端连接。</p>
-</blockquote>
-<p><img data-src="/images/netty/03_02.PNG" alt="netty"></p>
-<h2 id="接收网络数据总览"><a href="#接收网络数据总览" class="headerlink" title="接收网络数据总览"></a>接收网络数据总览</h2><p><img data-src="/images/netty/03_03.PNG" alt="netty"></p>
-<ul>
-<li>Netty 服务端对于一次 OP_READ 事件的处理，会在一个<code>do&#123;&#125;while()</code>循环 read loop 中分多次从客户端 NioSocketChannel 中读取网络数据。每次读取我们分配的 ByteBuffer 容量大小，初始容量为 2048</li>
-</ul>
-<h2 id="ChannelRead-与-ChannelReadComplete-事件的区别"><a href="#ChannelRead-与-ChannelReadComplete-事件的区别" class="headerlink" title="ChannelRead 与 ChannelReadComplete 事件的区别"></a>ChannelRead 与 ChannelReadComplete 事件的区别</h2><ul>
-<li><code>ChanneRead事件</code>：一次循环读取一次数据，就触发一次<code>ChannelRead事件</code>。本次最多读取在 read loop 循环开始分配的 DirectByteBuffer 容量大小。这个容量会动态调整。</li>
-<li><code>ChannelReadComplete事件</code>：当读取不到数据或者不满足<code>continueReading</code>的任意一个条件就会退出 read loop，这时就会触发<code>ChannelReadComplete事件</code>。表示本次<code>OP_READ事件</code>处理完毕。</li>
-</ul>
-<blockquote>
-<p>这里需要特别注意下触发<code>ChannelReadComplete事件</code>并不代表 NioSocketChannel 中的数据已经读取完了，只能说明本次<code>OP_READ事件</code>处理完毕。因为有可能是客户端发送的数据太多，Netty 读了<code>16次</code>还没读完，那就只能等到下次<code>OP_READ事件</code>到来的时候在进行读取了。</p>
-</blockquote>
-<h2 id="AdaptiveRecvByteBufAllocator"><a href="#AdaptiveRecvByteBufAllocator" class="headerlink" title="AdaptiveRecvByteBufAllocator"></a>AdaptiveRecvByteBufAllocator</h2><p>AdaptiveRecvByteBufAllocator 主要的作用就是为接收数据的<code>ByteBuffer</code>进行扩容缩容，那么每次怎么扩容？扩容多少？怎么缩容？缩容多少呢？？</p>
-<h3 id="容量索引表"><a href="#容量索引表" class="headerlink" title="容量索引表"></a>容量索引表</h3><blockquote>
-<p>Netty 中定义了一个<code>int型</code>的数组<code>SIZE_TABLE</code>来存储每个扩容单位对应的容量大小。建立起扩缩容的容量索引表。每次扩容多少，缩容多少全部记录在这个容量索引表中</p>
-</blockquote>
-<ul>
-<li>在 AdaptiveRecvByteBufAllocatorl 类初始化的时候会在<code>static&#123;&#125;</code>静态代码块中对扩缩容索引表<code>SIZE_TABLE</code>进行初始化</li>
-<li>当索引容量小于<code>512</code>时，<code>SIZE_TABLE</code>中定义的容量索引是从<code>16开始</code>按<code>16</code>递增</li>
-</ul>
-<p><img data-src="/images/netty/03_04.PNG" alt="netty"></p>
-<ul>
-<li>当索引容量大于<code>512</code>时，<code>SIZE_TABLE</code>中定义的容量索引是按前一个索引容量的 2 倍递增</li>
-</ul>
-<p><img data-src="/images/netty/03_05.PNG" alt="netty"></p>
-<h3 id="扩缩容逻辑"><a href="#扩缩容逻辑" class="headerlink" title="扩缩容逻辑"></a>扩缩容逻辑</h3><blockquote>
-<p>AdaptiveRecvByteBufAllocator 类中定义的扩容步长<code>INDEX_INCREMENT = 4</code>，缩容步长<code>INDEX_DECREMENT = 1</code></p>
-</blockquote>
-<p>假设当前<code>ByteBuffer</code>的容量索引为<code>33</code>，对应的容量为<code>2048</code></p>
-<ul>
-<li>扩容</li>
-</ul>
-<p>当对容量为<code>2048</code>的 ByteBuffer 进行扩容时，根据当前的容量索引<code>index = 33</code> 加上 扩容步长<code>INDEX_INCREMENT = 4</code>计算出扩容后的容量索引为<code>37</code>，那么扩缩容索引表<code>SIZE_TABLE</code>下标<code>37</code>对应的容量就是本次 ByteBuffer 扩容后的容量<code>SIZE_TABLE[37] = 32768</code></p>
-<ul>
-<li>缩容</li>
-</ul>
-<p>同理对容量为<code>2048</code>的 ByteBuffer 进行缩容时，我们就需要用当前容量索引<code>index = 33</code> 减去 缩容步长<code>INDEX_DECREMENT = 1</code>计算出缩容后的容量索引<code>32</code>，那么扩缩容索引表<code>SIZE_TABLE</code>下标<code>32</code>对应的容量就是本次 ByteBuffer 缩容后的容量<code>SIZE_TABLE[32] = 1024</code></p>
-<ul>
-<li>扩缩容时机<ul>
-<li>每轮 read loop 结束之后，我们都会调用<code>allocHandle.readComplete()</code>来根据在 allocHandle 中统计的在本轮 read loop 中读取字节总大小，来决定在下一轮 read loop 中是否对 DirectByteBuffer 进行扩容或者缩容</li>
-</ul>
-</li>
-</ul>
-<p><img data-src="/images/netty/03_06.png" alt="netty"></p>
-<ul>
-<li><code>DEFAULT_INITIAL</code>： 表示 ByteBuffer 的初始化容量。默认为<code>2048</code>。对应的 index&#x3D;33</li>
-<li><code>DEFAULT_MINIMUM</code>： 表示 ByteBuffer 最小的容量，默认为<code>64</code>，也就是无论 ByteBuffer 在怎么缩容，容量也不会低于<code>64</code>，对应的 index&#x3D;3</li>
-<li><code>DEFAULT_MAXIMUM</code>： 表示 ByteBuffer 的最大容量，默认为<code>65536</code>，也就是无论 ByteBuffer 在怎么扩容，容量也不会超过<code>65536</code>，对应的 index&#x3D;38</li>
-<li>如果本次<code>OP_READ事件</code>实际读取到的总字节数<code>actualReadBytes</code>在 SIZE_TABLE[index - INDEX_DECREMENT]与 SIZE_TABLE[index]之间的话，也就是如果本轮 read loop 结束之后总共读取的字节数在<code>[1024,2048]</code>之间。说明此时分配的<code>ByteBuffer</code>容量正好，不需要进行缩容也不需要进行扩容。 比如本次<code>actualReadBytes = 2000</code>，正好处在<code>1024</code>与<code>2048</code>之间。说明<code>2048</code>的容量正好</li>
-<li>如果<code>actualReadBytes</code> 小于等于 SIZE_TABLE[index - INDEX_DECREMENT]，也就是如果本轮 read loop 结束之后总共读取的字节数小于等于<code>1024</code>。表示本次读取到的字节数比当前 ByteBuffer 容量的下一级容量还要小，说明当前 ByteBuffer 的容量分配的有些大了，设置缩容标识<code>decreaseNow = true</code>。当下次<code>OP_READ事件</code>继续满足缩容条件的时候，开始真正的进行缩容。缩容后的容量为 SIZE_TABLE[index - INDEX_DECREMENT]，但不能小于 SIZE_TABLE[minIndex]</li>
-</ul>
-<blockquote>
-<p>注意需要满足两次缩容条件才会进行缩容，且缩容步长为 1，缩容比较谨慎</p>
-</blockquote>
-<ul>
-<li>如果本次<code>OP_READ事件</code>处理总共读取的字节数<code>actualReadBytes</code> 大于等于 当前 ByteBuffer 容量（nextReceiveBufferSize）时，说明 ByteBuffer 分配的容量有点小了，需要进行扩容。扩容后的容量为 SIZE_TABLE[index + INDEX_INCREMENT]，但不能超过 SIZE_TABLE[maxIndex]。</li>
-</ul>
-<blockquote>
-<p>满足一次扩容条件就进行扩容，并且扩容步长为 4， 扩容比较奔放</p>
-</blockquote>
-<h2 id="PooledByteBufAllocator"><a href="#PooledByteBufAllocator" class="headerlink" title="PooledByteBufAllocator"></a>PooledByteBufAllocator</h2><blockquote>
-<p><code>AdaptiveRecvByteBufAllocator</code>类只是负责动态调整 ByteBuffer 的容量，而具体为 ByteBuffer 申请内存空间的是由<code>PooledByteBufAllocator</code>负责</p>
-</blockquote>
-<ul>
-<li>当数据达到网卡时，网卡会通过 DMA 的方式将数据拷贝到内核空间中，这是<code>第一次拷贝</code>。当用户线程在用户空间发起系统 IO 调用时，CPU 会将内核空间的数据再次拷贝到用户空间。这是<code>第二次拷贝</code>。于此不同的是当我们在 JVM 中发起 IO 调用时，比如我们使用 JVM 堆内存读取<code>Socket接收缓冲区</code>中的数据时，会多一次内存拷贝，CPU 在<code>第二次拷贝</code>中将数据从内核空间拷贝到用户空间时，此时的用户空间站在 JVM 角度是<code>堆外内存</code>，所以还需要将堆外内存中的数据拷贝到<code>堆内内存</code>中。这就是<code>第三次内存拷贝</code>。同理当我们在 JVM 中发起 IO 调用向<code>Socket发送缓冲区</code>写入数据时，JVM 会将 IO 数据先<code>拷贝</code>到<code>堆外内存</code>，然后才能发起系统 IO 调用。</li>
-<li>Netty 在进行 I&#x2F;O 操作时都是使用的堆外内存，采用堆外内存为 ByteBuffer 分配内存的好处：<ul>
-<li>堆外内存直接受操作系统的管理，不会受 JVM 的管理，所以 JVM 垃圾回收对应用程序的性能影响就没有了</li>
-<li>网络数据到达之后直接在<code>堆外内存</code>上接收，进程读取网络数据时直接在堆外内存中读取，所以就避免了<code>第三次内存拷贝</code></li>
-</ul>
-</li>
-<li>由于堆外内存不受 JVM 的管理，所以就需要额外关注对内存的使用和释放，稍有不慎就会造成内存泄露，于是 Netty 就引入了内存池对<code>堆外内存</code>进行统一管理</li>
-<li>PooledByteBufAllocator 类的这个前缀<code>Pooled</code>就是<code>内存池</code>的意思，这个类会使用 Netty 的内存池为 ByteBuffer 分配<code>堆外内存</code></li>
-<li>io.netty.channel.DefaultChannelConfig#allocator -&gt;</li>
-</ul>
-<p><img data-src="/images/netty/03_07.png" alt="netty"></p>
-<p><img data-src="/images/netty/03_08.png" alt="netty"></p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
@@ -1777,6 +1557,115 @@
       </tags>
   </entry>
   <entry>
+    <title>3-Netty接收网络连接</title>
+    <url>/2025/02/12/netty/3.netty-jie-shou-wang-luo-lian-jie/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
+<li><a href="https://zhuanlan.zhihu.com/p/466019443">Netty是如何高效接收网络连接的</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/471122992">ByteBuffer动态自适应扩缩容机制</a></li>
+</ul>
+<h2 id="Main-Reactor-处理-OP-ACCEPT-事件"><a href="#Main-Reactor-处理-OP-ACCEPT-事件" class="headerlink" title="Main Reactor 处理 OP_ACCEPT 事件"></a>Main Reactor 处理 OP_ACCEPT 事件</h2><ul>
+<li>Netty 将<code>OP_ACCEPT事件</code>处理的入口函数封装在<code>NioServerSocketChannel</code>里的底层操作类 Unsafe 的<code>read</code>方法中 –&gt; <code>AbstractNioMessageChannel</code></li>
+</ul>
+<blockquote>
+<p>io.netty.channel.nio.AbstractNioMessageChannel.NioMessageUnsafe#read</p>
+</blockquote>
+<ul>
+<li>接收连接过程如下</li>
+</ul>
+<p><img data-src="/images/netty/03_01.PNG" alt="netty"></p>
+<ul>
+<li><strong><code>MaxMessageHandle#maxMessagePerRead</code></strong>： 用于控制每次 read loop 里最大可以循环读取的次数，默认为 16 次，可在启动配置类<code>ServerBootstrap</code>中通过<code>ChannelOption.MAX_MESSAGES_PER_READ</code>选项设置。</li>
+<li>客户端<code>NioSocketChannel</code>继承的是<code>AbstractNioByteChannel</code>，而服务端<code>NioServerSocketChannel</code>继承的是<code>AbstractNioMessageChannel</code></li>
+</ul>
+<blockquote>
+<p>客户端<code>NioSocketChannel</code>主要处理的是服务端与客户端的通信，这里涉及到接收客户端发送来的数据，而<code>Sub Reactor线程</code>从<code>NioSocketChannel</code>中读取的正是网络通信数据单位为<code>Byte</code>。 服务端<code>NioServerSocketChannel</code>主要负责处理<code>OP_ACCEPT事件</code>，创建用于通信的客户端<code>NioSocketChannel</code>。这时候客户端与服务端还没开始通信，所以<code>Main Reactor线程</code>从<code>NioServerSocketChannel</code>的读取对象为<code>Message</code>。这里的<code>Message</code>指的就是底层的<code>SocketChannel</code>客户端连接。</p>
+</blockquote>
+<p><img data-src="/images/netty/03_02.PNG" alt="netty"></p>
+<h2 id="接收网络数据总览"><a href="#接收网络数据总览" class="headerlink" title="接收网络数据总览"></a>接收网络数据总览</h2><p><img data-src="/images/netty/03_03.PNG" alt="netty"></p>
+<ul>
+<li>Netty 服务端对于一次 OP_READ 事件的处理，会在一个<code>do&#123;&#125;while()</code>循环 read loop 中分多次从客户端 NioSocketChannel 中读取网络数据。每次读取我们分配的 ByteBuffer 容量大小，初始容量为 2048</li>
+</ul>
+<h2 id="ChannelRead-与-ChannelReadComplete-事件的区别"><a href="#ChannelRead-与-ChannelReadComplete-事件的区别" class="headerlink" title="ChannelRead 与 ChannelReadComplete 事件的区别"></a>ChannelRead 与 ChannelReadComplete 事件的区别</h2><ul>
+<li><code>ChanneRead事件</code>：一次循环读取一次数据，就触发一次<code>ChannelRead事件</code>。本次最多读取在 read loop 循环开始分配的 DirectByteBuffer 容量大小。这个容量会动态调整。</li>
+<li><code>ChannelReadComplete事件</code>：当读取不到数据或者不满足<code>continueReading</code>的任意一个条件就会退出 read loop，这时就会触发<code>ChannelReadComplete事件</code>。表示本次<code>OP_READ事件</code>处理完毕。</li>
+</ul>
+<blockquote>
+<p>这里需要特别注意下触发<code>ChannelReadComplete事件</code>并不代表 NioSocketChannel 中的数据已经读取完了，只能说明本次<code>OP_READ事件</code>处理完毕。因为有可能是客户端发送的数据太多，Netty 读了<code>16次</code>还没读完，那就只能等到下次<code>OP_READ事件</code>到来的时候在进行读取了。</p>
+</blockquote>
+<h2 id="AdaptiveRecvByteBufAllocator"><a href="#AdaptiveRecvByteBufAllocator" class="headerlink" title="AdaptiveRecvByteBufAllocator"></a>AdaptiveRecvByteBufAllocator</h2><p>AdaptiveRecvByteBufAllocator 主要的作用就是为接收数据的<code>ByteBuffer</code>进行扩容缩容，那么每次怎么扩容？扩容多少？怎么缩容？缩容多少呢？？</p>
+<h3 id="容量索引表"><a href="#容量索引表" class="headerlink" title="容量索引表"></a>容量索引表</h3><blockquote>
+<p>Netty 中定义了一个<code>int型</code>的数组<code>SIZE_TABLE</code>来存储每个扩容单位对应的容量大小。建立起扩缩容的容量索引表。每次扩容多少，缩容多少全部记录在这个容量索引表中</p>
+</blockquote>
+<ul>
+<li>在 AdaptiveRecvByteBufAllocatorl 类初始化的时候会在<code>static&#123;&#125;</code>静态代码块中对扩缩容索引表<code>SIZE_TABLE</code>进行初始化</li>
+<li>当索引容量小于<code>512</code>时，<code>SIZE_TABLE</code>中定义的容量索引是从<code>16开始</code>按<code>16</code>递增</li>
+</ul>
+<p><img data-src="/images/netty/03_04.PNG" alt="netty"></p>
+<ul>
+<li>当索引容量大于<code>512</code>时，<code>SIZE_TABLE</code>中定义的容量索引是按前一个索引容量的 2 倍递增</li>
+</ul>
+<p><img data-src="/images/netty/03_05.PNG" alt="netty"></p>
+<h3 id="扩缩容逻辑"><a href="#扩缩容逻辑" class="headerlink" title="扩缩容逻辑"></a>扩缩容逻辑</h3><blockquote>
+<p>AdaptiveRecvByteBufAllocator 类中定义的扩容步长<code>INDEX_INCREMENT = 4</code>，缩容步长<code>INDEX_DECREMENT = 1</code></p>
+</blockquote>
+<p>假设当前<code>ByteBuffer</code>的容量索引为<code>33</code>，对应的容量为<code>2048</code></p>
+<ul>
+<li>扩容</li>
+</ul>
+<p>当对容量为<code>2048</code>的 ByteBuffer 进行扩容时，根据当前的容量索引<code>index = 33</code> 加上 扩容步长<code>INDEX_INCREMENT = 4</code>计算出扩容后的容量索引为<code>37</code>，那么扩缩容索引表<code>SIZE_TABLE</code>下标<code>37</code>对应的容量就是本次 ByteBuffer 扩容后的容量<code>SIZE_TABLE[37] = 32768</code></p>
+<ul>
+<li>缩容</li>
+</ul>
+<p>同理对容量为<code>2048</code>的 ByteBuffer 进行缩容时，我们就需要用当前容量索引<code>index = 33</code> 减去 缩容步长<code>INDEX_DECREMENT = 1</code>计算出缩容后的容量索引<code>32</code>，那么扩缩容索引表<code>SIZE_TABLE</code>下标<code>32</code>对应的容量就是本次 ByteBuffer 缩容后的容量<code>SIZE_TABLE[32] = 1024</code></p>
+<ul>
+<li>扩缩容时机<ul>
+<li>每轮 read loop 结束之后，我们都会调用<code>allocHandle.readComplete()</code>来根据在 allocHandle 中统计的在本轮 read loop 中读取字节总大小，来决定在下一轮 read loop 中是否对 DirectByteBuffer 进行扩容或者缩容</li>
+</ul>
+</li>
+</ul>
+<p><img data-src="/images/netty/03_06.png" alt="netty"></p>
+<ul>
+<li><code>DEFAULT_INITIAL</code>： 表示 ByteBuffer 的初始化容量。默认为<code>2048</code>。对应的 index&#x3D;33</li>
+<li><code>DEFAULT_MINIMUM</code>： 表示 ByteBuffer 最小的容量，默认为<code>64</code>，也就是无论 ByteBuffer 在怎么缩容，容量也不会低于<code>64</code>，对应的 index&#x3D;3</li>
+<li><code>DEFAULT_MAXIMUM</code>： 表示 ByteBuffer 的最大容量，默认为<code>65536</code>，也就是无论 ByteBuffer 在怎么扩容，容量也不会超过<code>65536</code>，对应的 index&#x3D;38</li>
+<li>如果本次<code>OP_READ事件</code>实际读取到的总字节数<code>actualReadBytes</code>在 SIZE_TABLE[index - INDEX_DECREMENT]与 SIZE_TABLE[index]之间的话，也就是如果本轮 read loop 结束之后总共读取的字节数在<code>[1024,2048]</code>之间。说明此时分配的<code>ByteBuffer</code>容量正好，不需要进行缩容也不需要进行扩容。 比如本次<code>actualReadBytes = 2000</code>，正好处在<code>1024</code>与<code>2048</code>之间。说明<code>2048</code>的容量正好</li>
+<li>如果<code>actualReadBytes</code> 小于等于 SIZE_TABLE[index - INDEX_DECREMENT]，也就是如果本轮 read loop 结束之后总共读取的字节数小于等于<code>1024</code>。表示本次读取到的字节数比当前 ByteBuffer 容量的下一级容量还要小，说明当前 ByteBuffer 的容量分配的有些大了，设置缩容标识<code>decreaseNow = true</code>。当下次<code>OP_READ事件</code>继续满足缩容条件的时候，开始真正的进行缩容。缩容后的容量为 SIZE_TABLE[index - INDEX_DECREMENT]，但不能小于 SIZE_TABLE[minIndex]</li>
+</ul>
+<blockquote>
+<p>注意需要满足两次缩容条件才会进行缩容，且缩容步长为 1，缩容比较谨慎</p>
+</blockquote>
+<ul>
+<li>如果本次<code>OP_READ事件</code>处理总共读取的字节数<code>actualReadBytes</code> 大于等于 当前 ByteBuffer 容量（nextReceiveBufferSize）时，说明 ByteBuffer 分配的容量有点小了，需要进行扩容。扩容后的容量为 SIZE_TABLE[index + INDEX_INCREMENT]，但不能超过 SIZE_TABLE[maxIndex]。</li>
+</ul>
+<blockquote>
+<p>满足一次扩容条件就进行扩容，并且扩容步长为 4， 扩容比较奔放</p>
+</blockquote>
+<h2 id="PooledByteBufAllocator"><a href="#PooledByteBufAllocator" class="headerlink" title="PooledByteBufAllocator"></a>PooledByteBufAllocator</h2><blockquote>
+<p><code>AdaptiveRecvByteBufAllocator</code>类只是负责动态调整 ByteBuffer 的容量，而具体为 ByteBuffer 申请内存空间的是由<code>PooledByteBufAllocator</code>负责</p>
+</blockquote>
+<ul>
+<li>当数据达到网卡时，网卡会通过 DMA 的方式将数据拷贝到内核空间中，这是<code>第一次拷贝</code>。当用户线程在用户空间发起系统 IO 调用时，CPU 会将内核空间的数据再次拷贝到用户空间。这是<code>第二次拷贝</code>。于此不同的是当我们在 JVM 中发起 IO 调用时，比如我们使用 JVM 堆内存读取<code>Socket接收缓冲区</code>中的数据时，会多一次内存拷贝，CPU 在<code>第二次拷贝</code>中将数据从内核空间拷贝到用户空间时，此时的用户空间站在 JVM 角度是<code>堆外内存</code>，所以还需要将堆外内存中的数据拷贝到<code>堆内内存</code>中。这就是<code>第三次内存拷贝</code>。同理当我们在 JVM 中发起 IO 调用向<code>Socket发送缓冲区</code>写入数据时，JVM 会将 IO 数据先<code>拷贝</code>到<code>堆外内存</code>，然后才能发起系统 IO 调用。</li>
+<li>Netty 在进行 I&#x2F;O 操作时都是使用的堆外内存，采用堆外内存为 ByteBuffer 分配内存的好处：<ul>
+<li>堆外内存直接受操作系统的管理，不会受 JVM 的管理，所以 JVM 垃圾回收对应用程序的性能影响就没有了</li>
+<li>网络数据到达之后直接在<code>堆外内存</code>上接收，进程读取网络数据时直接在堆外内存中读取，所以就避免了<code>第三次内存拷贝</code></li>
+</ul>
+</li>
+<li>由于堆外内存不受 JVM 的管理，所以就需要额外关注对内存的使用和释放，稍有不慎就会造成内存泄露，于是 Netty 就引入了内存池对<code>堆外内存</code>进行统一管理</li>
+<li>PooledByteBufAllocator 类的这个前缀<code>Pooled</code>就是<code>内存池</code>的意思，这个类会使用 Netty 的内存池为 ByteBuffer 分配<code>堆外内存</code></li>
+<li>io.netty.channel.DefaultChannelConfig#allocator -&gt;</li>
+</ul>
+<p><img data-src="/images/netty/03_07.png" alt="netty"></p>
+<p><img data-src="/images/netty/03_08.png" alt="netty"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Netty中的细节优化</title>
     <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
     <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
@@ -1809,6 +1698,117 @@
       <tags>
         <tag>Netty</tag>
         <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>loom</title>
+    <url>/2025/02/19/loom/loom/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
+<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
+<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
+<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
+<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
+</ul>
+<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
+<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
+</blockquote>
+<ul>
+<li>Java 代码调用本地代码 (JNI)</li>
+<li>synchronized 块或方法</li>
+</ul>
+<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
+<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
+</ul>
+<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
+<li>Synchronization<ul>
+<li>synchronized最终会解决，但是JNI不会处理</li>
+<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
+</ul>
+</li>
+<li>I&#x2F;O<ul>
+<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
+<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
+<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
+<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
+</ul>
+</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>loom-springboot</title>
+    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
+    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
+<li>jdk 22.0.1-graal</li>
+<li>maven 3.6.3</li>
+<li>内置容器 tomcat，最大线程数量 256</li>
+<li>Xms200M Xmx300M</li>
+<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
+<li>M1 max 64g</li>
+<li>SpringBoot 3.3.0</li>
+</ul>
+<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
+</ul>
+<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
+<ul>
+<li>内存、线程占用情况</li>
+</ul>
+<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
+<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
+</ul>
+<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
+<ul>
+<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
+</ul>
+<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
+<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
+<li>版本9.0.60</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
+<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
+<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
+</ul>
+<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
+<li>版本10.1.24</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
+<li>此版本下如何启用虚拟线程?<ol>
+<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
+<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
+</ol>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+        <tag>spring boot</tag>
       </tags>
   </entry>
   <entry>
@@ -1984,6 +1984,74 @@
       </tags>
   </entry>
   <entry>
+    <title>接口安全</title>
+    <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://www.bilibili.com/opus/917872422844104721">前后端安全性页面与接口设计</a></li>
+<li><a href="https://www.bilibili.com/read/cv33868282/?opus_fallback=1">防刷机制</a></li>
+</ul>
+<h2 id="前后端安全性页面与接口设计"><a href="#前后端安全性页面与接口设计" class="headerlink" title="前后端安全性页面与接口设计"></a>前后端安全性页面与接口设计</h2><h3 id="接口安全密钥交换"><a href="#接口安全密钥交换" class="headerlink" title="接口安全密钥交换"></a>接口安全密钥交换</h3><blockquote>
+<p>分为 web&#x2F;wap（轻客户端），android&#x2F;ios（受信任客户端） 两大类。</p>
+</blockquote>
+<ul>
+<li>针对 web&#x2F;wap，首先通过 csrf 获取 RSA public key，然后通过 RSA public key，解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。首先 csrf 一定要内嵌在页面，不能放在 cookie，否则意义不大。这样 csrf 可以起到一定的保证页面是服务端渲染生成的效果csrf 需要加密，每次返回的不一样（将时间戳嵌入进去），但是其实对应的后台 csrf token 是同一个。公钥需要轮换：这是一个定时任务，就是后台保存的 wap&#x2F;web 密钥对，定时更新，上一个设置过期时间为 1 个月（我们前端 session 公钥过期时间最多是 2 周，无续期，保险点 1 个月）</li>
+<li>针对 android&#x2F;ios，public key 针对每个版本会生成一个新的带到 app 里面服务端记录好，直接解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。由于 app 一般是受信任客户端，并且每个版本 public key 不一样，一般不用 csrf版本强制升级，也可以通过这个机制去实现。</li>
+</ul>
+<h4 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h4><ul>
+<li>https 是为了防止 wifi 劫持抓包直接能看到 http header 和 body</li>
+<li>接口加密是为了防止机器人爬取，请求伪造，客户端模拟</li>
+<li>android&#x2F;ios 通过 public key 基本能确定是哪个版本并且是我们信任的客户端，浏览器不能，所以加入 csrf token 在一定程度上确保一定是我们渲染的页面发的请求</li>
+</ul>
+<h3 id="安全-Header"><a href="#安全-Header" class="headerlink" title="安全 Header"></a>安全 Header</h3><ul>
+<li>Strict-Transport-Security: max-age&#x3D;31536000; includeSubDomains; preload这个头部用于启用HTTP严格传输安全（HSTS），它告诉浏览器只能通过HTTPS来访问网站。max-age&#x3D;31536000 指定浏览器应该在接下来的31,536,000秒（1年）内记住只通过HTTPS访问站点。includeSubDomains 指令扩展了这个规则，使其也适用于当前域名的所有子域。preload 指令表示网站想要被包含在预加载的HSTS列表中，这些列表内置于浏览器中，即使是第一次请求也会强制使用HTTPS。</li>
+<li>X-Content-Type-Options: nosniff这个头部是一个安全功能，用于防止浏览器尝试猜测（”嗅探”）资源的MIME类型，它强制浏览器遵守服务器提供的Content-Type头。nosniff选项可以防止一些基于MIME类型混淆的攻击，例如防止浏览器将非脚本文件解释为脚本文件。</li>
+<li>X-Frame-Options: SAMEORIGIN这个头部可以防止页面被其他站点通过、、或嵌套，从而防止点击劫持攻击。SAMEORIGIN仅允许来自同一源的页面将当前页面作为、等嵌入。</li>
+<li>Content-Security-Policy: 内容很长，这里省略这个拦截可能会导致某些三方埋点，图片等等显示失败，需要监控（即最后加上 report-uri &#x2F;api&#x2F;csp-report-endpoint?version&#x3D;5）这个上报的都是被拦截的，包括拦截的那些 js，css，jpg，长链接，视频资源等等这个 Header 变化很频繁，所以在 CDN 维护，随时修改。例如搜索引擎跳转你的网页，会嵌入 js 等，以及投放新的广告渠道商会嵌入其他东西等等&#x2F;api&#x2F;csp-report-endpoint 需要自己实现加入 version 参数，用于在你修改添加了新的白名单后，增加版本号，老的版本号的上报可以忽略（因为加这个 header 一般在 CDN 加，比如 Cloudflare，但是一般有很长缓存）</li>
+</ul>
+<h4 id="一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例"><a href="#一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例" class="headerlink" title="一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例"></a>一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">default-src &#x27;self&#x27; data: &#x27;unsafe-inline&#x27; blob: &#x27;unsafe-eval&#x27; *.google-analytics.com *.googletagmanager.com *.gstatic.com *.googleapis.com *.google.co *.google.com *.google.ad *.google.ae *.google.com.af *.google.com.ag *.google.al *.google.am *.google.co.ao *.google.com.ar *.google.as *.google.at *.google.com.au *.google.az *.google.ba *.google.com.bd *.google.be *.google.bf *.google.bg *.google.com.bh *.google.bi *.google.bj *.google.com.bn *.google.com.bo *.google.com.br *.google.bs *.google.bt *.google.co.bw *.google.by *.google.com.bz *.google.ca *.google.cd *.google.cf *.google.cg *.google.ch *.google.ci *.google.co.ck *.google.cl *.google.cm *.google.cn *.google.com.co *.google.co.cr *.google.com.cu *.google.cv *.google.com.cy *.google.cz *.google.de *.google.dj *.google.dk *.google.dm *.google.com.do *.google.dz *.google.com.ec *.google.ee *.google.com.eg *.google.es *.google.com.et *.google.fi *.google.com.fj *.google.fm *.google.fr *.google.ga *.google.ge *.google.gg *.google.com.gh *.google.com.gi *.google.gl *.google.gm *.google.gr *.google.com.gt *.google.gy *.google.com.hk *.google.hn *.google.hr *.google.ht *.google.hu *.google.co.id *.google.ie *.google.co.il *.google.im *.google.co.in *.google.iq *.google.is *.google.it *.google.je *.google.com.jm *.google.jo *.google.co.jp *.google.co.ke *.google.com.kh *.google.ki *.google.kg *.google.co.kr *.google.com.kw *.google.kz *.google.la *.google.com.lb *.google.li *.google.lk *.google.co.ls *.google.lt *.google.lu *.google.lv *.google.com.ly *.google.co.ma *.google.md *.google.me *.google.mg *.google.mk *.google.ml *.google.com.mm *.google.mn *.google.com.mt *.google.mu *.google.mv *.google.mw *.google.com.mx *.google.com.my *.google.co.mz *.google.com.na *.google.com.ng *.google.com.ni *.google.ne *.google.nl *.google.no *.google.com.np *.google.nr *.google.nu *.google.co.nz *.google.com.om *.google.com.pa *.google.com.pe *.google.com.pg *.google.com.ph *.google.com.pk *.google.pl *.google.pn *.google.com.pr *.google.ps *.google.pt *.google.com.py *.google.com.qa *.google.ro *.google.ru *.google.rw *.google.com.sa *.google.com.sb *.google.sc *.google.se *.google.com.sg *.google.sh *.google.si *.google.sk *.google.com.sl *.google.sn *.google.so *.google.sm *.google.sr *.google.st *.google.com.sv *.google.td *.google.tg *.google.co.th *.google.com.tj *.google.tl *.google.tm *.google.tn *.google.to *.google.com.tr *.google.tt *.google.com.tw *.google.co.tz *.google.com.ua *.google.co.ug *.google.co.uk *.google.com.uy *.google.co.uz *.google.com.vc *.google.co.ve *.google.co.vi *.google.com.vn *.google.vu *.google.ws *.google.rs *.google.co.za *.google.co.zm *.google.co.zw *.google.cat *.googleadservices.com facebook.net *.facebook.net facebook.com *.facebook.com; report-uri /api/csp-report-endpoint?version=2</span><br></pre></td></tr></table></figure>
+
+<h3 id="一些反思"><a href="#一些反思" class="headerlink" title="一些反思"></a>一些反思</h3><ul>
+<li>针对渲染的页面，内嵌 csrf token（注意不能放在 cookie，否则意义不大），至于服务器渲染，这个我们也是前后端分离，前端自己维护自己的 nodejs 服务器。前后端分离，但是最好还是有一个类似于中台的前端服务器前端自己维护，这样 SEO 更好做。</li>
+<li>这些只是加固了安全性，但是并不能保证 100% 安全。但是复杂度已经很高了，目前够用了。</li>
+<li>并且在这些机制的基础上，去做 <strong>2FA 或者 MFA 也更好做</strong>，有利于减少 2FA 对于用户的打扰。</li>
+</ul>
+<h2 id="防刷机制"><a href="#防刷机制" class="headerlink" title="防刷机制"></a>防刷机制</h2><h3 id="防刷子机制"><a href="#防刷子机制" class="headerlink" title="防刷子机制"></a>防刷子机制</h3><p>主要分为两种场景：</p>
+<ol>
+<li><strong>针对未登录或者未注册用户</strong>，对于注册，各种验证码等类似的接口进行防刷机制，同时尽量减少对于用户的打扰。</li>
+<li><strong>针对已经登陆的用户</strong>：<ol>
+<li>参与活动设置必要的门槛：比如最近交易量。</li>
+<li>引入 MFA 之后，限制用户只能通过绑定的 MFA 的设备参与活动。</li>
+</ol>
+</li>
+</ol>
+<p><strong>针对 2 其实主要是从业务的角度考虑</strong>，MFA 机制不仅是安全性的保证，MFA 更是利于验证用户设备有效，从而可以使用设备做一些业务的限制。</p>
+<p><strong>针对 1，可以使用以下的机制减少验证码对于用户的打扰</strong>：</p>
+<ol>
+<li>使用类似于 Google reCAPTCHA Enterprise（reCAPTCHA v3）或者国内可以用 hCAPTCHA Enterprise 服务，针对敏感接口，例如注册，短信 OTP 接口等等接入，每次请求会带上一个 Google Recaptcha Enterprise 的评分：<ol>
+<li>reCAPTCHA v3 在用户浏览网站时连续地评估用户行为。这包括用户与页面的交互方式（如鼠标移动、滚动、点击等）、设备和浏览器的信息。它还可能分析用户在整个会话中的行为，包括访问多个页面的顺序和速度。</li>
+<li>基于这些行为分析，reCAPTCHA v3 为每个用户请求分配一个分数，范围从 0.0 到 1.0。分数越接近 1.0 表示系统越认为该行为来自真实人类，分数越低则越可能是由自动化脚本或机器人产生。这里是一个分数分布的例子：</li>
+</ol>
+</li>
+</ol>
+<p><img data-src="/images/security/01.avif" alt="img"></p>
+<ol start="2">
+<li><p>你的后台根据这个分数（笔者这里是针对所有低于 0.8 的请求），请求响应是需要验证码才能继续。这里的验证码实现方案就很多很多了，笔者就不赘述了。</p>
+</li>
+<li><p>也就是，对于大部分用户，注册的时候，其实连验证码都不需要输入。对于评分比较低的用户才去让用户接受挑战（challenge），或者是输入验证码，或者是其他挑战方式。</p>
+</li>
+</ol>
+<p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
+<p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>安全</category>
+      </categories>
+      <tags>
+        <tag>安全</tag>
+        <tag>防刷</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>BitMap</title>
     <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
     <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
@@ -2093,74 +2161,6 @@
         <tag>网关</tag>
         <tag>spring cloud gateway</tag>
         <tag>spring cloud</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>接口安全</title>
-    <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://www.bilibili.com/opus/917872422844104721">前后端安全性页面与接口设计</a></li>
-<li><a href="https://www.bilibili.com/read/cv33868282/?opus_fallback=1">防刷机制</a></li>
-</ul>
-<h2 id="前后端安全性页面与接口设计"><a href="#前后端安全性页面与接口设计" class="headerlink" title="前后端安全性页面与接口设计"></a>前后端安全性页面与接口设计</h2><h3 id="接口安全密钥交换"><a href="#接口安全密钥交换" class="headerlink" title="接口安全密钥交换"></a>接口安全密钥交换</h3><blockquote>
-<p>分为 web&#x2F;wap（轻客户端），android&#x2F;ios（受信任客户端） 两大类。</p>
-</blockquote>
-<ul>
-<li>针对 web&#x2F;wap，首先通过 csrf 获取 RSA public key，然后通过 RSA public key，解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。首先 csrf 一定要内嵌在页面，不能放在 cookie，否则意义不大。这样 csrf 可以起到一定的保证页面是服务端渲染生成的效果csrf 需要加密，每次返回的不一样（将时间戳嵌入进去），但是其实对应的后台 csrf token 是同一个。公钥需要轮换：这是一个定时任务，就是后台保存的 wap&#x2F;web 密钥对，定时更新，上一个设置过期时间为 1 个月（我们前端 session 公钥过期时间最多是 2 周，无续期，保险点 1 个月）</li>
-<li>针对 android&#x2F;ios，public key 针对每个版本会生成一个新的带到 app 里面服务端记录好，直接解密服务端对应你当前 session 的 AES Token，之后每次请求都是这个 AES Token 加密。由于 app 一般是受信任客户端，并且每个版本 public key 不一样，一般不用 csrf版本强制升级，也可以通过这个机制去实现。</li>
-</ul>
-<h4 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h4><ul>
-<li>https 是为了防止 wifi 劫持抓包直接能看到 http header 和 body</li>
-<li>接口加密是为了防止机器人爬取，请求伪造，客户端模拟</li>
-<li>android&#x2F;ios 通过 public key 基本能确定是哪个版本并且是我们信任的客户端，浏览器不能，所以加入 csrf token 在一定程度上确保一定是我们渲染的页面发的请求</li>
-</ul>
-<h3 id="安全-Header"><a href="#安全-Header" class="headerlink" title="安全 Header"></a>安全 Header</h3><ul>
-<li>Strict-Transport-Security: max-age&#x3D;31536000; includeSubDomains; preload这个头部用于启用HTTP严格传输安全（HSTS），它告诉浏览器只能通过HTTPS来访问网站。max-age&#x3D;31536000 指定浏览器应该在接下来的31,536,000秒（1年）内记住只通过HTTPS访问站点。includeSubDomains 指令扩展了这个规则，使其也适用于当前域名的所有子域。preload 指令表示网站想要被包含在预加载的HSTS列表中，这些列表内置于浏览器中，即使是第一次请求也会强制使用HTTPS。</li>
-<li>X-Content-Type-Options: nosniff这个头部是一个安全功能，用于防止浏览器尝试猜测（”嗅探”）资源的MIME类型，它强制浏览器遵守服务器提供的Content-Type头。nosniff选项可以防止一些基于MIME类型混淆的攻击，例如防止浏览器将非脚本文件解释为脚本文件。</li>
-<li>X-Frame-Options: SAMEORIGIN这个头部可以防止页面被其他站点通过、、或嵌套，从而防止点击劫持攻击。SAMEORIGIN仅允许来自同一源的页面将当前页面作为、等嵌入。</li>
-<li>Content-Security-Policy: 内容很长，这里省略这个拦截可能会导致某些三方埋点，图片等等显示失败，需要监控（即最后加上 report-uri &#x2F;api&#x2F;csp-report-endpoint?version&#x3D;5）这个上报的都是被拦截的，包括拦截的那些 js，css，jpg，长链接，视频资源等等这个 Header 变化很频繁，所以在 CDN 维护，随时修改。例如搜索引擎跳转你的网页，会嵌入 js 等，以及投放新的广告渠道商会嵌入其他东西等等&#x2F;api&#x2F;csp-report-endpoint 需要自己实现加入 version 参数，用于在你修改添加了新的白名单后，增加版本号，老的版本号的上报可以忽略（因为加这个 header 一般在 CDN 加，比如 Cloudflare，但是一般有很长缓存）</li>
-</ul>
-<h4 id="一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例"><a href="#一个允许-google-和-facebook-所有资源的-Content-Security-Policy-示例" class="headerlink" title="一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例"></a>一个允许 google 和 facebook 所有资源的 Content-Security-Policy 示例</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">default-src &#x27;self&#x27; data: &#x27;unsafe-inline&#x27; blob: &#x27;unsafe-eval&#x27; *.google-analytics.com *.googletagmanager.com *.gstatic.com *.googleapis.com *.google.co *.google.com *.google.ad *.google.ae *.google.com.af *.google.com.ag *.google.al *.google.am *.google.co.ao *.google.com.ar *.google.as *.google.at *.google.com.au *.google.az *.google.ba *.google.com.bd *.google.be *.google.bf *.google.bg *.google.com.bh *.google.bi *.google.bj *.google.com.bn *.google.com.bo *.google.com.br *.google.bs *.google.bt *.google.co.bw *.google.by *.google.com.bz *.google.ca *.google.cd *.google.cf *.google.cg *.google.ch *.google.ci *.google.co.ck *.google.cl *.google.cm *.google.cn *.google.com.co *.google.co.cr *.google.com.cu *.google.cv *.google.com.cy *.google.cz *.google.de *.google.dj *.google.dk *.google.dm *.google.com.do *.google.dz *.google.com.ec *.google.ee *.google.com.eg *.google.es *.google.com.et *.google.fi *.google.com.fj *.google.fm *.google.fr *.google.ga *.google.ge *.google.gg *.google.com.gh *.google.com.gi *.google.gl *.google.gm *.google.gr *.google.com.gt *.google.gy *.google.com.hk *.google.hn *.google.hr *.google.ht *.google.hu *.google.co.id *.google.ie *.google.co.il *.google.im *.google.co.in *.google.iq *.google.is *.google.it *.google.je *.google.com.jm *.google.jo *.google.co.jp *.google.co.ke *.google.com.kh *.google.ki *.google.kg *.google.co.kr *.google.com.kw *.google.kz *.google.la *.google.com.lb *.google.li *.google.lk *.google.co.ls *.google.lt *.google.lu *.google.lv *.google.com.ly *.google.co.ma *.google.md *.google.me *.google.mg *.google.mk *.google.ml *.google.com.mm *.google.mn *.google.com.mt *.google.mu *.google.mv *.google.mw *.google.com.mx *.google.com.my *.google.co.mz *.google.com.na *.google.com.ng *.google.com.ni *.google.ne *.google.nl *.google.no *.google.com.np *.google.nr *.google.nu *.google.co.nz *.google.com.om *.google.com.pa *.google.com.pe *.google.com.pg *.google.com.ph *.google.com.pk *.google.pl *.google.pn *.google.com.pr *.google.ps *.google.pt *.google.com.py *.google.com.qa *.google.ro *.google.ru *.google.rw *.google.com.sa *.google.com.sb *.google.sc *.google.se *.google.com.sg *.google.sh *.google.si *.google.sk *.google.com.sl *.google.sn *.google.so *.google.sm *.google.sr *.google.st *.google.com.sv *.google.td *.google.tg *.google.co.th *.google.com.tj *.google.tl *.google.tm *.google.tn *.google.to *.google.com.tr *.google.tt *.google.com.tw *.google.co.tz *.google.com.ua *.google.co.ug *.google.co.uk *.google.com.uy *.google.co.uz *.google.com.vc *.google.co.ve *.google.co.vi *.google.com.vn *.google.vu *.google.ws *.google.rs *.google.co.za *.google.co.zm *.google.co.zw *.google.cat *.googleadservices.com facebook.net *.facebook.net facebook.com *.facebook.com; report-uri /api/csp-report-endpoint?version=2</span><br></pre></td></tr></table></figure>
-
-<h3 id="一些反思"><a href="#一些反思" class="headerlink" title="一些反思"></a>一些反思</h3><ul>
-<li>针对渲染的页面，内嵌 csrf token（注意不能放在 cookie，否则意义不大），至于服务器渲染，这个我们也是前后端分离，前端自己维护自己的 nodejs 服务器。前后端分离，但是最好还是有一个类似于中台的前端服务器前端自己维护，这样 SEO 更好做。</li>
-<li>这些只是加固了安全性，但是并不能保证 100% 安全。但是复杂度已经很高了，目前够用了。</li>
-<li>并且在这些机制的基础上，去做 <strong>2FA 或者 MFA 也更好做</strong>，有利于减少 2FA 对于用户的打扰。</li>
-</ul>
-<h2 id="防刷机制"><a href="#防刷机制" class="headerlink" title="防刷机制"></a>防刷机制</h2><h3 id="防刷子机制"><a href="#防刷子机制" class="headerlink" title="防刷子机制"></a>防刷子机制</h3><p>主要分为两种场景：</p>
-<ol>
-<li><strong>针对未登录或者未注册用户</strong>，对于注册，各种验证码等类似的接口进行防刷机制，同时尽量减少对于用户的打扰。</li>
-<li><strong>针对已经登陆的用户</strong>：<ol>
-<li>参与活动设置必要的门槛：比如最近交易量。</li>
-<li>引入 MFA 之后，限制用户只能通过绑定的 MFA 的设备参与活动。</li>
-</ol>
-</li>
-</ol>
-<p><strong>针对 2 其实主要是从业务的角度考虑</strong>，MFA 机制不仅是安全性的保证，MFA 更是利于验证用户设备有效，从而可以使用设备做一些业务的限制。</p>
-<p><strong>针对 1，可以使用以下的机制减少验证码对于用户的打扰</strong>：</p>
-<ol>
-<li>使用类似于 Google reCAPTCHA Enterprise（reCAPTCHA v3）或者国内可以用 hCAPTCHA Enterprise 服务，针对敏感接口，例如注册，短信 OTP 接口等等接入，每次请求会带上一个 Google Recaptcha Enterprise 的评分：<ol>
-<li>reCAPTCHA v3 在用户浏览网站时连续地评估用户行为。这包括用户与页面的交互方式（如鼠标移动、滚动、点击等）、设备和浏览器的信息。它还可能分析用户在整个会话中的行为，包括访问多个页面的顺序和速度。</li>
-<li>基于这些行为分析，reCAPTCHA v3 为每个用户请求分配一个分数，范围从 0.0 到 1.0。分数越接近 1.0 表示系统越认为该行为来自真实人类，分数越低则越可能是由自动化脚本或机器人产生。这里是一个分数分布的例子：</li>
-</ol>
-</li>
-</ol>
-<p><img data-src="/images/security/01.avif" alt="img"></p>
-<ol start="2">
-<li><p>你的后台根据这个分数（笔者这里是针对所有低于 0.8 的请求），请求响应是需要验证码才能继续。这里的验证码实现方案就很多很多了，笔者就不赘述了。</p>
-</li>
-<li><p>也就是，对于大部分用户，注册的时候，其实连验证码都不需要输入。对于评分比较低的用户才去让用户接受挑战（challenge），或者是输入验证码，或者是其他挑战方式。</p>
-</li>
-</ol>
-<p>为何不建议使用 ip + 设备封禁或者限流（限流并不是禁止访问，而是跳转或者弹出验证码）？相较于上面的手段，对于用户的打扰比较多。同时 ip 和设备比较容易伪造（ip 可以通过 vpn，设备可以模拟等等），并且，现在的浏览器的发展趋势是 user-agent 趋于统一，暴露的信息越来越少：</p>
-<p><a href="https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn">https://developers.google.com/privacy-sandbox/blog/user-agent-reduction-android-model-and-version?hl=zh-cn</a></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>安全</category>
-      </categories>
-      <tags>
-        <tag>安全</tag>
-        <tag>防刷</tag>
       </tags>
   </entry>
   <entry>
@@ -3239,323 +3239,6 @@ sequenceDiagram
         <tag>消息队列</tag>
         <tag>中间件</tag>
         <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-producer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>acks</strong></td>
-<td align="left">1</td>
-<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retries</strong></td>
-<td align="left"></td>
-<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retry.backoff.ms</strong></td>
-<td align="left"></td>
-<td align="left">重试的时间间隔</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
-<td align="left">5</td>
-<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">linger.ms</td>
-<td align="left">0</td>
-<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">interceptor.classes</td>
-<td align="left"></td>
-<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left">buffer.memory</td>
-<td align="left">32 * 1024 * 1024</td>
-<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
-<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
-</tr>
-<tr>
-<td align="left">max.block.ms</td>
-<td align="left">60 * 1000</td>
-<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
-<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">batch.size</td>
-<td align="left">16 * 1024</td>
-<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">max.request.size</td>
-<td align="left">1024 * 1024</td>
-<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">compression.type</td>
-<td align="left">none</td>
-<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
-<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
-</ul>
-<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
-<ul>
-<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
-</ul>
-<p>NetworkClient:</p>
-<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
-<p>​      </p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>spring-kafka</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> Spring kafka 版本 2.8.4</p>
-</blockquote>
-<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
-<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
-<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
-</ul>
-<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
-<li>enable.auto.commit&#x3D;true</li>
-<li>auto-commit-interval 自动提交的时间间隔</li>
-</ul>
-<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
-<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
-
-  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
-
-  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
-</code></pre>
-<ul>
-<li>自动提交流程</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
-<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
-<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
-<li>ackMode &#x3D; <em>RECORD</em></li>
-</ul>
-<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
-<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
-<ul>
-<li>ackMode !&#x3D; <em>RECORD</em></li>
-</ul>
-<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
-<ul>
-<li>AckMode 解析</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th align="left">类型</th>
-<th align="left">说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><em>RECORD</em></td>
-<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>BATCH</em></td>
-<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
-</tr>
-<tr>
-<td align="left"><em>TIME</em></td>
-<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT</em></td>
-<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT_TIME</em></td>
-<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL_IMMEDIATE</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
-</tr>
-</tbody></table>
-<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
-<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
-<li>异步提交 syncCommits&#x3D;false</li>
-</ul>
-<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
-<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
-<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
-<li>默认重试 9 次，每次重试之前没有间隔</li>
-</ul>
-<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
-<ul>
-<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
-</ul>
-<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
-<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
-<ul>
-<li>定义重试次数 &amp; 重试间隔</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
-
-<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
-<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
-
-<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
-<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
-<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
-<li>autoCommit &#x3D; false</li>
-<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
-<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
-</ul>
-</li>
-</ul>
-<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-        <tag>spring</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>pulsar-使用</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
-    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
-<li>docker 单机创建</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>可视化 pulsar-manager</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
-</ul>
-<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
-<ul>
-<li>创建租户</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 namespace</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>创建 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>显示某个 namespace 下的 topic</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>pulsar</tag>
       </tags>
   </entry>
   <entry>
@@ -4742,6 +4425,323 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>spring-kafka</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> Spring kafka 版本 2.8.4</p>
+</blockquote>
+<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
+<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
+<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
+</ul>
+<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
+<li>enable.auto.commit&#x3D;true</li>
+<li>auto-commit-interval 自动提交的时间间隔</li>
+</ul>
+<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
+<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
+
+  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
+
+  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
+</code></pre>
+<ul>
+<li>自动提交流程</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
+<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
+<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
+<li>ackMode &#x3D; <em>RECORD</em></li>
+</ul>
+<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
+<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
+<ul>
+<li>ackMode !&#x3D; <em>RECORD</em></li>
+</ul>
+<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
+<ul>
+<li>AckMode 解析</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">类型</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><em>RECORD</em></td>
+<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>BATCH</em></td>
+<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
+</tr>
+<tr>
+<td align="left"><em>TIME</em></td>
+<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT</em></td>
+<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT_TIME</em></td>
+<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL_IMMEDIATE</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
+</tr>
+</tbody></table>
+<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
+<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
+<li>异步提交 syncCommits&#x3D;false</li>
+</ul>
+<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
+<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
+<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
+<li>默认重试 9 次，每次重试之前没有间隔</li>
+</ul>
+<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
+<ul>
+<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
+</ul>
+<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
+<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
+<ul>
+<li>定义重试次数 &amp; 重试间隔</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
+
+<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
+<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
+
+<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
+<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
+<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
+<li>autoCommit &#x3D; false</li>
+<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
+<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
+</ul>
+</li>
+</ul>
+<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+        <tag>spring</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-producer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>acks</strong></td>
+<td align="left">1</td>
+<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retries</strong></td>
+<td align="left"></td>
+<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retry.backoff.ms</strong></td>
+<td align="left"></td>
+<td align="left">重试的时间间隔</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
+<td align="left">5</td>
+<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">linger.ms</td>
+<td align="left">0</td>
+<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">interceptor.classes</td>
+<td align="left"></td>
+<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left">buffer.memory</td>
+<td align="left">32 * 1024 * 1024</td>
+<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
+<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
+</tr>
+<tr>
+<td align="left">max.block.ms</td>
+<td align="left">60 * 1000</td>
+<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
+<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">batch.size</td>
+<td align="left">16 * 1024</td>
+<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">max.request.size</td>
+<td align="left">1024 * 1024</td>
+<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">compression.type</td>
+<td align="left">none</td>
+<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
+<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
+</ul>
+<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
+<ul>
+<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
+</ul>
+<p>NetworkClient:</p>
+<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
+<p>​      </p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>pulsar-使用</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/pulsar/shi-yong/posts/undefined/</url>
+    <content><![CDATA[<h2 id="创建使用"><a href="#创建使用" class="headerlink" title="创建使用"></a>创建使用</h2><ul>
+<li>docker 单机创建</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker run -d -it \</span><br><span class="line">    -p 6650:6650 \</span><br><span class="line">    -p 8650:8080 \</span><br><span class="line">    -v /Users/wulei/devTools/pulsar/data:/pulsar/data \</span><br><span class="line">    --name pulsar-standalone \</span><br><span class="line">    apachepulsar/pulsar:latest \</span><br><span class="line">    bin/pulsar standalone</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>可视化 pulsar-manager</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker pull apachepulsar/pulsar-manager:v0.3.0</span><br><span class="line">docker run -d -it \</span><br><span class="line">    -p 9527:9527 -p 7750:7750 \</span><br><span class="line">    -e SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties \</span><br><span class="line">    --<span class="built_in">link</span> pulsar-standalone \</span><br><span class="line">    --name pulsar-manager\</span><br><span class="line">    apachepulsar/pulsar-manager:v0.3.0</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 pulsar-manager admin 用户，用户名： admin 密码： apachepulsar</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">CSRF_TOKEN=$(curl http://localhost:7750/pulsar-manager/csrf-token)</span><br><span class="line">curl \</span><br><span class="line">   -H <span class="string">&#x27;X-XSRF-TOKEN: $CSRF_TOKEN&#x27;</span> \</span><br><span class="line">   -H <span class="string">&#x27;Cookie: XSRF-TOKEN=$CSRF_TOKEN;&#x27;</span> \</span><br><span class="line">   -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">   -X PUT http://localhost:7750/pulsar-manager/users/superuser \</span><br><span class="line">   -d <span class="string">&#x27;&#123;&quot;name&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;apachepulsar&quot;, &quot;description&quot;: &quot;test&quot;, &quot;email&quot;: &quot;username@test.org&quot;&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Pulsar-manager 连接 pulsar 集群，注意使用容器名称+容器内部端口进行连接</li>
+</ul>
+<p><img data-src="/images/message/pulsar/01.PNG" alt="img"></p>
+<ul>
+<li>创建租户</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin tenants create lei-learn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 namespace</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./bin/pulsar-admin namespaces create lei-learn/dev</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics create persistent://lei-learn/dev/string</span><br><span class="line"><span class="comment"># 创建5个分区的topic</span></span><br><span class="line">/bin/pulsar-admin topics create-partitioned-topic -p 5 persistent://lei-learn/dev/string</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>显示某个 namespace 下的 topic</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">/bin/pulsar-admin topics list lei-learn/dev/</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>pulsar</tag>
       </tags>
   </entry>
 </search>
