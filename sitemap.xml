@@ -821,20 +821,6 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/tags/JAVA/</loc>
-    <lastmod>2025-02-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>https://taeyang0126.github.io/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/</loc>
-    <lastmod>2025-02-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>https://taeyang0126.github.io/tags/JVM/</loc>
     <lastmod>2025-02-22</lastmod>
     <changefreq>weekly</changefreq>
@@ -850,6 +836,20 @@
   
   <url>
     <loc>https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/</loc>
+    <lastmod>2025-02-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://taeyang0126.github.io/tags/JAVA/</loc>
+    <lastmod>2025-02-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://taeyang0126.github.io/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/</loc>
     <lastmod>2025-02-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -905,20 +905,6 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/tags/Netty/</loc>
-    <lastmod>2025-02-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>https://taeyang0126.github.io/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/</loc>
-    <lastmod>2025-02-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>https://taeyang0126.github.io/tags/loom/</loc>
     <lastmod>2025-02-22</lastmod>
     <changefreq>weekly</changefreq>
@@ -941,6 +927,20 @@
   
   <url>
     <loc>https://taeyang0126.github.io/tags/spring-boot/</loc>
+    <lastmod>2025-02-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://taeyang0126.github.io/tags/Netty/</loc>
+    <lastmod>2025-02-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://taeyang0126.github.io/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/</loc>
     <lastmod>2025-02-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -1173,14 +1173,14 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/JAVA/</loc>
+    <loc>https://taeyang0126.github.io/categories/JFR/</loc>
     <lastmod>2025-02-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/JFR/</loc>
+    <loc>https://taeyang0126.github.io/categories/JAVA/</loc>
     <lastmod>2025-02-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -1201,14 +1201,14 @@
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/Netty/</loc>
+    <loc>https://taeyang0126.github.io/categories/loom/</loc>
     <lastmod>2025-02-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
-    <loc>https://taeyang0126.github.io/categories/loom/</loc>
+    <loc>https://taeyang0126.github.io/categories/Netty/</loc>
     <lastmod>2025-02-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
