@@ -56,13 +56,6 @@ a {
   }
 }
 
-// 搜索关键词高亮
-.search-keyword {
-  background: rgba(255, 255, 0, 0.3);
-  padding: 2px 5px;
-  border-radius: 2px;
-}
-
 // 主要内容区域
 .main-inner {
   max-width: 1140px;
@@ -113,14 +106,6 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   padding: 10px 15px;
-}
-
-.search-result-list li {
-  background: #fff;
-  border-radius: 8px;
-  margin: 10px 0;
-  padding: 15px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 // 滚动条样式
@@ -242,31 +227,38 @@ body::-webkit-scrollbar-track {
 }
 
 .search-result-list li {
-  background: rgba(45, 45, 45, 0.8);
+  background: rgba(45, 45, 45, 0.4) !important;  /* 降低背景不透明度 */
   color: #e5e5e5;
   border-radius: 8px;
   margin: 10px 0;
   padding: 15px;
   backdrop-filter: blur(5px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);  /* 稍微调亮边框 */
   transition: all 0.3s ease;
 }
 
+/* 搜索结果hover效果 */
 .search-result-list li:hover {
-  background: rgba(255, 255, 255, 0.9);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: rgba(45, 45, 45, 0.6) !important;  /* hover时稍微加深 */
+  transform: translateY(-2px);  /* 轻微上浮效果 */
 }
 
 // 搜索结果高亮
-.search-result .search-keyword {
-  color: var(--link-color);
-  font-weight: bold;
-  background: rgba(0, 102, 204, 0.1);
-  padding: 0 4px;
-  border-radius: 4px;
+.search-result-list .search-keyword {
+  border-bottom: 1px dashed #f47466;  /* 添加下划线 */
+  color: #f47466;  /* 修改文字颜色 */
+  font-weight: bold;  /* 加粗 */
+  background-color: transparent;  /* 移除白色背景 */
+  padding: 0 2px;  /* 添加一点内边距 */
 }
 
+/* 修改搜索结果选中状态的样式 */
+/* 确保高亮文字清晰可见 */
+.search-result-list mark {
+  background: transparent !important;
+  color: #f47466 !important;
+  border-bottom: 1px dashed #f47466;
+}
 
 /* 标题悬浮效果 */
 .post-title {
