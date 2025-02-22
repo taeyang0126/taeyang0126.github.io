@@ -410,59 +410,224 @@
       </tags>
   </entry>
   <entry>
-    <title>多线程异常处理</title>
-    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
-</blockquote>
-<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
-<li>新起线程中抛出异常</li>
+    <title>JFR详解-1</title>
+    <url>/2025/02/20/jfr/jfr-xiang-jie/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本篇文章参考张哥JFR全系列</a></li>
 </ul>
-<blockquote>
-<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+<h2 id="为什么需要JFR"><a href="#为什么需要JFR" class="headerlink" title="为什么需要JFR?"></a>为什么需要JFR?</h2><h3 id="我们需要一个持续的，低消耗的JVM层面与JDK层面的类似于-OpenTelemetry-标准的监控方式"><a href="#我们需要一个持续的，低消耗的JVM层面与JDK层面的类似于-OpenTelemetry-标准的监控方式" class="headerlink" title="我们需要一个持续的，低消耗的JVM层面与JDK层面的类似于 OpenTelemetry 标准的监控方式"></a>我们需要一个持续的，低消耗的JVM层面与JDK层面的类似于 <code>OpenTelemetry</code> 标准的监控方式</h3><ul>
+<li>arthas: 主要用于实时定位问题，必须有问题线程，必须复现才能定位，没法事后定位，如果有应用问题也可能挂载不上。<br>JFR可以实现从JVM启动开始一直持续采集监控与事后定位，即使应用有问题卡住，也基本能通过JFR定位。</li>
+<li>APM 框架: 例如 micrometer，open-telemetry，Skywalking 等等，大部分基于 <code>Java Agent</code> 和侵入代码的方式结合实现，<br>这些对于JFR来说：<ul>
+<li>这些框架没办法采集JVM层面的指标</li>
+<li>JVM协调安全点，JVM卡住，Java应用有问题，CPU吃满等等，这些框架会受很大影响</li>
+</ul>
+</li>
+</ul>
+<h3 id="结合学习-JVM-JDK-的最佳方式"><a href="#结合学习-JVM-JDK-的最佳方式" class="headerlink" title="结合学习 JVM + JDK 的最佳方式"></a>结合学习 JVM + JDK 的最佳方式</h3><ul>
+<li>JFR 有哪些事件，为啥要采集这些事件</li>
+<li>采集这些事件的机制</li>
+<li>搞懂上面的问题，基本从 JVM 到 JDK 的任意一个细节都搞懂了，比如：<ul>
+<li>JVM GC 的时候有哪些阶段，每个阶段耗时与做了什么？看 GC 相关 JFR 事件</li>
+<li>JVM Safepoint 是啥，有啥原因会进入 safePoint？看 Safepoint 相关 JFR 事件</li>
+<li>JDK 中的 AQS 究竟基于啥，实现原理是啥？看 Thread Park 事件属性与对应线程栈</li>
+</ul>
+</li>
+</ul>
+<h2 id="JFR-如何实现高效"><a href="#JFR-如何实现高效" class="headerlink" title="JFR 如何实现高效"></a>JFR 如何实现高效</h2><ul>
+<li><img data-src="/images/jfr/01.png" alt="img"></li>
+</ul>
+<h2 id="JFR-如何从-JVM-启动一开始监控到任意时候"><a href="#JFR-如何从-JVM-启动一开始监控到任意时候" class="headerlink" title="JFR 如何从 JVM 启动一开始监控到任意时候"></a>JFR 如何从 JVM 启动一开始监控到任意时候</h2><blockquote>
+<p>突破 JFR 本身限制，不用 dumponexit，不用主动 dump</p>
 </blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
-
 <ul>
-<li>线程池中抛出的异常</li>
+<li>JFR 写入磁盘的 Data Chunk，默认在临时目录(<code>java.io.tmpdir</code>)，这个可以通过<br>JFR 配置限制<ul>
+<li><code>maxage</code>：限制保留的 JFR 事件的最早时间</li>
+<li><code>maxsize</code>：限制保留在本地磁盘临时文件的最大总大小</li>
 </ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
-
-<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
-<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
+</li>
+<li>Java 14开始，增加了 JFR Event Streaming 机制<ul>
+<li>写入的临时文件不再是.part，而是.jfr，这样即使JMC无法解析，也可以使用jfr命令解析</li>
+<li>java 14 引入定时任务定时（默认1s）执行 JFR Flush 将元数据刷入本地文件 Data Chunk，这样大概率最新的文件就是数据完整的，即可以被JMC解析</li>
+</ul>
+</li>
+</ul>
+<h2 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h2><h3 id="Java-17-以上的-JDK"><a href="#Java-17-以上的-JDK" class="headerlink" title="Java 17 以上的 JDK"></a>Java 17 以上的 JDK</h3><blockquote>
+<p>Azul、Corretto、OpenJdk随意</p>
+</blockquote>
+<h3 id="JMC"><a href="#JMC" class="headerlink" title="JMC"></a>JMC</h3><blockquote>
+<p>下载最新版本即可，即 JMC 9</p>
+</blockquote>
+<h3 id="WhiteBox"><a href="#WhiteBox" class="headerlink" title="WhiteBox"></a>WhiteBox</h3><blockquote>
+<p><code>WhiteBox API</code> 是 HotSpot VM 自带的白盒测试工具，将内部的很多核心机制的API暴露出来，用于白盒测试 JVM，压测 JVM 特性，以及辅助学习理解JVM并调优参数</p>
 </blockquote>
 <ul>
-<li><p>Try catch 显示处理异常</p>
-</li>
-<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
+<li>编译 WhiteBox API<ol>
+<li>拉取 openjdk 源码</li>
+</ol>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone --depth 1 --filter=blob:none --sparse https://github.com/openjdk/jdk</span><br><span class="line">cd jdk</span><br><span class="line">git sparse-checkout init --cone</span><br><span class="line">git sparse-checkout set test/lib/jdk/test/whitebox</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>新建 maven 空项目，将刚刚拉取的代码复制进去，执行 <code>maven package</code> 即可</li>
+<li>将编译的 jar 包放在项目根目录，通过 maven 本地 system 依赖的方式将 jar 包加入依赖<br><img data-src="/images/jfr/02.png" alt="img"></li>
+<li>不想自己构建可以使用 <a href="/files/jfr/whitebox-1.0-SNAPSHOT.jar">whitebox-1.0-SNAPSHOT.jar</a></li>
+<li>编写测试代码<ul>
+<li>代码</li>
+</ul>
+ <figure class="highlight java"><table><tr><td class="code"><pre><span class="line">  <span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestWhiteBox</span> &#123;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">  </span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">            主要用于添加WhiteBox测试API的jar包，这个jar必须通过引导类加载器加载，因为它需要访问JVM内部功能，/a 表示append，将指定的jar追加到引导类路径末尾</span></span><br><span class="line"><span class="comment">            -Xbootclasspath/a:/Users/wulei/IdeaProjects/learn/jfr/whitebox-1.0-SNAPSHOT.jar</span></span><br><span class="line"><span class="comment">  </span></span><br><span class="line"><span class="comment">            解锁JVM诊断选项，启用一些默认被禁用的诊断/调试选项，这是使用WhiteBox API的前提条件</span></span><br><span class="line"><span class="comment">            -XX:+UnlockDiagnosticVMOptions</span></span><br><span class="line"><span class="comment">  </span></span><br><span class="line"><span class="comment">            启用WhiteBox测试API，WhiteBox API提供了访问JVM内部状态的能力</span></span><br><span class="line"><span class="comment">            -XX:+WhiteBoxAPI</span></span><br><span class="line"><span class="comment">  </span></span><br><span class="line"><span class="comment">            开启GC日志记录，输出带有gc标签的日志</span></span><br><span class="line"><span class="comment">            -Xlog:gc</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">  </span><br><span class="line">        <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">        <span class="comment">// 获取 ReservedCodeCacheSize 这个 JVM flag 的值</span></span><br><span class="line">        <span class="type">Long</span> <span class="variable">reservedCodeCacheSize</span> <span class="operator">=</span> whiteBox.getUintxVMFlag(<span class="string">&quot;ReservedCodeCacheSize&quot;</span>);</span><br><span class="line">        System.out.println(reservedCodeCacheSize);</span><br><span class="line">        <span class="comment">// 打印内存各项指标</span></span><br><span class="line">        whiteBox.printHeapSizes();</span><br><span class="line">        <span class="comment">// 执行 full GC</span></span><br><span class="line">        whiteBox.fullGC();</span><br><span class="line">        <span class="comment">// 保持进程不退出，打印完整日志</span></span><br><span class="line">        Thread.currentThread().join();</span><br><span class="line">  </span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <ul>
-<li><p>线程处理</p>
+<li>启动VM Options</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-Xbootclasspath/a:/Users/wulei/IdeaProjects/learn/jfr/whitebox-1.0-SNAPSHOT.jar</span><br><span class="line">-XX:+UnlockDiagnosticVMOptions</span><br><span class="line">-XX:+WhiteBoxAPI</span><br><span class="line">-Xlog:gc</span><br></pre></td></tr></table></figure>
+<ul>
+<li>执行结果，出现 NoSuchMethodError 错误没关系，因为打包的是最新的 whitebox，使用的jdk版本可能没有某些最新的api<br><img data-src="/images/jfr/03.png" alt="img"></li>
+</ul>
 </li>
-<li><p>thread.setUncaughtExceptionHandler</p>
+</ol>
 </li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
-
-</li>
-<li><p>线程池处理</p>
-</li>
-<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
-</li>
-<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="Java-对象分配过程"><a href="#Java-对象分配过程" class="headerlink" title="Java 对象分配过程"></a>Java 对象分配过程</h2><h3 id="路径一-TLAB-内分配"><a href="#路径一-TLAB-内分配" class="headerlink" title="路径一 TLAB 内分配"></a>路径一 TLAB 内分配</h3><ul>
+<li>需要分配的大小小于 TLAB (Thread Local Alloction Buffer) 的剩余空间，直接在 TLAB 中分配</li>
+<li>这是大多数对象的分配路径</li>
+</ul>
+<h3 id="路径二-申请新的-TLAB-分配"><a href="#路径二-申请新的-TLAB-分配" class="headerlink" title="路径二 申请新的 TLAB 分配"></a>路径二 申请新的 TLAB 分配</h3><ul>
+<li>需要分配的大小大于 TLAB 的剩余空间，TLAB 的当前剩余空间小于 TLAB 的最大浪费空间</li>
+<li>重新分配一个 TLAB，然后在新的 TLAB 中分配</li>
+</ul>
+<h3 id="路径三-TLAB-外分配"><a href="#路径三-TLAB-外分配" class="headerlink" title="路径三 TLAB 外分配"></a>路径三 TLAB 外分配</h3><ul>
+<li>需要分配的大小大于 TLAB 的剩余空间，TLAB 的当前剩余空间大于 TLAB 的最大浪费空间</li>
+<li>或者是申请新的 TLAB，TLAB 扩容也无法满足需要的大小</li>
+<li>或者是申请新的 TLAB，堆剩余空间不足以分配新的 TLAB，但是足够分配这个对象并且这个线程抢到了全局堆锁</li>
+<li>以上三种情况都会直接在堆上分配</li>
+</ul>
+<h3 id="路径四-分配前触发GC或者等待GC"><a href="#路径四-分配前触发GC或者等待GC" class="headerlink" title="路径四 分配前触发GC或者等待GC"></a>路径四 分配前触发GC或者等待GC</h3><ul>
+<li>路径二和路径三都失败，即堆剩余空间不足导致申请TLAB失败，堆剩余空间也不足以分配这个对象或者没有抢到全局堆锁</li>
+<li>这种情况下，会触发 GC 或者等待 GC 释放对象</li>
+</ul>
+<h3 id="为什么有个最大浪费空间？？"><a href="#为什么有个最大浪费空间？？" class="headerlink" title="为什么有个最大浪费空间？？"></a>为什么有个最大浪费空间？？</h3><ul>
+<li>这是为了避免更有效的利用空间</li>
+<li>假设当前剩余12KB，最大浪费空间是10KB，有个对象需要分配20KB，因为TLAB剩余空间不够，这时候面临两个选择<ul>
+<li>丢弃掉当前这个TLAB，去申请一个新的</li>
+<li>不在当前这个TLAB上配置，去堆上分配</li>
+<li>最大浪费空间就是以上两种选择的决定者，假设剩余空间大于最大浪费空间，那么就保留当前这个TLAB，因为下次很可能在分配成功，所以要去堆上分配；假设剩余空间小于最大浪费空间，说明下次分配的可能性也不大了，可以丢弃掉当前TLAB去申请一个新的TLAB了</li>
 </ul>
 </li>
 </ul>
-<p>Hold on…..有人的地方就不存在信任这一说- -</p>
-<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
-<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
-</blockquote>
-<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+<h3 id="TLAB"><a href="#TLAB" class="headerlink" title="TLAB"></a>TLAB</h3><ul>
+<li>TLAB 是动态的，一般分配频繁的线程TLAB&#x3D;2M</li>
+<li>每次fullGC都会触发所有线程填充自己的TLAB，然后退回堆，申请一个新的TLAB</li>
+</ul>
+<h2 id="JFR-事件"><a href="#JFR-事件" class="headerlink" title="JFR 事件"></a>JFR 事件</h2><h3 id="Java-Application-Object-Allocation-In-New-TLAB"><a href="#Java-Application-Object-Allocation-In-New-TLAB" class="headerlink" title="Java Application&#x2F;Object Allocation In New TLAB"></a>Java Application&#x2F;Object Allocation In New TLAB</h3><p><img data-src="/images/jfr/04.png" alt="img"><br><img data-src="/images/jfr/05.png" alt="img"></p>
+<h4 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h4><ul>
+<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationInNewTLAB</li>
+<li>Label(Event Type，用于显示): Object Allocation In New TLAB</li>
+<li>Category(用于分类显示): Java Application</li>
+<li>事件从哪个版本引入？<ul>
+<li>Java11：即一开始就存在</li>
+</ul>
+</li>
+<li>事件类型<ul>
+<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
+<li><code>JVM内部事件</code></li>
+</ul>
+</li>
+<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>此事件对应 <code>Java 对象分配过程</code> 中的路径二</li>
+<li>事件字段<ul>
+<li>Event Thread：发生路径二分配的线程的名称</li>
+<li>Allocation Size：触发路径二分配的对象大小（实际占用，考虑了对象对其）</li>
+<li>Object Class：触发路径二分配的对象类型</li>
+<li>TLAB Size：触发路径二分配，申请新的TLAB的大小</li>
+<li>线程栈：发生路径二的线程栈，默认是采集的<br><img data-src="/images/jfr/06.png" alt="img"></li>
+</ul>
+</li>
+<li>测试代码 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocInNewTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 对于字节数组对象头占用16字节</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">BYTE_ARRAY_OVERHEAD</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line">  <span class="comment">// 测试的对象大小是KB</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">OBJECT_SIZE</span> <span class="operator">=</span> <span class="number">1024</span>;</span><br><span class="line">  <span class="comment">// 字节数组对象名称</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">BYTE_ARRAY_CLASS_NAME</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">0</span>].getClass().getName();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 需要使用静态field，而不是方法内本地变量，否则编译后循环内的new byte[] 会被全部省略，只剩最后一次的</span></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">byte</span>[] tmp;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小1KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">512</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 强制 fullgc 回收所以 TLAB</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小100KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">200</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE * <span class="number">100</span> - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">      <span class="comment">// 统计事件类型</span></span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf1KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf100KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="comment">// 读取文件中的所有 JFR 事件</span></span><br><span class="line">      <span class="keyword">for</span> (RecordedEvent event : RecordingFile.readAllEvents(path)) &#123;</span><br><span class="line">          <span class="comment">// 获取分配的对象类型</span></span><br><span class="line">          <span class="type">String</span> <span class="variable">className</span> <span class="operator">=</span> event.getString(<span class="string">&quot;objectClass.name&quot;</span>);</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 确保分配类型是byte</span></span><br><span class="line">          <span class="keyword">if</span> (BYTE_ARRAY_CLASS_NAME.equals(className)) &#123;</span><br><span class="line">              <span class="type">RecordedFrame</span> <span class="variable">recordedFrame</span> <span class="operator">=</span> event.getStackTrace().getFrames().get(<span class="number">0</span>);</span><br><span class="line">              <span class="comment">// 同时必须是main方法分配的对象，并且是java堆栈中的main方法</span></span><br><span class="line">              <span class="keyword">if</span> (</span><br><span class="line">                      recordedFrame.isJavaFrame()</span><br><span class="line">                              &amp;&amp; <span class="string">&quot;main&quot;</span>.equalsIgnoreCase(recordedFrame.getMethod().getName())</span><br><span class="line">              ) &#123;</span><br><span class="line">                  <span class="comment">// 获取分配对象大小</span></span><br><span class="line">                  <span class="type">long</span> <span class="variable">allocationSize</span> <span class="operator">=</span> event.getLong(<span class="string">&quot;allocationSize&quot;</span>);</span><br><span class="line">                  <span class="keyword">if</span> (EVENT_TYPE.equalsIgnoreCase(event.getEventType().getName())) &#123;</span><br><span class="line">                      <span class="keyword">if</span> (allocationSize == OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf1KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (allocationSize == <span class="number">100</span> * OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf100KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125;</span><br><span class="line"></span><br><span class="line">                  &#125;</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Exception</span>(<span class="string">&quot;unexpected size of TLAB event&quot;</span>);</span><br><span class="line">              &#125;</span><br><span class="line">              System.out.println(event);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      System.out.println(<span class="string">&quot;countOf1KBObjectAllocationInNewTLAB: &quot;</span> + countOf1KBObjectAllocationInNewTLAB);</span><br><span class="line">      System.out.println(<span class="string">&quot;countOf100KBObjectAllocationInNewTLAB: &quot;</span> + countOf100KBObjectAllocationInNewTLAB);</span><br><span class="line">  &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="为什么针对大部分应用不建议开启这个事件的采集"><a href="#为什么针对大部分应用不建议开启这个事件的采集" class="headerlink" title="为什么针对大部分应用不建议开启这个事件的采集?"></a>为什么针对大部分应用不建议开启这个事件的采集?</h4><ul>
+<li><code>路径二分配一般不是核心问题点</code><ul>
+<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
+<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
+</ul>
+</li>
+<li><code>对于大部分应用，没有啥必要性</code><ul>
+<li>重新申请 TLAB 分配，对于热点线程来说，虽然不如TLAB内分配那么多，但是也是比较频繁的</li>
+<li>如果重新申请 TLAB 分配的次数，和 TLAB 内分配的次数差不多，这才会是问题</li>
+<li>但是 TLAB 的大小是根据线程的分配情况动态调整的，所以 TLAB 内的分配的次数会比较多，而重新申请 TLAB 分配的次数会比较少</li>
+<li>所以这个事件的采集，对于大部分的应用来说，并不是很有必要</li>
+</ul>
+</li>
+<li><code>性能损耗</code><ul>
+<li>这个事件的采集，会捕获堆栈信息，堆栈信息是比较耗性能的，如果开启这个事件的采集，会导致性能损耗比较大。并且这个事件的采集也相对频繁</li>
+</ul>
+</li>
+</ul>
+<h4 id="那种情况下才会考虑开启这个事件的采集"><a href="#那种情况下才会考虑开启这个事件的采集" class="headerlink" title="那种情况下才会考虑开启这个事件的采集?"></a>那种情况下才会考虑开启这个事件的采集?</h4><ul>
+<li>正常的应用场景下，不需要调整TLAB的配置参数。一般情况下，JVM会根据应用的情况自动调整TLAB的大小</li>
+<li>如果确实怀疑TLAB的配置参数有问题，第一步是开启 Java Application -&gt; Allocation In New TLAB(jdk.ObjectAllocationInNewTLAB) 和 Java Application -&gt;  Allocation outside TLAB(jdk.ObjectAllocationOutsideTLAB)</li>
+<li>确认有大量的 Object Allocation Outside TLAB 事件发生（一般在应用稳定之后，如果很多线程的 Object Allocation Outside TLAB 相对于 Allocation In New TLAB 大于 5%以上就需要调整 TLAB 相关参数了），然后再考虑是否需要调整 TLAB 的配置参数。</li>
+</ul>
+<h3 id="Java-Application-Object-Allocation-Outside-TLAB"><a href="#Java-Application-Object-Allocation-Outside-TLAB" class="headerlink" title="Java Application&#x2F;Object Allocation Outside TLAB"></a>Java Application&#x2F;Object Allocation Outside TLAB</h3><h4 id="使用-1"><a href="#使用-1" class="headerlink" title="使用"></a>使用</h4><ul>
+<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationOutsideTLAB</li>
+<li>Label(Event Type，用于显示): Object Allocation Outside TLAB</li>
+<li>Category(用于分类显示): Java Application</li>
+<li>事件从哪个版本引入？<ul>
+<li>Java11：即一开始就存在</li>
+</ul>
+</li>
+<li>事件类型<ul>
+<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
+<li><code>JVM内部事件</code></li>
+</ul>
+</li>
+<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>此事件对应 <code>Java 对象分配过程</code> 中的路径三</li>
+<li>事件字段<ul>
+<li>Event Thread：发生路径三分配的线程的名称</li>
+<li>Allocation Size：触发路径三分配的对象大小（实际占用，考虑了对象对其）</li>
+<li>Object Class：触发路径三分配的对象类型</li>
+<li>线程栈：发生路径三的线程栈，默认是采集的<br><img data-src="/images/jfr/07.png" alt="img"></li>
+</ul>
+</li>
+<li>编写代码模拟内存泄漏业务<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">  <span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocOutsideTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, IOException &#123;</span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 模拟正常业务运行分配对象</span></span><br><span class="line">      runBiz(<span class="literal">true</span>);</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">3</span>);</span><br><span class="line">      System.out.println(<span class="string">&quot;Start to create OOM&quot;</span>);</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM，看看 Allocation  Outside TLAB 是否可以捕捉到</span></span><br><span class="line">      runOOM(<span class="literal">true</span>);</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runBiz</span><span class="params">(<span class="type">boolean</span> virtualThreadFlag)</span> &#123;</span><br><span class="line">      <span class="comment">// 模拟正常业务运行，三个线程并发分配对象，朝生夕死</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">3</span>];</span><br><span class="line">      <span class="type">Runnable</span> <span class="variable">bizRunnable</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">          List&lt;Object&gt; objects = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">          <span class="keyword">while</span> (!Thread.currentThread().isInterrupted()) &#123;</span><br><span class="line">              objects.add(<span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">              <span class="keyword">if</span> (objects.size() &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">                  objects.clear();</span><br><span class="line">              &#125;</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;;</span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          <span class="keyword">if</span> (virtualThreadFlag) &#123;</span><br><span class="line">              threads[i] = Thread.ofVirtual().name(<span class="string">&quot;biz-&quot;</span> + i)</span><br><span class="line">                      .unstarted(bizRunnable);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(bizRunnable);</span><br><span class="line">          &#125;</span><br><span class="line">          threads[i].start();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">          <span class="keyword">try</span> &#123;</span><br><span class="line">              TimeUnit.SECONDS.sleep(<span class="number">10</span>);</span><br><span class="line">              <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">                  threads[i].interrupt();</span><br><span class="line">              &#125;</span><br><span class="line">          &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">              <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">      thread.start();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runOOM</span><span class="params">(<span class="type">boolean</span> virtualThreadFlag)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">3</span>];</span><br><span class="line">      Map&lt;Object, Object&gt; map = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">      <span class="type">Runnable</span> <span class="variable">oomRun</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">          <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> <span class="number">0</span>; j &lt; <span class="number">1000000</span>; j++) &#123;</span><br><span class="line">              map.put(<span class="keyword">new</span> <span class="title class_">Object</span>(), <span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          <span class="keyword">if</span> (virtualThreadFlag) &#123;</span><br><span class="line">              threads[i] = Thread.ofVirtual().name(<span class="string">&quot;oom-&quot;</span> + i)</span><br><span class="line">                      .unstarted(oomRun);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(oomRun);</span><br><span class="line">          &#125;</span><br><span class="line">          threads[i].start();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          threads[i].join();</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="是否建议开启这个事件的采集"><a href="#是否建议开启这个事件的采集" class="headerlink" title="是否建议开启这个事件的采集"></a>是否建议开启这个事件的采集</h4><ul>
+<li>建议开启<ul>
+<li>上面提到的Java内存分配路径，对于一般的JVM应用，<code>TLAB</code>内分配的量远大于申请新的TLAB分配的量，同时申请新的TLAB的量又远大于在TLAB外分配的量。除非你的应用分配大量的大对象，否则这个事件发生的应该比较少</li>
+<li>对于一般的JVM应用，建议还是开启这个事件的采集，这样能采集到在你应用的所有大对象分配。只要你的应用不是大对象分配过多，这个事件的采集对于性能的影响应该是可以接受的。</li>
+<li>路径三分配一般会包含核心问题点：<ul>
+<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
+<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>与其他哪些事件是否有重合<ul>
+<li><code>Object Allocation Sample</code>: 虽然 Object Allocation Sample 官方默认开启，但是对于大部分小对象朝生夕死的应用，其实更应该开启 Object Allocation Outside TLAB，而不是Object Allocation Sample。大部分应用，采集到的 Object Allocation Outside TLAB 会比默认的 Object Allocation Sample 少很多很多，性能消耗小很多很多。建议将 Object Allocation Sample 的采样率调很低，主要用于看意向不到的对象分配。</li>
+<li><code>Allocation Requiring GC 以及 ZAllocation Stall</code>: 后续分析这些事件我们会看到，有内存泄漏嫌疑的对象分配相关的对象分配路径，基本上很少会被这两个事件以及 Object Allocation Outside TLAB 采集到</li>
+</ul>
+</li>
+</ul>
+<h4 id="这个事件适合定位什么问题？"><a href="#这个事件适合定位什么问题？" class="headerlink" title="这个事件适合定位什么问题？"></a>这个事件适合定位什么问题？</h4><ul>
+<li>大对象分配：适合度70%<ul>
+<li>对于大于TLAB大小的对象，如果分配成功一定可以采集到</li>
+<li>对于大于TLAB最大浪费比例的对象，分配成功有概率可以采集到，因为有一部分在TLAB内分配成功</li>
+<li>这个<code>只会采集分配成功</code>的对象，对于大对象分配，如果触发 <code>OutOfMemoryError</code> 代表分配失败，那采集不到</li>
+<li>比如前面的代码示例，可以看到 HashMap 不断扩容，但是如果扩容触发 OutOfMemoryError，那这次就采集不到，但是通过前面的事件也能推测出来</li>
+</ul>
+</li>
+<li>Java 堆对象内存泄漏: 适合度50%。针对不断分配小对象并且不释放的场景比较合适。比如多线程不断向一个 ConcurrentHashMap 塞入对象，但是不释放，这个事件可以采集 ConcurrentHashMap 在不断扩容。</li>
+<li><code>意想不到的大对象分配</code>: 适合度100%。可以定期回顾下这个事件的采集，看看有没有意想不到的大对象分配，以及是否可以优化，或者有利于加深对于JDK的理解</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
-        <category>JAVA</category>
+        <category>JFR</category>
       </categories>
       <tags>
-        <tag>JAVA</tag>
-        <tag>多线程</tag>
+        <tag>JVM</tag>
+        <tag>JFR</tag>
+        <tag>监控</tag>
+        <tag>OOM</tag>
+        <tag>内存泄漏</tag>
       </tags>
   </entry>
   <entry>
@@ -690,224 +855,59 @@
       </tags>
   </entry>
   <entry>
-    <title>JFR详解-1</title>
-    <url>/2025/02/20/jfr/jfr-xiang-jie/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本篇文章参考张哥JFR全系列</a></li>
+    <title>多线程异常处理</title>
+    <url>/2025/02/09/java/duo-xian-cheng-yi-chang-chu-li/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> 多线程场景下，如果没有显示的捕获异常并处理，那么异常会输出到 System.err 中，导致异常信息丢失</p>
+</blockquote>
+<h3 id="异常被吞噬的例子"><a href="#异常被吞噬的例子" class="headerlink" title="异常被吞噬的例子"></a>异常被吞噬的例子</h3><ul>
+<li>新起线程中抛出异常</li>
 </ul>
-<h2 id="为什么需要JFR"><a href="#为什么需要JFR" class="headerlink" title="为什么需要JFR?"></a>为什么需要JFR?</h2><h3 id="我们需要一个持续的，低消耗的JVM层面与JDK层面的类似于-OpenTelemetry-标准的监控方式"><a href="#我们需要一个持续的，低消耗的JVM层面与JDK层面的类似于-OpenTelemetry-标准的监控方式" class="headerlink" title="我们需要一个持续的，低消耗的JVM层面与JDK层面的类似于 OpenTelemetry 标准的监控方式"></a>我们需要一个持续的，低消耗的JVM层面与JDK层面的类似于 <code>OpenTelemetry</code> 标准的监控方式</h3><ul>
-<li>arthas: 主要用于实时定位问题，必须有问题线程，必须复现才能定位，没法事后定位，如果有应用问题也可能挂载不上。<br>JFR可以实现从JVM启动开始一直持续采集监控与事后定位，即使应用有问题卡住，也基本能通过JFR定位。</li>
-<li>APM 框架: 例如 micrometer，open-telemetry，Skywalking 等等，大部分基于 <code>Java Agent</code> 和侵入代码的方式结合实现，<br>这些对于JFR来说：<ul>
-<li>这些框架没办法采集JVM层面的指标</li>
-<li>JVM协调安全点，JVM卡住，Java应用有问题，CPU吃满等等，这些框架会受很大影响</li>
+<blockquote>
+<p>由于是新启动的线程，此异常并不会抛到父线程或者调用方上，导致异常被没了- - </p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;这是一个异常!&quot;</span>);</span><br><span class="line">&#125;).start();</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>线程池中抛出的异常</li>
 </ul>
-</li>
-</ul>
-<h3 id="结合学习-JVM-JDK-的最佳方式"><a href="#结合学习-JVM-JDK-的最佳方式" class="headerlink" title="结合学习 JVM + JDK 的最佳方式"></a>结合学习 JVM + JDK 的最佳方式</h3><ul>
-<li>JFR 有哪些事件，为啥要采集这些事件</li>
-<li>采集这些事件的机制</li>
-<li>搞懂上面的问题，基本从 JVM 到 JDK 的任意一个细节都搞懂了，比如：<ul>
-<li>JVM GC 的时候有哪些阶段，每个阶段耗时与做了什么？看 GC 相关 JFR 事件</li>
-<li>JVM Safepoint 是啥，有啥原因会进入 safePoint？看 Safepoint 相关 JFR 事件</li>
-<li>JDK 中的 AQS 究竟基于啥，实现原理是啥？看 Thread Park 事件属性与对应线程栈</li>
-</ul>
-</li>
-</ul>
-<h2 id="JFR-如何实现高效"><a href="#JFR-如何实现高效" class="headerlink" title="JFR 如何实现高效"></a>JFR 如何实现高效</h2><ul>
-<li><img data-src="/images/jfr/01.png" alt="img"></li>
-</ul>
-<h2 id="JFR-如何从-JVM-启动一开始监控到任意时候"><a href="#JFR-如何从-JVM-启动一开始监控到任意时候" class="headerlink" title="JFR 如何从 JVM 启动一开始监控到任意时候"></a>JFR 如何从 JVM 启动一开始监控到任意时候</h2><blockquote>
-<p>突破 JFR 本身限制，不用 dumponexit，不用主动 dump</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Executors.newFixedThreadPool(<span class="number">1</span>)</span><br><span class="line">        .execute(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;线程池中的异常!&quot;</span>);</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><blockquote>
+<p>针对上面出现的异常吞噬的例子，有以下解决方案</p>
 </blockquote>
 <ul>
-<li>JFR 写入磁盘的 Data Chunk，默认在临时目录(<code>java.io.tmpdir</code>)，这个可以通过<br>JFR 配置限制<ul>
-<li><code>maxage</code>：限制保留的 JFR 事件的最早时间</li>
-<li><code>maxsize</code>：限制保留在本地磁盘临时文件的最大总大小</li>
-</ul>
+<li><p>Try catch 显示处理异常</p>
 </li>
-<li>Java 14开始，增加了 JFR Event Streaming 机制<ul>
-<li>写入的临时文件不再是.part，而是.jfr，这样即使JMC无法解析，也可以使用jfr命令解析</li>
-<li>java 14 引入定时任务定时（默认1s）执行 JFR Flush 将元数据刷入本地文件 Data Chunk，这样大概率最新的文件就是数据完整的，即可以被JMC解析</li>
-</ul>
-</li>
-</ul>
-<h2 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h2><h3 id="Java-17-以上的-JDK"><a href="#Java-17-以上的-JDK" class="headerlink" title="Java 17 以上的 JDK"></a>Java 17 以上的 JDK</h3><blockquote>
-<p>Azul、Corretto、OpenJdk随意</p>
-</blockquote>
-<h3 id="JMC"><a href="#JMC" class="headerlink" title="JMC"></a>JMC</h3><blockquote>
-<p>下载最新版本即可，即 JMC 9</p>
-</blockquote>
-<h3 id="WhiteBox"><a href="#WhiteBox" class="headerlink" title="WhiteBox"></a>WhiteBox</h3><blockquote>
-<p><code>WhiteBox API</code> 是 HotSpot VM 自带的白盒测试工具，将内部的很多核心机制的API暴露出来，用于白盒测试 JVM，压测 JVM 特性，以及辅助学习理解JVM并调优参数</p>
-</blockquote>
+<li><p>指定<code> Thread.UncaughtExceptionHandler</code></p>
 <ul>
-<li>编译 WhiteBox API<ol>
-<li>拉取 openjdk 源码</li>
-</ol>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone --depth 1 --filter=blob:none --sparse https://github.com/openjdk/jdk</span><br><span class="line">cd jdk</span><br><span class="line">git sparse-checkout init --cone</span><br><span class="line">git sparse-checkout set test/lib/jdk/test/whitebox</span><br></pre></td></tr></table></figure>
-<ol start="2">
-<li>新建 maven 空项目，将刚刚拉取的代码复制进去，执行 <code>maven package</code> 即可</li>
-<li>将编译的 jar 包放在项目根目录，通过 maven 本地 system 依赖的方式将 jar 包加入依赖<br><img data-src="/images/jfr/02.png" alt="img"></li>
-<li>不想自己构建可以使用 <a href="/files/jfr/whitebox-1.0-SNAPSHOT.jar">whitebox-1.0-SNAPSHOT.jar</a></li>
-<li>编写测试代码<ul>
-<li>代码</li>
-</ul>
- <figure class="highlight java"><table><tr><td class="code"><pre><span class="line">  <span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestWhiteBox</span> &#123;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">  </span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">            主要用于添加WhiteBox测试API的jar包，这个jar必须通过引导类加载器加载，因为它需要访问JVM内部功能，/a 表示append，将指定的jar追加到引导类路径末尾</span></span><br><span class="line"><span class="comment">            -Xbootclasspath/a:/Users/wulei/IdeaProjects/learn/jfr/whitebox-1.0-SNAPSHOT.jar</span></span><br><span class="line"><span class="comment">  </span></span><br><span class="line"><span class="comment">            解锁JVM诊断选项，启用一些默认被禁用的诊断/调试选项，这是使用WhiteBox API的前提条件</span></span><br><span class="line"><span class="comment">            -XX:+UnlockDiagnosticVMOptions</span></span><br><span class="line"><span class="comment">  </span></span><br><span class="line"><span class="comment">            启用WhiteBox测试API，WhiteBox API提供了访问JVM内部状态的能力</span></span><br><span class="line"><span class="comment">            -XX:+WhiteBoxAPI</span></span><br><span class="line"><span class="comment">  </span></span><br><span class="line"><span class="comment">            开启GC日志记录，输出带有gc标签的日志</span></span><br><span class="line"><span class="comment">            -Xlog:gc</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">  </span><br><span class="line">        <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">        <span class="comment">// 获取 ReservedCodeCacheSize 这个 JVM flag 的值</span></span><br><span class="line">        <span class="type">Long</span> <span class="variable">reservedCodeCacheSize</span> <span class="operator">=</span> whiteBox.getUintxVMFlag(<span class="string">&quot;ReservedCodeCacheSize&quot;</span>);</span><br><span class="line">        System.out.println(reservedCodeCacheSize);</span><br><span class="line">        <span class="comment">// 打印内存各项指标</span></span><br><span class="line">        whiteBox.printHeapSizes();</span><br><span class="line">        <span class="comment">// 执行 full GC</span></span><br><span class="line">        whiteBox.fullGC();</span><br><span class="line">        <span class="comment">// 保持进程不退出，打印完整日志</span></span><br><span class="line">        Thread.currentThread().join();</span><br><span class="line">  </span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>启动VM Options</li>
-</ul>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-Xbootclasspath/a:/Users/wulei/IdeaProjects/learn/jfr/whitebox-1.0-SNAPSHOT.jar</span><br><span class="line">-XX:+UnlockDiagnosticVMOptions</span><br><span class="line">-XX:+WhiteBoxAPI</span><br><span class="line">-Xlog:gc</span><br></pre></td></tr></table></figure>
-<ul>
-<li>执行结果，出现 NoSuchMethodError 错误没关系，因为打包的是最新的 whitebox，使用的jdk版本可能没有某些最新的api<br><img data-src="/images/jfr/03.png" alt="img"></li>
-</ul>
+<li><p>线程处理</p>
 </li>
-</ol>
+<li><p>thread.setUncaughtExceptionHandler</p>
 </li>
-</ul>
-<h2 id="Java-对象分配过程"><a href="#Java-对象分配过程" class="headerlink" title="Java 对象分配过程"></a>Java 对象分配过程</h2><h3 id="路径一-TLAB-内分配"><a href="#路径一-TLAB-内分配" class="headerlink" title="路径一 TLAB 内分配"></a>路径一 TLAB 内分配</h3><ul>
-<li>需要分配的大小小于 TLAB (Thread Local Alloction Buffer) 的剩余空间，直接在 TLAB 中分配</li>
-<li>这是大多数对象的分配路径</li>
-</ul>
-<h3 id="路径二-申请新的-TLAB-分配"><a href="#路径二-申请新的-TLAB-分配" class="headerlink" title="路径二 申请新的 TLAB 分配"></a>路径二 申请新的 TLAB 分配</h3><ul>
-<li>需要分配的大小大于 TLAB 的剩余空间，TLAB 的当前剩余空间小于 TLAB 的最大浪费空间</li>
-<li>重新分配一个 TLAB，然后在新的 TLAB 中分配</li>
-</ul>
-<h3 id="路径三-TLAB-外分配"><a href="#路径三-TLAB-外分配" class="headerlink" title="路径三 TLAB 外分配"></a>路径三 TLAB 外分配</h3><ul>
-<li>需要分配的大小大于 TLAB 的剩余空间，TLAB 的当前剩余空间大于 TLAB 的最大浪费空间</li>
-<li>或者是申请新的 TLAB，TLAB 扩容也无法满足需要的大小</li>
-<li>或者是申请新的 TLAB，堆剩余空间不足以分配新的 TLAB，但是足够分配这个对象并且这个线程抢到了全局堆锁</li>
-<li>以上三种情况都会直接在堆上分配</li>
-</ul>
-<h3 id="路径四-分配前触发GC或者等待GC"><a href="#路径四-分配前触发GC或者等待GC" class="headerlink" title="路径四 分配前触发GC或者等待GC"></a>路径四 分配前触发GC或者等待GC</h3><ul>
-<li>路径二和路径三都失败，即堆剩余空间不足导致申请TLAB失败，堆剩余空间也不足以分配这个对象或者没有抢到全局堆锁</li>
-<li>这种情况下，会触发 GC 或者等待 GC 释放对象</li>
-</ul>
-<h3 id="为什么有个最大浪费空间？？"><a href="#为什么有个最大浪费空间？？" class="headerlink" title="为什么有个最大浪费空间？？"></a>为什么有个最大浪费空间？？</h3><ul>
-<li>这是为了避免更有效的利用空间</li>
-<li>假设当前剩余12KB，最大浪费空间是10KB，有个对象需要分配20KB，因为TLAB剩余空间不够，这时候面临两个选择<ul>
-<li>丢弃掉当前这个TLAB，去申请一个新的</li>
-<li>不在当前这个TLAB上配置，去堆上分配</li>
-<li>最大浪费空间就是以上两种选择的决定者，假设剩余空间大于最大浪费空间，那么就保留当前这个TLAB，因为下次很可能在分配成功，所以要去堆上分配；假设剩余空间小于最大浪费空间，说明下次分配的可能性也不大了，可以丢弃掉当前TLAB去申请一个新的TLAB了</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line">thread.setUncaughtExceptionHandler(uncaughtExceptionHandler);</span><br><span class="line">thread.start();</span><br></pre></td></tr></table></figure>
+
+</li>
+<li><p>线程池处理</p>
+</li>
+<li><p>new ThreadFactoryBuilder().setUncaughtExceptionHandler  线程工厂中设置</p>
+</li>
+<li><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Thread.<span class="type">UncaughtExceptionHandler</span> <span class="variable">uncaughtExceptionHandler</span> <span class="operator">=</span> (t, e) -&gt; log.error(<span class="string">&quot;[catch error]thread -&gt; &#123;&#125;, e -&gt; &#123;&#125;&quot;</span>, t, e);</span><br><span class="line"><span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]这是一个异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="type">ThreadPoolExecutor</span> <span class="variable">threadPoolExecutor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, TimeUnit.SECONDS</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">1000</span>)</span><br><span class="line">        , <span class="keyword">new</span> <span class="title class_">ThreadFactoryBuilder</span>().setUncaughtExceptionHandler(uncaughtExceptionHandler).build());</span><br><span class="line">threadPoolExecutor.execute(() -&gt; &#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;[catch]线程池中的异常!&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
 </ul>
 </li>
 </ul>
-<h3 id="TLAB"><a href="#TLAB" class="headerlink" title="TLAB"></a>TLAB</h3><ul>
-<li>TLAB 是动态的，一般分配频繁的线程TLAB&#x3D;2M</li>
-<li>每次fullGC都会触发所有线程填充自己的TLAB，然后退回堆，申请一个新的TLAB</li>
-</ul>
-<h2 id="JFR-事件"><a href="#JFR-事件" class="headerlink" title="JFR 事件"></a>JFR 事件</h2><h3 id="Java-Application-Object-Allocation-In-New-TLAB"><a href="#Java-Application-Object-Allocation-In-New-TLAB" class="headerlink" title="Java Application&#x2F;Object Allocation In New TLAB"></a>Java Application&#x2F;Object Allocation In New TLAB</h3><p><img data-src="/images/jfr/04.png" alt="img"><br><img data-src="/images/jfr/05.png" alt="img"></p>
-<h4 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h4><ul>
-<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationInNewTLAB</li>
-<li>Label(Event Type，用于显示): Object Allocation In New TLAB</li>
-<li>Category(用于分类显示): Java Application</li>
-<li>事件从哪个版本引入？<ul>
-<li>Java11：即一开始就存在</li>
-</ul>
-</li>
-<li>事件类型<ul>
-<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
-<li><code>JVM内部事件</code></li>
-</ul>
-</li>
-<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>此事件对应 <code>Java 对象分配过程</code> 中的路径二</li>
-<li>事件字段<ul>
-<li>Event Thread：发生路径二分配的线程的名称</li>
-<li>Allocation Size：触发路径二分配的对象大小（实际占用，考虑了对象对其）</li>
-<li>Object Class：触发路径二分配的对象类型</li>
-<li>TLAB Size：触发路径二分配，申请新的TLAB的大小</li>
-<li>线程栈：发生路径二的线程栈，默认是采集的<br><img data-src="/images/jfr/06.png" alt="img"></li>
-</ul>
-</li>
-<li>测试代码 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocInNewTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 对于字节数组对象头占用16字节</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">BYTE_ARRAY_OVERHEAD</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line">  <span class="comment">// 测试的对象大小是KB</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">OBJECT_SIZE</span> <span class="operator">=</span> <span class="number">1024</span>;</span><br><span class="line">  <span class="comment">// 字节数组对象名称</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">BYTE_ARRAY_CLASS_NAME</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">0</span>].getClass().getName();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 需要使用静态field，而不是方法内本地变量，否则编译后循环内的new byte[] 会被全部省略，只剩最后一次的</span></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">byte</span>[] tmp;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小1KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">512</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 强制 fullgc 回收所以 TLAB</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小100KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">200</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE * <span class="number">100</span> - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">      <span class="comment">// 统计事件类型</span></span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf1KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf100KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="comment">// 读取文件中的所有 JFR 事件</span></span><br><span class="line">      <span class="keyword">for</span> (RecordedEvent event : RecordingFile.readAllEvents(path)) &#123;</span><br><span class="line">          <span class="comment">// 获取分配的对象类型</span></span><br><span class="line">          <span class="type">String</span> <span class="variable">className</span> <span class="operator">=</span> event.getString(<span class="string">&quot;objectClass.name&quot;</span>);</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 确保分配类型是byte</span></span><br><span class="line">          <span class="keyword">if</span> (BYTE_ARRAY_CLASS_NAME.equals(className)) &#123;</span><br><span class="line">              <span class="type">RecordedFrame</span> <span class="variable">recordedFrame</span> <span class="operator">=</span> event.getStackTrace().getFrames().get(<span class="number">0</span>);</span><br><span class="line">              <span class="comment">// 同时必须是main方法分配的对象，并且是java堆栈中的main方法</span></span><br><span class="line">              <span class="keyword">if</span> (</span><br><span class="line">                      recordedFrame.isJavaFrame()</span><br><span class="line">                              &amp;&amp; <span class="string">&quot;main&quot;</span>.equalsIgnoreCase(recordedFrame.getMethod().getName())</span><br><span class="line">              ) &#123;</span><br><span class="line">                  <span class="comment">// 获取分配对象大小</span></span><br><span class="line">                  <span class="type">long</span> <span class="variable">allocationSize</span> <span class="operator">=</span> event.getLong(<span class="string">&quot;allocationSize&quot;</span>);</span><br><span class="line">                  <span class="keyword">if</span> (EVENT_TYPE.equalsIgnoreCase(event.getEventType().getName())) &#123;</span><br><span class="line">                      <span class="keyword">if</span> (allocationSize == OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf1KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (allocationSize == <span class="number">100</span> * OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf100KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125;</span><br><span class="line"></span><br><span class="line">                  &#125;</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Exception</span>(<span class="string">&quot;unexpected size of TLAB event&quot;</span>);</span><br><span class="line">              &#125;</span><br><span class="line">              System.out.println(event);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      System.out.println(<span class="string">&quot;countOf1KBObjectAllocationInNewTLAB: &quot;</span> + countOf1KBObjectAllocationInNewTLAB);</span><br><span class="line">      System.out.println(<span class="string">&quot;countOf100KBObjectAllocationInNewTLAB: &quot;</span> + countOf100KBObjectAllocationInNewTLAB);</span><br><span class="line">  &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h4 id="为什么针对大部分应用不建议开启这个事件的采集"><a href="#为什么针对大部分应用不建议开启这个事件的采集" class="headerlink" title="为什么针对大部分应用不建议开启这个事件的采集?"></a>为什么针对大部分应用不建议开启这个事件的采集?</h4><ul>
-<li><code>路径二分配一般不是核心问题点</code><ul>
-<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
-<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
-</ul>
-</li>
-<li><code>对于大部分应用，没有啥必要性</code><ul>
-<li>重新申请 TLAB 分配，对于热点线程来说，虽然不如TLAB内分配那么多，但是也是比较频繁的</li>
-<li>如果重新申请 TLAB 分配的次数，和 TLAB 内分配的次数差不多，这才会是问题</li>
-<li>但是 TLAB 的大小是根据线程的分配情况动态调整的，所以 TLAB 内的分配的次数会比较多，而重新申请 TLAB 分配的次数会比较少</li>
-<li>所以这个事件的采集，对于大部分的应用来说，并不是很有必要</li>
-</ul>
-</li>
-<li><code>性能损耗</code><ul>
-<li>这个事件的采集，会捕获堆栈信息，堆栈信息是比较耗性能的，如果开启这个事件的采集，会导致性能损耗比较大。并且这个事件的采集也相对频繁</li>
-</ul>
-</li>
-</ul>
-<h4 id="那种情况下才会考虑开启这个事件的采集"><a href="#那种情况下才会考虑开启这个事件的采集" class="headerlink" title="那种情况下才会考虑开启这个事件的采集?"></a>那种情况下才会考虑开启这个事件的采集?</h4><ul>
-<li>正常的应用场景下，不需要调整TLAB的配置参数。一般情况下，JVM会根据应用的情况自动调整TLAB的大小</li>
-<li>如果确实怀疑TLAB的配置参数有问题，第一步是开启 Java Application -&gt; Allocation In New TLAB(jdk.ObjectAllocationInNewTLAB) 和 Java Application -&gt;  Allocation outside TLAB(jdk.ObjectAllocationOutsideTLAB)</li>
-<li>确认有大量的 Object Allocation Outside TLAB 事件发生（一般在应用稳定之后，如果很多线程的 Object Allocation Outside TLAB 相对于 Allocation In New TLAB 大于 5%以上就需要调整 TLAB 相关参数了），然后再考虑是否需要调整 TLAB 的配置参数。</li>
-</ul>
-<h3 id="Java-Application-Object-Allocation-Outside-TLAB"><a href="#Java-Application-Object-Allocation-Outside-TLAB" class="headerlink" title="Java Application&#x2F;Object Allocation Outside TLAB"></a>Java Application&#x2F;Object Allocation Outside TLAB</h3><h4 id="使用-1"><a href="#使用-1" class="headerlink" title="使用"></a>使用</h4><ul>
-<li>Type(JVM,JDK内部唯一标识，用于jfr配置): jdk.ObjectAllocationOutsideTLAB</li>
-<li>Label(Event Type，用于显示): Object Allocation Outside TLAB</li>
-<li>Category(用于分类显示): Java Application</li>
-<li>事件从哪个版本引入？<ul>
-<li>Java11：即一开始就存在</li>
-</ul>
-</li>
-<li>事件类型<ul>
-<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
-<li><code>JVM内部事件</code></li>
-</ul>
-</li>
-<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>此事件对应 <code>Java 对象分配过程</code> 中的路径三</li>
-<li>事件字段<ul>
-<li>Event Thread：发生路径三分配的线程的名称</li>
-<li>Allocation Size：触发路径三分配的对象大小（实际占用，考虑了对象对其）</li>
-<li>Object Class：触发路径三分配的对象类型</li>
-<li>线程栈：发生路径三的线程栈，默认是采集的<br><img data-src="/images/jfr/07.png" alt="img"></li>
-</ul>
-</li>
-<li>编写代码模拟内存泄漏业务<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">  <span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocOutsideTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, IOException &#123;</span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 模拟正常业务运行分配对象</span></span><br><span class="line">      runBiz(<span class="literal">true</span>);</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">3</span>);</span><br><span class="line">      System.out.println(<span class="string">&quot;Start to create OOM&quot;</span>);</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM，看看 Allocation  Outside TLAB 是否可以捕捉到</span></span><br><span class="line">      runOOM(<span class="literal">true</span>);</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runBiz</span><span class="params">(<span class="type">boolean</span> virtualThreadFlag)</span> &#123;</span><br><span class="line">      <span class="comment">// 模拟正常业务运行，三个线程并发分配对象，朝生夕死</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">3</span>];</span><br><span class="line">      <span class="type">Runnable</span> <span class="variable">bizRunnable</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">          List&lt;Object&gt; objects = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">          <span class="keyword">while</span> (!Thread.currentThread().isInterrupted()) &#123;</span><br><span class="line">              objects.add(<span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">              <span class="keyword">if</span> (objects.size() &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">                  objects.clear();</span><br><span class="line">              &#125;</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;;</span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          <span class="keyword">if</span> (virtualThreadFlag) &#123;</span><br><span class="line">              threads[i] = Thread.ofVirtual().name(<span class="string">&quot;biz-&quot;</span> + i)</span><br><span class="line">                      .unstarted(bizRunnable);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(bizRunnable);</span><br><span class="line">          &#125;</span><br><span class="line">          threads[i].start();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">          <span class="keyword">try</span> &#123;</span><br><span class="line">              TimeUnit.SECONDS.sleep(<span class="number">10</span>);</span><br><span class="line">              <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">                  threads[i].interrupt();</span><br><span class="line">              &#125;</span><br><span class="line">          &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">              <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">      thread.start();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runOOM</span><span class="params">(<span class="type">boolean</span> virtualThreadFlag)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">3</span>];</span><br><span class="line">      Map&lt;Object, Object&gt; map = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">      <span class="type">Runnable</span> <span class="variable">oomRun</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">          <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> <span class="number">0</span>; j &lt; <span class="number">1000000</span>; j++) &#123;</span><br><span class="line">              map.put(<span class="keyword">new</span> <span class="title class_">Object</span>(), <span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          <span class="keyword">if</span> (virtualThreadFlag) &#123;</span><br><span class="line">              threads[i] = Thread.ofVirtual().name(<span class="string">&quot;oom-&quot;</span> + i)</span><br><span class="line">                      .unstarted(oomRun);</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(oomRun);</span><br><span class="line">          &#125;</span><br><span class="line">          threads[i].start();</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">          threads[i].join();</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h4 id="是否建议开启这个事件的采集"><a href="#是否建议开启这个事件的采集" class="headerlink" title="是否建议开启这个事件的采集"></a>是否建议开启这个事件的采集</h4><ul>
-<li>建议开启<ul>
-<li>上面提到的Java内存分配路径，对于一般的JVM应用，<code>TLAB</code>内分配的量远大于申请新的TLAB分配的量，同时申请新的TLAB的量又远大于在TLAB外分配的量。除非你的应用分配大量的大对象，否则这个事件发生的应该比较少</li>
-<li>对于一般的JVM应用，建议还是开启这个事件的采集，这样能采集到在你应用的所有大对象分配。只要你的应用不是大对象分配过多，这个事件的采集对于性能的影响应该是可以接受的。</li>
-<li>路径三分配一般会包含核心问题点：<ul>
-<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
-<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>与其他哪些事件是否有重合<ul>
-<li><code>Object Allocation Sample</code>: 虽然 Object Allocation Sample 官方默认开启，但是对于大部分小对象朝生夕死的应用，其实更应该开启 Object Allocation Outside TLAB，而不是Object Allocation Sample。大部分应用，采集到的 Object Allocation Outside TLAB 会比默认的 Object Allocation Sample 少很多很多，性能消耗小很多很多。建议将 Object Allocation Sample 的采样率调很低，主要用于看意向不到的对象分配。</li>
-<li><code>Allocation Requiring GC 以及 ZAllocation Stall</code>: 后续分析这些事件我们会看到，有内存泄漏嫌疑的对象分配相关的对象分配路径，基本上很少会被这两个事件以及 Object Allocation Outside TLAB 采集到</li>
-</ul>
-</li>
-</ul>
-<h4 id="这个事件适合定位什么问题？"><a href="#这个事件适合定位什么问题？" class="headerlink" title="这个事件适合定位什么问题？"></a>这个事件适合定位什么问题？</h4><ul>
-<li>大对象分配：适合度70%<ul>
-<li>对于大于TLAB大小的对象，如果分配成功一定可以采集到</li>
-<li>对于大于TLAB最大浪费比例的对象，分配成功有概率可以采集到，因为有一部分在TLAB内分配成功</li>
-<li>这个<code>只会采集分配成功</code>的对象，对于大对象分配，如果触发 <code>OutOfMemoryError</code> 代表分配失败，那采集不到</li>
-<li>比如前面的代码示例，可以看到 HashMap 不断扩容，但是如果扩容触发 OutOfMemoryError，那这次就采集不到，但是通过前面的事件也能推测出来</li>
-</ul>
-</li>
-<li>Java 堆对象内存泄漏: 适合度50%。针对不断分配小对象并且不释放的场景比较合适。比如多线程不断向一个 ConcurrentHashMap 塞入对象，但是不释放，这个事件可以采集 ConcurrentHashMap 在不断扩容。</li>
-<li><code>意想不到的大对象分配</code>: 适合度100%。可以定期回顾下这个事件的采集，看看有没有意想不到的大对象分配，以及是否可以优化，或者有利于加深对于JDK的理解</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+<p>Hold on…..有人的地方就不存在信任这一说- -</p>
+<h3 id="兜底方案"><a href="#兜底方案" class="headerlink" title="兜底方案"></a>兜底方案</h3><blockquote>
+<p>上面的解决方案是没问题的，但是但是但是，某些开发者可能没有这个意识或者忘记了，导致异常还是被吞噬了</p>
+</blockquote>
+<p>既然未捕获的异常最终会输出到 <code>System.err</code> 那么重新设置系统的 err 处理，把信息输出到日志系统中。下面这个是兜底方案，会存在部分的不合理，但是为了不丢异常信息还是可以容忍的，日常开发中发现此类异常，需要定位到对应的业务代码，用上面提供的解决方案完善代码；毕竟这只是一个兜底的方案，而不是常规方案</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Stderr</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logErr</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="string">&quot;[UnCatchError]&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">PrintStream</span> <span class="variable">STDERR</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PrintStream</span>(System.err) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(String x)</span> &#123;</span><br><span class="line">            logErr.error(x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">println</span><span class="params">(Object x)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + x);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">boolean</span> b)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + b);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">char</span> c)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + c);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">int</span> i)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">long</span> l)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + l);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">float</span> f)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + f);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(<span class="type">double</span> d)</span> &#123;</span><br><span class="line">            logErr.error(<span class="string">&quot;&quot;</span> + d);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">print</span><span class="params">(String s)</span> &#123;</span><br><span class="line">            logErr.error(s);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.setErr(STDERR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
-        <category>JFR</category>
+        <category>JAVA</category>
       </categories>
       <tags>
-        <tag>JVM</tag>
-        <tag>JFR</tag>
-        <tag>监控</tag>
-        <tag>OOM</tag>
-        <tag>内存泄漏</tag>
+        <tag>JAVA</tag>
+        <tag>多线程</tag>
       </tags>
   </entry>
   <entry>
@@ -2865,6 +2865,383 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>rocksdb</title>
+    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
+    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
+<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
+<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>属性名</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>总体统计</td>
+<td>rocksdb.stats</td>
+<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
+</tr>
+<tr>
+<td>数据库大小</td>
+<td>rocksdb.total-sst-files-size</td>
+<td>所有 SST 文件的总大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-table-readers-mem</td>
+<td>估计表读取器使用的内存</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-live-data-size</td>
+<td>估计的活跃数据大小</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>rocksdb.cur-size-all-mem-tables</td>
+<td>所有 MemTable 的当前大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.block-cache-usage</td>
+<td>块缓存的使用量</td>
+</tr>
+<tr>
+<td>压缩</td>
+<td>rocksdb.background-errors</td>
+<td>后台工作（如压缩）中的错误数</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.num-running-compactions</td>
+<td>当前运行的压缩任务数</td>
+</tr>
+<tr>
+<td>写入</td>
+<td>rocksdb.num-immutable-mem-table</td>
+<td>不可变 MemTable 的数量</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.mem-table-flush-pending</td>
+<td>是否有待处理的 MemTable 刷新</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.is-write-stopped</td>
+<td>写入是否已停止</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.actual-delayed-write-rate</td>
+<td>实际的延迟写入速率</td>
+</tr>
+<tr>
+<td>读取</td>
+<td>rocksdb.estimate-num-keys</td>
+<td>估计的键数量</td>
+</tr>
+<tr>
+<td>文件</td>
+<td>rocksdb.num-files-at-level<N></td>
+<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.live-sst-files-size</td>
+<td>活跃 SST 文件的大小</td>
+</tr>
+</tbody></table>
+<p>注意：</p>
+<ol>
+<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
+<li>某些属性可能会影响性能，应谨慎使用。</li>
+<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
+<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
+</ol>
+<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
+<li>为单个 key 提供并发控制<ol>
+<li>事务开始时获取逻辑锁</li>
+<li>提交时检查冲突</li>
+<li>避免显式锁定，提高并发性</li>
+<li>减少死锁风险</li>
+<li>计数器更新</li>
+<li>用户状态修改</li>
+</ol>
+</li>
+<li>确保多个 key 的一致性更新<ol>
+<li>将多个 key 操作组合为单一事务</li>
+<li>全部成功或全部失败</li>
+<li>维护相关数据的一致性</li>
+<li>简化复杂操作的实现</li>
+<li>用户注册（创建账户 + 初始化设置）</li>
+<li>订单处理（更新库存 + 记录订单）</li>
+</ol>
+</li>
+</ul>
+<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
+<li>触发时机：事务提交时</li>
+<li>检测对象：活跃事务之间的写集</li>
+<li>检测方式：<ol>
+<li>每个事务的 put 操作都会记录在写集中</li>
+<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
+<li>结果：如果发现冲突，后提交的事务通常会失败</li>
+</ol>
+</li>
+</ol>
+<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
+<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
+<li>检测对象：所有活跃事务的锁和写意图</li>
+<li>检测方式：<ol>
+<li>检查目标键是否被任何活跃事务锁定</li>
+<li>检查是否有活跃事务对该键有写意图</li>
+<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
+</ol>
+</li>
+</ol>
+<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
+<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
+<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
+<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
+<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
+<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
+</ol>
+<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
+<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
+<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
+<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
+<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
+<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
+<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
+<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全局序列号</td>
+<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
+</tr>
+<tr>
+<td>事务开始</td>
+<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
+</tr>
+<tr>
+<td>读操作</td>
+<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
+</tr>
+<tr>
+<td>写操作</td>
+<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
+</tr>
+<tr>
+<td>事务提交</td>
+<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
+</tr>
+<tr>
+<td>回滚处理</td>
+<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
+</tr>
+<tr>
+<td>冲突检测</td>
+<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
+</tr>
+<tr>
+<td>OptimisticTransactionDB</td>
+<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
+</tr>
+<tr>
+<td>TransactionDB</td>
+<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
+</tr>
+<tr>
+<td>隔离级别影响</td>
+<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
+</tr>
+<tr>
+<td>注意事项</td>
+<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
+</tr>
+</tbody></table>
+<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
+<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
+<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
+<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>rocksdb</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>rocksdb</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-consumer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 反序列化 实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 反序列化实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>group.id</strong></td>
+<td align="left"></td>
+<td align="left">消费组 ID</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>enable.auto.commit</strong></td>
+<td align="left">true</td>
+<td align="left">是否开启自动提交默认为 true</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.commit.interval.ms</strong></td>
+<td align="left">5000</td>
+<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.offset.reset</strong></td>
+<td align="left">latest</td>
+<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.records</strong></td>
+<td align="left">500</td>
+<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.interval.ms</strong></td>
+<td align="left">5 * 60 * 1000</td>
+<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>heartbeat.interval.ms</strong></td>
+<td align="left">3 * 1000</td>
+<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>session.timeout.ms</strong></td>
+<td align="left">10 * 1000</td>
+<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">fetch.max.bytes</td>
+<td align="left">50 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">max.partition.fetch.bytes</td>
+<td align="left">1 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">receive.buffer.bytes</td>
+<td align="left">64 * 1024</td>
+<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
+<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
+<li>发生再平衡的场景<ul>
+<li>消费者加入或离开</li>
+<li>消费者遇到暂时故障或网络中断</li>
+<li>消费者闲置时间过长</li>
+<li>扩大了主题分区</li>
+</ul>
+</li>
+<li>再平衡的副作用<ul>
+<li>延迟增加</li>
+<li>吞吐量降低</li>
+<li>资源使用量增加</li>
+<li>潜在的数据重复和丢失</li>
+<li>复杂性增加</li>
+</ul>
+</li>
+<li>减少再平衡的措施<ul>
+<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
+<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
+<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
+<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
+</ul>
+</li>
+<li>增量合作再平衡<ul>
+<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
+<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
+<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
+</ul>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>MySQL</title>
     <url>/2025/02/10/shu-ju-ku/mysql/mysql/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -4048,383 +4425,6 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>rocksdb</title>
-    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
-    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
-<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
-<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
-<thead>
-<tr>
-<th>类别</th>
-<th>属性名</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>总体统计</td>
-<td>rocksdb.stats</td>
-<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
-</tr>
-<tr>
-<td>数据库大小</td>
-<td>rocksdb.total-sst-files-size</td>
-<td>所有 SST 文件的总大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-table-readers-mem</td>
-<td>估计表读取器使用的内存</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-live-data-size</td>
-<td>估计的活跃数据大小</td>
-</tr>
-<tr>
-<td>内存使用</td>
-<td>rocksdb.cur-size-all-mem-tables</td>
-<td>所有 MemTable 的当前大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.block-cache-usage</td>
-<td>块缓存的使用量</td>
-</tr>
-<tr>
-<td>压缩</td>
-<td>rocksdb.background-errors</td>
-<td>后台工作（如压缩）中的错误数</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.num-running-compactions</td>
-<td>当前运行的压缩任务数</td>
-</tr>
-<tr>
-<td>写入</td>
-<td>rocksdb.num-immutable-mem-table</td>
-<td>不可变 MemTable 的数量</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.mem-table-flush-pending</td>
-<td>是否有待处理的 MemTable 刷新</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.is-write-stopped</td>
-<td>写入是否已停止</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.actual-delayed-write-rate</td>
-<td>实际的延迟写入速率</td>
-</tr>
-<tr>
-<td>读取</td>
-<td>rocksdb.estimate-num-keys</td>
-<td>估计的键数量</td>
-</tr>
-<tr>
-<td>文件</td>
-<td>rocksdb.num-files-at-level<N></td>
-<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.live-sst-files-size</td>
-<td>活跃 SST 文件的大小</td>
-</tr>
-</tbody></table>
-<p>注意：</p>
-<ol>
-<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
-<li>某些属性可能会影响性能，应谨慎使用。</li>
-<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
-<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
-</ol>
-<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
-<li>为单个 key 提供并发控制<ol>
-<li>事务开始时获取逻辑锁</li>
-<li>提交时检查冲突</li>
-<li>避免显式锁定，提高并发性</li>
-<li>减少死锁风险</li>
-<li>计数器更新</li>
-<li>用户状态修改</li>
-</ol>
-</li>
-<li>确保多个 key 的一致性更新<ol>
-<li>将多个 key 操作组合为单一事务</li>
-<li>全部成功或全部失败</li>
-<li>维护相关数据的一致性</li>
-<li>简化复杂操作的实现</li>
-<li>用户注册（创建账户 + 初始化设置）</li>
-<li>订单处理（更新库存 + 记录订单）</li>
-</ol>
-</li>
-</ul>
-<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
-<li>触发时机：事务提交时</li>
-<li>检测对象：活跃事务之间的写集</li>
-<li>检测方式：<ol>
-<li>每个事务的 put 操作都会记录在写集中</li>
-<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
-<li>结果：如果发现冲突，后提交的事务通常会失败</li>
-</ol>
-</li>
-</ol>
-<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
-<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
-<li>检测对象：所有活跃事务的锁和写意图</li>
-<li>检测方式：<ol>
-<li>检查目标键是否被任何活跃事务锁定</li>
-<li>检查是否有活跃事务对该键有写意图</li>
-<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
-</ol>
-</li>
-</ol>
-<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
-<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
-<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
-<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
-<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
-<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
-</ol>
-<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
-<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
-<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
-<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
-<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
-<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
-<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
-<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>方面</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>全局序列号</td>
-<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
-</tr>
-<tr>
-<td>事务开始</td>
-<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
-</tr>
-<tr>
-<td>读操作</td>
-<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
-</tr>
-<tr>
-<td>写操作</td>
-<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
-</tr>
-<tr>
-<td>事务提交</td>
-<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
-</tr>
-<tr>
-<td>回滚处理</td>
-<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
-</tr>
-<tr>
-<td>冲突检测</td>
-<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
-</tr>
-<tr>
-<td>OptimisticTransactionDB</td>
-<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
-</tr>
-<tr>
-<td>TransactionDB</td>
-<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
-</tr>
-<tr>
-<td>隔离级别影响</td>
-<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
-</tr>
-<tr>
-<td>注意事项</td>
-<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
-</tr>
-</tbody></table>
-<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
-<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
-<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
-<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>rocksdb</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>rocksdb</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-consumer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 反序列化 实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 反序列化实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>group.id</strong></td>
-<td align="left"></td>
-<td align="left">消费组 ID</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>enable.auto.commit</strong></td>
-<td align="left">true</td>
-<td align="left">是否开启自动提交默认为 true</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.commit.interval.ms</strong></td>
-<td align="left">5000</td>
-<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.offset.reset</strong></td>
-<td align="left">latest</td>
-<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.records</strong></td>
-<td align="left">500</td>
-<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.interval.ms</strong></td>
-<td align="left">5 * 60 * 1000</td>
-<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>heartbeat.interval.ms</strong></td>
-<td align="left">3 * 1000</td>
-<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>session.timeout.ms</strong></td>
-<td align="left">10 * 1000</td>
-<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">fetch.max.bytes</td>
-<td align="left">50 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">max.partition.fetch.bytes</td>
-<td align="left">1 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">receive.buffer.bytes</td>
-<td align="left">64 * 1024</td>
-<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
-<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
-<li>发生再平衡的场景<ul>
-<li>消费者加入或离开</li>
-<li>消费者遇到暂时故障或网络中断</li>
-<li>消费者闲置时间过长</li>
-<li>扩大了主题分区</li>
-</ul>
-</li>
-<li>再平衡的副作用<ul>
-<li>延迟增加</li>
-<li>吞吐量降低</li>
-<li>资源使用量增加</li>
-<li>潜在的数据重复和丢失</li>
-<li>复杂性增加</li>
-</ul>
-</li>
-<li>减少再平衡的措施<ul>
-<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
-<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
-<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
-<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
-</ul>
-</li>
-<li>增量合作再平衡<ul>
-<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
-<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
-<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
-</ul>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
