@@ -34,11 +34,7 @@
     
     
     
-    <category term="JFR" scheme="https://taeyang0126.github.io/categories/JFR/"/>
-    
-    <category term="JVM" scheme="https://taeyang0126.github.io/categories/JFR/JVM/"/>
-    
-    <category term="JAVA" scheme="https://taeyang0126.github.io/categories/JFR/JVM/JAVA/"/>
+    <category term="JVM" scheme="https://taeyang0126.github.io/categories/JVM/"/>
     
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
