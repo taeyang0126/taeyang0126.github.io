@@ -2,7 +2,7 @@
 title: JVM重要参数
 tags:
   - JVM
-  - 参数
+  - JVM参数
 categories:
   - JVM
 keywords:
@@ -13,7 +13,7 @@ date: 2025-02-09 14:08:56
 
 
 
-## 常规启动配置参数
+### 常规启动配置参数
 
 | 参数                                                         | 说明                                                         | 备注                                                         |
 | :----------------------------------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
@@ -23,5 +23,156 @@ date: 2025-02-09 14:08:56
 | -XX:StartFlightRecording=delay=1s,disk=true,dumponexit=true,filename=./logs/recording.jfr,maxsize=1024m,maxage=1d,path-to-gc-roots=true-XX:FlightRecorderOptions=stackdepth=128 | jfr启动参数，具体参考 [JFR](https://rq3nt70g815.feishu.cn/wiki/CtdmwY0yPiUkgKkXidecur63nVc) |                                                              |
 | -Xlog:safepoint=debug:file=./logs/safepoint.log:utctime,level,tags:filecount=50,filesize=100M | safepoint                                                    |                                                              |
 
-![123](data:image/jpeg;base64,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)
+### 内存相关
+```shell
+# 堆内存
+-Xms2g                # 初始堆大小
+-Xmx2g                # 最大堆大小
+-XX:MaxDirectMemorySize=1g  # 直接内存大小
+
+# 新生代/老年代
+-Xmn512m              # 新生代大小
+-XX:NewRatio=2        # 新生代:老年代 = 1:2
+-XX:SurvivorRatio=8   # Eden:Survivor = 8:1
+
+# 元空间（JDK8+）
+-XX:MetaspaceSize=256m      # 元空间初始大小
+-XX:MaxMetaspaceSize=256m   # 元空间最大大小
+```
+
+### 垃圾回收器
+```shell
+# 垃圾回收器（选择其一）
+-XX:+UseG1GC              # G1收集器
+-XX:+UseParallelGC        # 并行收集器
+-XX:+UseConcMarkSweepGC   # CMS收集器
+-XX:+UseZGC               # ZGC垃圾收集器(JDK11+)
+
+# G1收集器调优
+-XX:MaxGCPauseMillis=200  # 最大停顿时间目标
+-XX:G1HeapRegionSize=16m  # Region大小
+```
+
+### GC日志
+```shell
+# JDK8
+-XX:+PrintGCDetails             # 打印GC详情
+-XX:+PrintGCDateStamps          # 打印GC时间戳
+-Xloggc:/path/to/gc.log         # GC日志文件
+
+# JDK9+
+-Xlog:gc*:file=/path/to/gc.log:time,uptime:filecount=5,filesize=50m
+```
+
+### 性能调优
+```shell
+# 类加载
+-XX:+UseDynamicAgentLoading  # 动态加载代理
+-XX:+AlwaysPreTouch         # 启动时预占内存
+
+# OOM行为
+-XX:+HeapDumpOnOutOfMemoryError  # OOM时堆转储
+-XX:HeapDumpPath=/path/to/dump   # 堆转储路径
+-XX:OnOutOfMemoryError="kill -9 %p"  # OOM时执行命令
+-XX:+ExitOnOutOfMemoryError #OOM退出程序
+```
+
+### 调试和监控
+```shell
+# 远程调试
+-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005
+
+# JMX监控
+-Dcom.sun.management.jmxremote
+-Dcom.sun.management.jmxremote.port=9010
+-Dcom.sun.management.jmxremote.authenticate=false
+-Dcom.sun.management.jmxremote.ssl=false
+```
+
+### 诊断参数
+#### Java 11+版本
+```shell
+-XX:NativeMemoryTracking=summary  // 跟踪JVM本地内存使用
+-Xlog:gc*:stdout:time            // 统一日志格式输出GC日志
+-XX:+UnlockDiagnosticVMOptions   // 解锁诊断选项
+```
+#### Java 11以下版本
+```shell
+-XX:NativeMemoryTracking=summary  // 跟踪JVM本地内存使用
+-XX:+PrintGC                      // 打印GC信息
+-XX:+PrintGCDateStamps           // 打印GC时间戳
+-XX:+PrintGCTimeStamps           // 打印GC耗时
+-XX:+UnlockDiagnosticVMOptions   // 解锁诊断选项
+```
+
+### JIT
+#### 核心参数
+```shell
+# 分层编译开关（最基础的选择）
+-XX:+TieredCompilation    # 启用分层编译(默认开启)
+-XX:-TieredCompilation    # 禁用分层编译
+
+# 编译层级（影响启动速度和峰值性能）
+-XX:TieredStopAtLevel=1   # 只用C1编译器，快速启动
+-XX:TieredStopAtLevel=4   # 完整优化，更好的峰值性能(默认)
+
+# 编译线程数（影响编译速度）
+-XX:CICompilerCount=2     # 并行编译线程数
+```
+#### 常见调优参数
+```shell
+# 代码缓存（如果出现"CodeCache is full"问题）
+-XX:ReservedCodeCacheSize=256m  # 代码缓存大小
+-XX:+UseCodeCacheFlushing      # 允许刷新代码缓存
+
+# 方法内联（影响性能优化）
+-XX:MaxInlineSize=35      # 最大内联大小
+-XX:FreqInlineSize=325    # 热点方法内联大小
+```
+#### 常用调试参数
+```shell
+# 查看JIT工作情况
+-XX:+PrintCompilation     # 打印编译信息
+-XX:+LogCompilation      # 记录详细编译日志
+```
+
+#### 典型使用场景
+```shell
+
+# 1. 生产环境标准配置
+-Xms4g -Xmx4g
+-XX:+UseG1GC
+-XX:MaxGCPauseMillis=200
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/opt/dumps/
+-Xlog:gc*:file=/opt/logs/gc.log:time,uptime:filecount=5,filesize=50m
+
+# 2. 开发环境调试配置
+-Xms1g -Xmx1g
+-XX:+UseG1GC
+-XX:+PrintGCDetails
+-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005
+
+# 3. 大内存服务配置
+-Xms8g -Xmx8g
+-XX:+UseG1GC
+-XX:G1HeapRegionSize=32m
+-XX:MetaspaceSize=512m
+-XX:MaxMetaspaceSize=512m
+-XX:+UseCompressedOops
+
+# 4. 快速启动场景（微服务/Serverless）
+-XX:+TieredCompilation 
+-XX:TieredStopAtLevel=1
+-XX:CICompilerCount=2
+
+# 5. 长期运行服务（最大性能）
+-XX:+TieredCompilation
+-XX:ReservedCodeCacheSize=256m
+-XX:+UseCodeCacheFlushing
+
+# 6. 调试编译问题
+-XX:+PrintCompilation
+-XX:+UseCodeCacheFlushing
+```
 
