@@ -9,7 +9,7 @@ categories: [JVM内存解析]
 > 本文参考张哥 -> 全网最硬核 JVM 内存解析 - 1.从 Native Memory Tracking 说起
 - [Native Memory Tracking](https://juejin.cn/column/6960604530413142023)
 
-### Native Memory Tracking 的开启
+### 开启
 Native Memory Tracking 主要是用来通过在 `JVM 向系统申请内存的时候进行埋点实现的`。注意，这个埋点，并不是完全没有消耗的，我们后面会看到。由于需要埋点，并且 JVM 中申请内存的地方很多，这个埋点是有不小消耗的，这个 Native Memory Tracking 默认是不开启的，并且`无法动态开启`（因为这是埋点采集统计的，如果可以动态开启那么没开启的时候的内存分配没有记录无法知晓，所以无法动态开启），目前只能通过在启动 JVM 的时候通过启动参数开启。即通过 `-XX:NativeMemoryTracking` 开启:
 - `-XX:NativeMemoryTracking=off`:这是默认值，即关闭 Native Memory Tracking
 - `-XX:NativeMemoryTracking=summary`: 开启 Native Memory Tracking，但是仅仅按照各个 JVM 子系统去统计内存占用情况
@@ -20,7 +20,7 @@ Native Memory Tracking 主要是用来通过在 `JVM 向系统申请内存的时
 - `jcmd <pid> VM.native_memory detail`：查看 Native Memory Tracking 的 detail 信息，包括 summary 信息，以及按照虚拟内存映射分组的内存使用信息，还有按照不同 CallSite 调用分组的内存使用情况。默认单位是 KB，可以指定单位为其他，例如 jcmd <pid> VM.native_memory detail scale=MB
 
 
-### Native Memory Tracking 的使用
+### 使用
 > 我们只关心并且查看 Native Memory Tracking 的 summary 信息即可，detail 信息一般是供 JVM 开发人员使用的，我们不用太关心
 
 一般地，只有遇到问题的时候，我们才会考虑开启 Native Memory Tracking，并且在定位出问题后，我们想把它关闭，可以通过 `jcmd <pid> VM.native_memory shutdown` 进行关闭并清理掉之前 Native Memory tracking 使用的埋点以及占用的内存。如前面所述，我们无法动态开启 Native Memory tracking，所以只要动态关闭了，这个进程就无法再开启了。
@@ -31,9 +31,9 @@ jcmd 本身提供了简单的对比功能，例如：
 
 但是这个工具本身比较粗糙，我们有时候并不知道何时调用 `jcmd <pid> VM.native_memory summary.diff` 合适，因为我们不确定什么时候会有我们想看到的内存使用过大的问题。所以我们一般做成一种持续监控的方式
 
-### Native Memory Tracking 的 summary 信息每部分含义
+### summary 信息每部分含义
 以下是一个 Native Memory Tracking 的示例输出：
-1. 压测 spring-petclinic 项目
+1. 压测 [spring-petclinic](https://github.com/spring-projects/spring-petclinic.git) 项目
 2. jdk21
 3. vm options 
   ```shell
