@@ -31,7 +31,7 @@ date: 2025-02-10 17:51:22
 - `BASE_JAVA_IMAGE` 基础的java镜像，建议选择带有jre的基础java镜像
 - `MAVEN_IMAGE` maven编译的基础镜像，建议与java版本对应
 - 内置 `arthas`
-- 内置运行脚本 `run.sh`
+- 内置运行脚本 [run.sh](/files/java/run.sh)
 
 ```Dockerfile
 ####################################################################
