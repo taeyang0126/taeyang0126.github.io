@@ -18,6 +18,7 @@ comments: true  # 是否开启评论
 
 ## mermaid
 {% mermaid %}
+%%{init: {'theme': 'default', 'themeVariables': { 'lineColor': '#2B6CB0' }}}%%
 sequenceDiagram
     participant S as Socket
     participant WQ as Wait Queue
