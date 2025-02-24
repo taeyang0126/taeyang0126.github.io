@@ -7,7 +7,7 @@ categories: [JVM内存解析]
 ---
 
 > 本文参考张哥 -> 全网最硬核 JVM 内存解析 - 1.从 Native Memory Tracking 说起
-- [Native Memory Tracking](https://juejin.cn/column/6960604530413142023)
+- [Native Memory Tracking](https://juejin.cn/post/7225871227743043644)
 
 ### 开启
 Native Memory Tracking 主要是用来通过在 `JVM 向系统申请内存的时候进行埋点实现的`。注意，这个埋点，并不是完全没有消耗的，我们后面会看到。由于需要埋点，并且 JVM 中申请内存的地方很多，这个埋点是有不小消耗的，这个 Native Memory Tracking 默认是不开启的，并且`无法动态开启`（因为这是埋点采集统计的，如果可以动态开启那么没开启的时候的内存分配没有记录无法知晓，所以无法动态开启），目前只能通过在启动 JVM 的时候通过启动参数开启。即通过 `-XX:NativeMemoryTracking` 开启:

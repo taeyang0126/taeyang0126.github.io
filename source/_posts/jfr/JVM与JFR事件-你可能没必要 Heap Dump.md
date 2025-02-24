@@ -6,6 +6,8 @@ tags: [JVM, JFR, 监控, 对象分配, OOM, Heap Dump]
 categories: [JFR]
 ---
 
+- [本系列参考张哥JFR全系列](https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd)
+
 ### OutOfMemoryError
 > 很多情况会导致 Java 应用抛出 `OutOfMemoryError` [参考 StackOverflowError 与 OutOfMemoryError](https://zhuanlan.zhihu.com/p/265039643)
 

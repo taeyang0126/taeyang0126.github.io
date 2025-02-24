@@ -2,6 +2,7 @@
 title: Java对象分配过程
 abbrlink: 19346
 date: 2025-02-22 14:13:52
+updated: 2024-02-24 21:09:00
 tags: [JVM, JFR, 对象分配]
 categories:
   - JVM
@@ -24,6 +25,10 @@ categories:
 ### 路径四 分配前触发GC或者等待GC
 - 路径二和路径三都失败，即堆剩余空间不足导致申请TLAB失败，堆剩余空间也不足以分配这个对象或者没有抢到全局堆锁
 - 这种情况下，会 `触发GC`(serial/parallel/G1 GC) 或者`等待GC释放对象`(ZGC)
+- 路基四如果太多，那其实可能是整体 Java 堆内存就设置的太小了，需要考虑扩容
+- 如果用的是 SerialGC，ParallelGC，G1GC，那么路径四会产生 `Allocation Requiring GC`
+- 如果使用的是 ZGC，那么路径四会产生 `Z Allocation Stall`
+- 如果用的是 ShenandoahGC，路径四会导致 Degenerated GC，这个目前没有对应的 JFR 事件，可以通过 GC 相关的时间看到，但是目前看不到是哪个对象触发
 
 ### 为什么有个最大浪费空间？？
 - 这是为了避免更有效的利用空间
