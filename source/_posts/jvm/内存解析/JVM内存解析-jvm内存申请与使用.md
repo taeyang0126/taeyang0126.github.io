@@ -1,5 +1,5 @@
 ---
-title: JVM内存解析 - 1.Native Memory Tracking
+title: JVM内存解析 - 2.JVM 内存申请与使用流程
 abbrlink: 58697
 date: 2025-03-01 15:46:30
 tags: [JVM, 内存, linux内存]
@@ -54,4 +54,19 @@ _page_sizes.add(Linux::page_size());
 ```
 
 ## JVM 主要内存申请分配流程
+
+### 每个子系统 `Reserve` 内存
+**第一步，JVM 的每个子系统**（例如 Java 堆，元空间，JIT 代码缓存，GC 等等等等），**如果需要的话，在初始化的时候首先 `Reserve` 要分配区域的最大限制大小的内存**（这个最大大小，需要按照`页大小对齐`（即是页大小的整数倍），默认页大小是前面提到的 `Linux::page_size()`），例如对于 Java 堆，就是最大堆大小（通过 `-Xmx` 或者 `-XX:MaxHeapSize`限制），还有对于代码缓存，也是最大代码缓存大小（通过 `-XX:ReservedCodeCacheSize` 限制）。Reserve 的目的是在虚拟内存空间划出一块内存专门给某个区域使用，这样做的好处是：
+1. 隔离每个 JVM 子系统使用的内存的`虚拟空间`，这样在 JVM 代码有 bug 的时候（例如发生 Segment Fault 异常），通过报错中的`虚拟内存地址`可以快速定位到是哪个子系统出了问题。
+2. 可以很方便的限制这个区域使用的最大内存大小。
+3. 便于管理，`Reserve 不会触发操作系统分配映射实际物理内存`，这个区域可以在 Reserve 的区域内按需伸缩。
+4. 便于一些 JIT 优化，例如我们故意将这个区域保留起来但是故意不将这个区域的虚拟内存映射物理内存，访问这块内存会造成 Segment Fault 异常。JVM 会预设 Segment Fault 异常的处理器，在处理器里面检查发生 Segment Fault 异常的内存地址属于哪个子系统的 Reserve 的区域，判断要做什么操作。后面我们会看到，null 检查抛出 `NullPointerException` 异常的优化，全局安全点，抛出 `StackOverflowError` 的实现，都和这个机制有关。
+
+在 Linux 的环境下，Reserve 通过  `mmap(2)` 系统调用实现，参数传入 `prot = PROT_NONE`，`PROT_NONE` 代表不会使用，即`不能做任何操作，包括读和写`。如果 JVM 使用这块内存，会发生 Segment Fault 异常。
+
+### 每个子系统按照各自策略向操作系统申请映射物理内存
+**第二步，JVM 的每个子系统，按照各自的策略，通过 `Commit` 第一步 Reserve 的区域的`一部分扩展内存`（大小也一般页大小对齐的），从而`向操作系统申请映射物理内存`，通过 `Uncommit` 已经 Commit 的内存来释放物理内存给操作系统**
+
+Commit 内存之后，并不是操作系统会立刻分配物理内存，而是在向 `Commit 的内存里面写入数据的时候，操作系统才会实际映射内存`，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 AlwaysPreTouch 这个参数
+
 
