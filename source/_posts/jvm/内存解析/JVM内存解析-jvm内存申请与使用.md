@@ -67,6 +67,97 @@ _page_sizes.add(Linux::page_size());
 ### 每个子系统按照各自策略向操作系统申请映射物理内存
 **第二步，JVM 的每个子系统，按照各自的策略，通过 `Commit` 第一步 Reserve 的区域的`一部分扩展内存`（大小也一般页大小对齐的），从而`向操作系统申请映射物理内存`，通过 `Uncommit` 已经 Commit 的内存来释放物理内存给操作系统**
 
-Commit 内存之后，并不是操作系统会立刻分配物理内存，而是在向 `Commit 的内存里面写入数据的时候，操作系统才会实际映射内存`，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 AlwaysPreTouch 这个参数
+Commit 内存之后，`并不是操作系统会立刻分配物理内存`，而是在向 `Commit 的内存里面写入数据的时候，操作系统才会实际映射内存`，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 `AlwaysPreTouch` 这个参数。
 
+### JVM commit 的内存与实际占用内存的差异
+前面一节我们知道了，JVM 中大块内存，基本都是先 `reserve` 一大块，之后 `commit` 其中需要的一小块，然后开始读写处理内存，在 Linux 环境下，底层基于 `mmap(2)` 实现。但是需要注意一点的是，commit 之后，内存并不是立刻被分配了物理内存，而是真正往内存中 `store` 东西的时候，才会真正映射物理内存，如果是 load 读取也是可能不映射物理内存的。
 
+这其实是可能你平常看到但是忽略的现象，如果你使用的是 SerialGC，ParallelGC 或者 CMS GC，老年代的内存在有对象晋升到老年代之前，可能是不会映射物理内存的，虽然这块内存已经被 commit 了。并且年轻代可能也是随着使用才会映射物理内存。如果你用的是 ZGC，G1GC，或者 ShenandoahGC，那么内存用的会更激进些（主要因为分区算法划分导致内存被写入），`这是你在换 GC 之后看到物理内存内存快速上涨的原因之一`。JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 `AlwaysPreTouch` 这个参数，这个参数我们后面会详细分析以及历史版本存在的缺陷。还有的差异，主要来源于在 uncommit 之后，系统可能还没有来的及将这块物理内存真正回收。
+
+所以，JVM 认为自己 commit 的内存，与实际系统分配的物理内存，`可能是有差异的`，可能 JVM 认为自己 commit 的内存比系统分配的物理内存多，也可能少。这就是为啥 `Native Memory Tracking（JVM 认为自己 commit 的内存）与实际其他系统监控中体现的物理内存使用指标对不上的原因`。
+
+## 大页分配 UseLargePages
+前面提到了虚拟内存需要映射物理内存才能使用，这个映射关系被保存在内存中的`页表（Page Table）`。现代 CPU 架构中一般有 `TLB` （Translation Lookaside Buffer，翻译后备缓冲，也称为页表寄存器缓冲）存在，在里面保存了经常使用的页表映射项。TLB 的大小有限，一般 TLB 如果只能容纳小于 100 个页表映射项。 我们能让程序的虚拟内存对应的页表映射项都处于 TLB 中，那么能大大提升程序性能，这就要尽量减少页表映射项的个数：`页表项个数 = 程序所需内存大小 / 页大小`。我们要么缩小程序所需内存，要么增大页大小。我们一般会考虑`增加页大小`，这就大页分配的由来，JVM 对于堆内存分配也支持大页分配，用于优化大堆内存的分配。那么 Linux 环境中有哪些大页分配的方式呢？
+
+### Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)
+[相关的 Linux 内核文档](https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt)
+
+这是出现的比较早的大页分配方式，其实就是在之前提到的页表映射上面做文章：
+
+**默认 4K 页大小**：
+![img](/images/jvm/memory/03.png)
+
+**PMD 直接映射实际物理页面，页面大小为 `4K * 2^9 = 2M`**：
+![img](/images/jvm/memory/06.png)
+
+**PUD 直接映射实际物理页面，页面大小为 `2M * 2^9 = 1G`**：
+![img](/images/jvm/memory/07.png)
+
+但是，要想使用这个特性，需要操作系统构建的时候开启 `CONFIG_HUGETLBFS` 以及 `CONFIG_HUGETLB_PAGE`。之后，大的页面通常是通过系统管理控制预先分配并放入池里面的。然后，可以通过 `mmap` 系统调用或者 `shmget,shmat` 这些 SysV 的共享内存系统调用使用大页分配方式从池中申请内存。
+
+这种大页分配的方式，需要系统预设开启大页，预分配大页之外，对于代码也是有一定侵入性的，在灵活性上面查一些。但是带来的好处就是，性能表现上更加可控。另一种灵活性很强的 Transparent Huge Pages (THP) 方式，总是可能在性能表现上有一些意想不到的情况。
+
+### Linux 大页分配方式 - Transparent Huge Pages (THP)
+[相关的 Linux 内核文档](https://www.kernel.org/doc/Documentation/vm/transhuge.txt)
+
+THP 是一种使用大页的第二种方法，它支持页面大小的自动升级和降级，这样对于用户使用代码基本没有侵入性，非常灵活。但是，前面也提到过，这种系统自己去做页面大小的升级降级，并且系统一般考虑通用性，所以在某些情况下会出现意想不到的性能瓶颈。
+
+### JVM 大页分配相关参数与机制
+相关的参数如下：
+- `UseLargePages`：明确指定是否开启大页分配，如果关闭，那么下面的参数就都不生效。`在 linux 下默认为 false`。
+- `UseHugeTLBFS`：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 `mmap` 系统调用分配内存。在 linux 下默认为 false。
+- `UseSHM`：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 `shmget,shmat` 系统调用分配内存。在 linux 下默认为 false。
+- `UseTransparentHugePages`：明确指定是否使用前面第二种大页分配方式 THP。在 linux 下默认为 false。
+- `LargePageSizeInBytes`：指定明确的大页的大小，仅适用于前面第一种大页分配方式 hugetlbfs，并且必须属于操作系统支持的页大小否则不生效。默认为 0，即不指定
+
+首先，需要对以上参数做一个简单的判断：如果没有指定 `UseLargePages`，那么使用对应系统的默认 `UseLargePages` 的值，在 linux 下是 false，那么就不会启用大页分配。如果启动参数明确指定 `UseLargePages` 不启用，那么也不会启用大页分配。如果读取 `/proc/meminfo` 获取默认大页大小读取不到或者为 0，则代表系统也不支大页分配，大页分配也不启用。
+
+那么如果大页分配启用的话，我们需要初始化并验证大页分配参数可行性，流程是：
+![img](/images/jvm/memory/08.png)
+
+首先，JVM 会读取根据当前所处的平台与系统环境读取支持的页的大小，当然，这个是针对前面第一种大页分配方式 `hugetlbfs` 的。在 Linux 环境下，JVM 会从 `/proc/meminfo` 读取默认的 **`Hugepagesize`**，从 `/sys/kernel/mm/hugepages` 目录下检索**所有支持的大页大小**，这块可以参考源码：https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp。
+有关这些文件或者目录的详细信息，请参考前面章节提到的 Linux 内核文档：https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt
+
+如果操作系统开启了 hugetlbfs，`/sys/kernel/mm/hugepages` 目录下的结构类似于：
+```shell
+tree /sys/kernel/mm/hugepages
+/sys/kernel/mm/hugepages
+├── hugepages-1048576kB
+│   ├── demote
+│   ├── demote_size
+│   ├── free_hugepages
+│   ├── nr_hugepages
+│   ├── nr_hugepages_mempolicy
+│   ├── nr_overcommit_hugepages
+│   ├── resv_hugepages
+│   └── surplus_hugepages
+├── hugepages-2048kB
+│   ├── demote
+│   ├── demote_size
+│   ├── free_hugepages
+│   ├── nr_hugepages
+│   ├── nr_hugepages_mempolicy
+│   ├── nr_overcommit_hugepages
+│   ├── resv_hugepages
+│   └── surplus_hugepages
+├── hugepages-32768kB
+│   ├── demote
+│   ├── demote_size
+│   ├── free_hugepages
+│   ├── nr_hugepages
+│   ├── nr_hugepages_mempolicy
+│   ├── nr_overcommit_hugepages
+│   ├── resv_hugepages
+│   └── surplus_hugepages
+└── hugepages-64kB
+    ├── free_hugepages
+    ├── nr_hugepages
+    ├── nr_hugepages_mempolicy
+    ├── nr_overcommit_hugepages
+    ├── resv_hugepages
+    └── surplus_hugepages
+```
+
+这个 `hugepages-1048576kB` 就代表支持大小为 `1GB` 的页，`hugepages-2048kB` 就代表支持大小为 2MB 的页。
+
+如果没有设置 `UseHugeTLBFS`，也没有设置 `UseSHM`，也没有设置 `UseTransparentHugePages`，那么其实就是走默认的，默认使用 `hugetlbfs` 方式，不使用 `THP` 方式，因为如前所述， THP 在某些场景下有意想不到的性能瓶颈表现，在大型应用中，稳定性优先于峰值性能。之后，默认优先尝试 `UseHugeTLBFS`（即使用 `mmap` 系统调用通过 hugetlbfs 方式大页分配），不行的话再尝试 `UseSHM`（即使用 `shmget` 系统调用通过 hugetlbfs 方式大页分配）。这里只是验证下这些大页内存的分配方式是否可用，只有可用后面真正分配内存的时候才会采用那种可用的大页内存分配方式。
