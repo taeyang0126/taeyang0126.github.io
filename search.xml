@@ -83,131 +83,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Arthas</title>
-    <url>/2025/02/09/arthas/arthas/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><p><a href="https://github.com/alibaba/arthas/issues/71">Arthas的一些特殊用法文档说明 · Issue #71 · alibaba&#x2F;arthas</a></p>
-</li>
-<li><p><a href="https://github.com/alibaba/arthas/issues/1424">arthas 获取spring被代理的目标对象 · Issue #1424 · alibaba&#x2F;arthas</a></p>
-</li>
-<li><p><a href="https://github.com/alibaba/arthas/issues/537">Arthas实践–jad&#x2F;mc&#x2F;redefine线上热更新一条龙 · Issue #537 · alibaba&#x2F;arthas</a></p>
-</li>
-</ul>
-<h3 id="1-获取当前HttpServletRequest"><a href="#1-获取当前HttpServletRequest" class="headerlink" title="1. 获取当前HttpServletRequest"></a>1. 获取当前HttpServletRequest</h3><ul>
-<li><p>执行某个request方法</p>
-<p>  <code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes().getRequest().xxx</code></p>
-</li>
-<li><p>获取全部的请求头</p>
-<p>  <code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes().getRequest().getHeaderNames()</code></p>
-</li>
-</ul>
-<h3 id="2-获取spring-context-并执行某些操作"><a href="#2-获取spring-context-并执行某些操作" class="headerlink" title="2. 获取spring context 并执行某些操作"></a>2. 获取spring context 并执行某些操作</h3><blockquote>
-<p><strong>前置</strong> 使用tt记录请求，获取到上下文</p>
-</blockquote>
-<ul>
-<li><p>tt -t org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter invokeHandlerMethod -n 3</p>
-</li>
-<li><p>tt -i 1000 -w ‘target.getApplicationContext().getBean(“jdbcTemplate”)’</p>
-</li>
-<li><p>tt -i 1000 -w ‘target.getApplicationContext().getBean(“jdbcTemplate”).dataSource.ConnectionPool’</p>
-</li>
-<li><p>tt -i 1000 -w ‘target.getApplicationContext().getBean(“jdbcTemplate”).getTargetSource().target’</p>
-</li>
-<li><p>tt -i 1000 -w ‘target.getApplicationContext().getBean(“jdbcTemplate”).getTargetSource().target.cacheMap’</p>
-</li>
-<li><p>tt -i 1000  -w ‘target.getApplicationContext().getEnvironment().getProperty(“spring.datasource.riskctrl.url”)’</p>
-</li>
-</ul>
-<h3 id="3-使用ognl"><a href="#3-使用ognl" class="headerlink" title="3. 使用ognl"></a>3. 使用<a href="https://commons.apache.org/dormant/commons-ognl/language-guide.html">ognl</a></h3><ul>
-<li><p>对前置表达式值进行二次计算  #this 表示前置表达式的值 <strong><code>.()</code></strong> 表示自表达式，产生一个单一值</p>
-<p>  <strong><code>listeners.size().(#this &gt; 100? 2\*#this : 20+#this)</code></strong></p>
-</li>
-<li><p>对前置表达式进行二次计算，产生一个数组</p>
-<p>  <strong><code>params[0].&#123;#this == &quot;lei&quot; ?  &quot;yes&quot; : &quot;no&quot;&#125;</code></strong></p>
-</li>
-<li><p>对前置表达式(数组类型)进行二次计算，产生一个新的数组</p>
-<p>  <strong><code>params.&#123;#this instanceof String ?  &quot;yes&quot; : &quot;no&quot;&#125;</code></strong></p>
-</li>
-<li><p>返回数组中第一个匹配的对象</p>
-<p>  <strong><code>params.&#123;^#this instanceof Integer&#125;</code></strong></p>
-</li>
-<li><p>调用static方法 使用  <strong>@class@method(<strong><strong>args</strong></strong>)</strong></p>
-<p>  <strong><code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes()</code></strong></p>
-</li>
-<li><p>获取静态字段 <strong>@class@field</strong></p>
-</li>
-</ul>
-<h3 id="4-一些常用命令"><a href="#4-一些常用命令" class="headerlink" title="4. 一些常用命令"></a>4. 一些常用命令</h3><ul>
-<li><p>获取classloader hash，如果是springBoot项目取 org.springframework.boot.loader.LaunchedURLClassLoader</p>
-<p>  <strong><code>classloader -t</code></strong></p>
-</li>
-<li><p>容器安装 vim</p>
-<p>  <strong><code>apt-get update &amp;&amp; apt-get install -y vim</code></strong></p>
-</li>
-<li><p>Ognl 获取spring context</p>
-  <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># 49c2faae 表示classloader hash</span><br><span class="line"># cn.hutool.extra.spring.SpringUtil 表示能获取到spring容器的方法</span><br><span class="line">ognl -c 49c2faae &#x27;#beanName=&quot;eventDataAuthManage&quot;, #bean=@cn.hutool.extra.spring.SpringUtil@getBean(#beanName), @org.springframework.aop.support.AopUtils@getTargetClass(#bean).getName()&#x27;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Ognl lambda 表达式</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 使用 =:[] 定义lambda即函数</span><br><span class="line">-- 使用 #getBean() 调用</span><br><span class="line">ognl -c 49c2faae &#x27;</span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash">getBean =:[@cn.hutool.extra.spring.SpringUtil@getBean(#this)],</span></span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash">getBean(<span class="string">&quot;syncDataAuthController&quot;</span>).dataCodeList<span class="string">&#x27;</span></span></span><br></pre></td></tr></table></figure>
-</li>
-<li><p>查找方法</p>
-<p>  <strong><code>sm com.xx.class</code></strong></p>
-</li>
-<li><p>修改静态变量的值</p>
-<p>  <strong><code>getstatic com.xyz.HelloWorld s &quot;#s=&#39;abc&#39;&quot;</code></strong></p>
-</li>
-<li><p>修改变量的值</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 1. 使用 tt 记录方法调用</span><br><span class="line">tt -t com.example.UserService getUserById</span><br><span class="line">-- 2. 查看记录</span><br><span class="line">tt -l</span><br><span class="line">-- 3. 修改捕获的对象 target 代表当前被调用方法的对象实例（即 &quot;this&quot; 对象）</span><br><span class="line">tt -i 1000 -w &#x27;target.name=&quot;newName&quot;&#x27;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>过滤参数类型为class的方法</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 过滤要点就是通过全类名@class拿到class对象，再getName()获取名称</span><br><span class="line">watch com.wangji92.arthas.plugin.demo.controller.StaticTest invokeClass &#x27;&#123;returnObj,throwExp&#125;&#x27;  -n 5  -x 3  </span><br><span class="line">&#x27;params[0].getName().equals(@com.wangji92.arthas.plug.demo.controller.User@class.getName())&#x27; -v</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>查找response404的堆栈</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">stack -E javax.servlet.http.HttpServletResponse sendError|setStatus params[0]==404</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="5-特殊命令"><a href="#5-特殊命令" class="headerlink" title="5. 特殊命令"></a>5. 特殊命令</h3><ul>
-<li><p>Trace 命令多个类、多个方法、指定线程、指定耗时时间</p>
-  <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># trace -E 表示正则</span><br><span class="line">trace -E </span><br><span class="line"># 表示类是 NioEventLoop 或者 SingleThreadEventExecutor</span><br><span class="line">&#x27;io\.netty\.channel\.nio\.NioEventLoop|io\.netty\.util\.concurrent\.SingleThreadEventExecutor&#x27;  </span><br><span class="line"># 表示方法是 select processSelectedKeys runAllTasks</span><br><span class="line">&#x27;select|processSelectedKeys|runAllTasks&#x27; </span><br><span class="line"># @Thread arthas提供表示当前线程 #cost arthas提供，表示耗时</span><br><span class="line">&#x27;@Thread@currentThread().getName().contains(&quot;IO-HTTP-WORKER-IOPool&quot;)&amp;&amp;#cost&gt;500&#x27;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>获取代理对象的原始对象</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tt -w &#x27;#isProxy=:[ @org.springframework.aop.support.AopUtils@isAopProxy(#this)?1: #this instanceof java.lang.reflect.Proxy ? 0 :-1],#isJdkDynamicProxy =:[@org.springframework.aop.support.AopUtils@isJdkDynamicProxy(#this) ? true :false ],#cglibTarget =:[#hField =#this.getClass().getDeclaredField(&quot;CGLIB$CALLBACK_0&quot;),#hField.setAccessible(true),#dynamicAdvisedInterceptor=#hField.get(#this),#fieldAdvised=#dynamicAdvisedInterceptor.getClass().getDeclaredField(&quot;advised&quot;),#fieldAdvised.setAccessible(true),1==1? #fieldAdvised.get(#dynamicAdvisedInterceptor).getTargetSource().getTarget():null],#jdkTarget=:[ #hField=#this.getClass().getSuperclass().getDeclaredField(&quot;h&quot;),#hField.setAccessible(true),#aopProxy=#hField.get(#this),#advisedField=#aopProxy.getClass().getDeclaredField(&quot;advised&quot;),#advisedField.setAccessible(true),1==1?#advisedField.get(#aopProxy).getTargetSource().getTarget():null],#nonProxyResultFunc = :[#proxyResul=#isProxy(#this),#proxyResul== -1 ?#this :#proxyResul== 0? @java.lang.reflect.Proxy@getInvocationHandler(#this):#isJdkDynamicProxy(#this)? #isJdkDynamicProxy(#this) : #cglibTarget(#this)],#nonProxyTarget=#nonProxyResultFunc(target),#nonProxyTarget&#x27;  -x 1 -i 1002</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="6-Vmtool-使用"><a href="#6-Vmtool-使用" class="headerlink" title="6. Vmtool 使用"></a>6. Vmtool 使用</h3><blockquote>
-<p><code>vmtool</code> 利用 Java 的 Instrumentation API 和 JVM TI（JVM Tool Interface）与 JVM 进行交互，可以绕过spring context 直接获取对象</p>
-</blockquote>
-<ul>
-<li><p>常用子命令</p>
-<ul>
-<li><code>--action getInstances</code>：获取类的实例</li>
-<li><code>--action forceGc</code>：强制执行垃圾回收</li>
-<li><code>--action getClassLoader</code>：获取类加载器信息</li>
-</ul>
-</li>
-<li><p>com.xxx.cache.CacheAspect 中的 boolean 变量 cacheEnabled 修改为false</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool: Arthas 的一个命令，用于对 JVM 进行底层操作。</span><br><span class="line">-x 3: 设置执行次数限制为 3 次。</span><br><span class="line">--action getInstances: 指定操作为获取类的实例。</span><br><span class="line">--className com.xxx.cache.CacheAspect: 指定要操作的类名。</span><br><span class="line">--express: 后面跟着的是要执行的 OGNL 表达式</span><br><span class="line">ongl表达式:</span><br><span class="line">反射获取字段 #field=instances[0].getClass().getDeclaredField(&quot;cacheEnabled&quot;)</span><br><span class="line">设置为true #field.setAccessible(true)</span><br><span class="line">修改字段 #field.set(instances[0],false)</span><br><span class="line"></span><br><span class="line">vmtool -x 3 --action getInstances --className com.xxx.cache.CacheAspect --express &#x27;#field=instances[0].getClass().getDeclaredField(&quot;cacheEnabled&quot;),#field.setAccessible(true),#field.set(instances[0],false)&#x27; -c 3bd94634</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>修改final变量</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 4 --action getInstances --className com.wangji92.arthas.plugin.demo.controller.CommonController  --express &#x27;#field=instances[0].getClass().getDeclaredField(&quot;FINAL_VALUE&quot;),#modifiers=#field.getClass().getDeclaredField(&quot;modifiers&quot;),#modifiers.setAccessible(true),#modifiers.setInt(#field,#field.getModifiers() &amp; ~@java.lang.reflect.Modifier@FINAL),#field.setAccessible(true),#field.set(instances[0],&quot; 3333&quot;)&#x27; -c  18b4aac2</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>执行某个方法</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 1 --action getInstances </span><br><span class="line">--className com.xx.SyncDataAuthController </span><br><span class="line">--express &#x27;instances[0].getDataCodePage(@com.xx.UtilJson@convertValue(&quot;&#123;\&quot;pageIndex\&quot;:0,\&quot;pageSize\&quot;:0&#125;&quot;, @com.xx.BaseQuery@class))&#x27;</span><br><span class="line">-c 49c2faae</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>获取spring context</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool --action getInstances --className org.springframework.context.ConfigurableApplicationContext --express &#x27;instances[0].getEnvironment().getProperty(&quot;server.port&quot;)&#x27;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>获取 spring Environment 配置</p>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 3 --action getInstances --className org.springframework.core.env.Environment  --express &#x27;instances[0].getProperty(&quot;server.port&quot;)&#x27; -c 7b5a12ae</span><br></pre></td></tr></table></figure></li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Arthas</category>
-      </categories>
-      <tags>
-        <tag>Arthas</tag>
-        <tag>问题排查</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>dockerfile</title>
     <url>/2025/02/10/docker/dockerfile/posts/undefined/</url>
     <content><![CDATA[<h3 id="Dockerignore"><a href="#Dockerignore" class="headerlink" title="Dockerignore"></a>Dockerignore</h3><blockquote>
@@ -710,6 +585,76 @@
       </tags>
   </entry>
   <entry>
+    <title>JVM与JFR事件-Java Application/Object Allocation In New TLAB</title>
+    <url>/2025/02/22/jfr/3.jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本系列参考张哥JFR全系列</a></li>
+</ul>
+<p><img data-src="/images/jfr/04.png" alt="img"><br><img data-src="/images/jfr/05.png" alt="img"></p>
+<h3 id="基础信息"><a href="#基础信息" class="headerlink" title="基础信息"></a>基础信息</h3><ul>
+<li>Type(JVM,JDK内部唯一标识，用于jfr配置): <code>jdk.ObjectAllocationInNewTLAB</code></li>
+<li>Label(Event Type，用于显示): Object Allocation In New TLAB</li>
+<li>Category(用于分类显示): Java Application</li>
+<li>事件从哪个版本引入？<ul>
+<li>Java11：即一开始就存在</li>
+</ul>
+</li>
+<li>事件类型<ul>
+<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
+<li><code>JVM内部事件</code></li>
+</ul>
+</li>
+<li>此事件对应 <a href="https://taeyang0126.github.io/2025/02/22/jvm/java-dui-xiang-fen-pei-guo-cheng/posts/undefined/?highlight=%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D">Java对象分配过程</a> 中的<code>路径二</code></li>
+</ul>
+<h3 id="jfc配置"><a href="#jfc配置" class="headerlink" title="jfc配置"></a>jfc配置</h3><ul>
+<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="事件字段"><a href="#事件字段" class="headerlink" title="事件字段"></a>事件字段</h3><ul>
+<li>Event Thread：发生路径二分配的线程的名称</li>
+<li>Allocation Size：触发路径二分配的对象大小（实际占用，考虑了对象对其）</li>
+<li>Object Class：触发路径二分配的对象类型</li>
+<li>TLAB Size：触发路径二分配，申请新的TLAB的大小</li>
+<li>线程栈：发生路径二的线程栈，默认是采集的<br><img data-src="/images/jfr/06.png" alt="img"></li>
+</ul>
+<h3 id="测试代码"><a href="#测试代码" class="headerlink" title="测试代码"></a>测试代码</h3>   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocInNewTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 对于字节数组对象头占用16字节</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">BYTE_ARRAY_OVERHEAD</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line">  <span class="comment">// 测试的对象大小是KB</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">OBJECT_SIZE</span> <span class="operator">=</span> <span class="number">1024</span>;</span><br><span class="line">  <span class="comment">// 字节数组对象名称</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">BYTE_ARRAY_CLASS_NAME</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">0</span>].getClass().getName();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 需要使用静态field，而不是方法内本地变量，否则编译后循环内的new byte[] 会被全部省略，只剩最后一次的</span></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">byte</span>[] tmp;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小1KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">512</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 强制 fullgc 回收所以 TLAB</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小100KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">200</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE * <span class="number">100</span> - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">      <span class="comment">// 统计事件类型</span></span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf1KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf100KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="comment">// 读取文件中的所有 JFR 事件</span></span><br><span class="line">      <span class="keyword">for</span> (RecordedEvent event : RecordingFile.readAllEvents(path)) &#123;</span><br><span class="line">          <span class="comment">// 获取分配的对象类型</span></span><br><span class="line">          <span class="type">String</span> <span class="variable">className</span> <span class="operator">=</span> event.getString(<span class="string">&quot;objectClass.name&quot;</span>);</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 确保分配类型是byte</span></span><br><span class="line">          <span class="keyword">if</span> (BYTE_ARRAY_CLASS_NAME.equals(className)) &#123;</span><br><span class="line">              <span class="type">RecordedFrame</span> <span class="variable">recordedFrame</span> <span class="operator">=</span> event.getStackTrace().getFrames().get(<span class="number">0</span>);</span><br><span class="line">              <span class="comment">// 同时必须是main方法分配的对象，并且是java堆栈中的main方法</span></span><br><span class="line">              <span class="keyword">if</span> (</span><br><span class="line">                      recordedFrame.isJavaFrame()</span><br><span class="line">                              &amp;&amp; <span class="string">&quot;main&quot;</span>.equalsIgnoreCase(recordedFrame.getMethod().getName())</span><br><span class="line">              ) &#123;</span><br><span class="line">                  <span class="comment">// 获取分配对象大小</span></span><br><span class="line">                  <span class="type">long</span> <span class="variable">allocationSize</span> <span class="operator">=</span> event.getLong(<span class="string">&quot;allocationSize&quot;</span>);</span><br><span class="line">                  <span class="keyword">if</span> (EVENT_TYPE.equalsIgnoreCase(event.getEventType().getName())) &#123;</span><br><span class="line">                      <span class="keyword">if</span> (allocationSize == OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf1KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (allocationSize == <span class="number">100</span> * OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf100KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125;</span><br><span class="line"></span><br><span class="line">                  &#125;</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Exception</span>(<span class="string">&quot;unexpected size of TLAB event&quot;</span>);</span><br><span class="line">              &#125;</span><br><span class="line">              System.out.println(event);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      System.out.println(<span class="string">&quot;countOf1KBObjectAllocationInNewTLAB: &quot;</span> + countOf1KBObjectAllocationInNewTLAB);</span><br><span class="line">      System.out.println(<span class="string">&quot;countOf100KBObjectAllocationInNewTLAB: &quot;</span> + countOf100KBObjectAllocationInNewTLAB);</span><br><span class="line">  &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="为什么针对大部分应用不建议开启这个事件的采集"><a href="#为什么针对大部分应用不建议开启这个事件的采集" class="headerlink" title="为什么针对大部分应用不建议开启这个事件的采集?"></a>为什么针对大部分应用不建议开启这个事件的采集?</h3><ul>
+<li><code>路径二分配一般不是核心问题点</code><ul>
+<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
+<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
+</ul>
+</li>
+<li><code>对于大部分应用，没有啥必要性</code><ul>
+<li>重新申请 TLAB 分配，对于热点线程来说，虽然不如TLAB内分配那么多，但是也是比较频繁的</li>
+<li>如果重新申请 TLAB 分配的次数，和 TLAB 内分配的次数差不多，这才会是问题</li>
+<li>但是 TLAB 的大小是根据线程的分配情况动态调整的，所以 TLAB 内的分配的次数会比较多，而重新申请 TLAB 分配的次数会比较少</li>
+<li>所以这个事件的采集，对于大部分的应用来说，并不是很有必要</li>
+</ul>
+</li>
+<li><code>性能损耗</code><ul>
+<li>这个事件的采集，会捕获堆栈信息，堆栈信息是比较耗性能的，如果开启这个事件的采集，会导致性能损耗比较大。并且这个事件的采集也相对频繁</li>
+</ul>
+</li>
+</ul>
+<h3 id="哪种情况下才会考虑开启这个事件的采集"><a href="#哪种情况下才会考虑开启这个事件的采集" class="headerlink" title="哪种情况下才会考虑开启这个事件的采集?"></a>哪种情况下才会考虑开启这个事件的采集?</h3><ul>
+<li>正常的应用场景下，不需要调整TLAB的配置参数。一般情况下，JVM会根据应用的情况自动调整TLAB的大小</li>
+<li>如果确实怀疑TLAB的配置参数有问题，第一步是开启 Java Application -&gt; Allocation In New TLAB(jdk.ObjectAllocationInNewTLAB) 和 Java Application -&gt;  Allocation outside TLAB(jdk.ObjectAllocationOutsideTLAB)</li>
+<li>确认有大量的 Object Allocation Outside TLAB 事件发生（一般在应用稳定之后，如果很多线程的 Object Allocation Outside TLAB 相对于 Allocation In New TLAB 大于 5%以上就需要调整 TLAB 相关参数了），然后再考虑是否需要调整 TLAB 的配置参数。</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JFR</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>JFR</tag>
+        <tag>监控</tag>
+        <tag>对象分配</tag>
+        <tag>TLAB</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>JVM与JFR事件-准备工作</title>
     <url>/2025/02/20/jfr/2.jvm-yu-jfr-shi-jian-zhun-bei-gong-zuo/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -808,76 +753,6 @@
         <tag>JVM</tag>
         <tag>JFR</tag>
         <tag>监控</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>JVM与JFR事件-Java Application/Object Allocation In New TLAB</title>
-    <url>/2025/02/22/jfr/3.jvm-yu-jfr-shi-jian-object-allocation-in-new-tlab/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本系列参考张哥JFR全系列</a></li>
-</ul>
-<p><img data-src="/images/jfr/04.png" alt="img"><br><img data-src="/images/jfr/05.png" alt="img"></p>
-<h3 id="基础信息"><a href="#基础信息" class="headerlink" title="基础信息"></a>基础信息</h3><ul>
-<li>Type(JVM,JDK内部唯一标识，用于jfr配置): <code>jdk.ObjectAllocationInNewTLAB</code></li>
-<li>Label(Event Type，用于显示): Object Allocation In New TLAB</li>
-<li>Category(用于分类显示): Java Application</li>
-<li>事件从哪个版本引入？<ul>
-<li>Java11：即一开始就存在</li>
-</ul>
-</li>
-<li>事件类型<ul>
-<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
-<li><code>JVM内部事件</code></li>
-</ul>
-</li>
-<li>此事件对应 <a href="https://taeyang0126.github.io/2025/02/22/jvm/java-dui-xiang-fen-pei-guo-cheng/posts/undefined/?highlight=%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D">Java对象分配过程</a> 中的<code>路径二</code></li>
-</ul>
-<h3 id="jfc配置"><a href="#jfc配置" class="headerlink" title="jfc配置"></a>jfc配置</h3><ul>
-<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span> <span class="attr">control</span>=<span class="string">&quot;gc-enabled-high&quot;</span>&gt;</span>false<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="事件字段"><a href="#事件字段" class="headerlink" title="事件字段"></a>事件字段</h3><ul>
-<li>Event Thread：发生路径二分配的线程的名称</li>
-<li>Allocation Size：触发路径二分配的对象大小（实际占用，考虑了对象对其）</li>
-<li>Object Class：触发路径二分配的对象类型</li>
-<li>TLAB Size：触发路径二分配，申请新的TLAB的大小</li>
-<li>线程栈：发生路径二的线程栈，默认是采集的<br><img data-src="/images/jfr/06.png" alt="img"></li>
-</ul>
-<h3 id="测试代码"><a href="#测试代码" class="headerlink" title="测试代码"></a>测试代码</h3>   <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestAllocInNewTLAB</span> &#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 对于字节数组对象头占用16字节</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">BYTE_ARRAY_OVERHEAD</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line">  <span class="comment">// 测试的对象大小是KB</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">OBJECT_SIZE</span> <span class="operator">=</span> <span class="number">1024</span>;</span><br><span class="line">  <span class="comment">// 字节数组对象名称</span></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">BYTE_ARRAY_CLASS_NAME</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">0</span>].getClass().getName();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 需要使用静态field，而不是方法内本地变量，否则编译后循环内的new byte[] 会被全部省略，只剩最后一次的</span></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">byte</span>[] tmp;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">EVENT_TYPE</span> <span class="operator">=</span> <span class="string">&quot;jdk.ObjectAllocationInNewTLAB&quot;</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      recording.enable(EVENT_TYPE);</span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小1KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">512</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 强制 fullgc 回收所以 TLAB</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">      <span class="comment">// 分配对象，大小100KB</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">200</span>; i++) &#123;</span><br><span class="line">          tmp = <span class="keyword">new</span> <span class="title class_">byte</span>[OBJECT_SIZE * <span class="number">100</span> - BYTE_ARRAY_OVERHEAD];</span><br><span class="line">      &#125;</span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">      <span class="comment">// 统计事件类型</span></span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf1KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="type">int</span> <span class="variable">countOf100KBObjectAllocationInNewTLAB</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">      <span class="comment">// 读取文件中的所有 JFR 事件</span></span><br><span class="line">      <span class="keyword">for</span> (RecordedEvent event : RecordingFile.readAllEvents(path)) &#123;</span><br><span class="line">          <span class="comment">// 获取分配的对象类型</span></span><br><span class="line">          <span class="type">String</span> <span class="variable">className</span> <span class="operator">=</span> event.getString(<span class="string">&quot;objectClass.name&quot;</span>);</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 确保分配类型是byte</span></span><br><span class="line">          <span class="keyword">if</span> (BYTE_ARRAY_CLASS_NAME.equals(className)) &#123;</span><br><span class="line">              <span class="type">RecordedFrame</span> <span class="variable">recordedFrame</span> <span class="operator">=</span> event.getStackTrace().getFrames().get(<span class="number">0</span>);</span><br><span class="line">              <span class="comment">// 同时必须是main方法分配的对象，并且是java堆栈中的main方法</span></span><br><span class="line">              <span class="keyword">if</span> (</span><br><span class="line">                      recordedFrame.isJavaFrame()</span><br><span class="line">                              &amp;&amp; <span class="string">&quot;main&quot;</span>.equalsIgnoreCase(recordedFrame.getMethod().getName())</span><br><span class="line">              ) &#123;</span><br><span class="line">                  <span class="comment">// 获取分配对象大小</span></span><br><span class="line">                  <span class="type">long</span> <span class="variable">allocationSize</span> <span class="operator">=</span> event.getLong(<span class="string">&quot;allocationSize&quot;</span>);</span><br><span class="line">                  <span class="keyword">if</span> (EVENT_TYPE.equalsIgnoreCase(event.getEventType().getName())) &#123;</span><br><span class="line">                      <span class="keyword">if</span> (allocationSize == OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf1KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (allocationSize == <span class="number">100</span> * OBJECT_SIZE) &#123;</span><br><span class="line">                          countOf100KBObjectAllocationInNewTLAB++;</span><br><span class="line">                      &#125;</span><br><span class="line"></span><br><span class="line">                  &#125;</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Exception</span>(<span class="string">&quot;unexpected size of TLAB event&quot;</span>);</span><br><span class="line">              &#125;</span><br><span class="line">              System.out.println(event);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      System.out.println(<span class="string">&quot;countOf1KBObjectAllocationInNewTLAB: &quot;</span> + countOf1KBObjectAllocationInNewTLAB);</span><br><span class="line">      System.out.println(<span class="string">&quot;countOf100KBObjectAllocationInNewTLAB: &quot;</span> + countOf100KBObjectAllocationInNewTLAB);</span><br><span class="line">  &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="为什么针对大部分应用不建议开启这个事件的采集"><a href="#为什么针对大部分应用不建议开启这个事件的采集" class="headerlink" title="为什么针对大部分应用不建议开启这个事件的采集?"></a>为什么针对大部分应用不建议开启这个事件的采集?</h3><ul>
-<li><code>路径二分配一般不是核心问题点</code><ul>
-<li>分配大对象一般是路径三和路径四：大对象一般是数组，比如某个数据库请求拉取了太多数据，会尝试路径三和路径四分配</li>
-<li>分配小对象，导致的内存泄漏，一般是将小对象放入类似于 <code>ConcurrentHashMap</code> 或者一个数组结构中导致的内存泄漏，<code>ConcurrentHashMap</code>在 Rehash 以及数组在扩容的时候，一般会分配比较大的数组对象，也是走路径三和路径四。</li>
-</ul>
-</li>
-<li><code>对于大部分应用，没有啥必要性</code><ul>
-<li>重新申请 TLAB 分配，对于热点线程来说，虽然不如TLAB内分配那么多，但是也是比较频繁的</li>
-<li>如果重新申请 TLAB 分配的次数，和 TLAB 内分配的次数差不多，这才会是问题</li>
-<li>但是 TLAB 的大小是根据线程的分配情况动态调整的，所以 TLAB 内的分配的次数会比较多，而重新申请 TLAB 分配的次数会比较少</li>
-<li>所以这个事件的采集，对于大部分的应用来说，并不是很有必要</li>
-</ul>
-</li>
-<li><code>性能损耗</code><ul>
-<li>这个事件的采集，会捕获堆栈信息，堆栈信息是比较耗性能的，如果开启这个事件的采集，会导致性能损耗比较大。并且这个事件的采集也相对频繁</li>
-</ul>
-</li>
-</ul>
-<h3 id="哪种情况下才会考虑开启这个事件的采集"><a href="#哪种情况下才会考虑开启这个事件的采集" class="headerlink" title="哪种情况下才会考虑开启这个事件的采集?"></a>哪种情况下才会考虑开启这个事件的采集?</h3><ul>
-<li>正常的应用场景下，不需要调整TLAB的配置参数。一般情况下，JVM会根据应用的情况自动调整TLAB的大小</li>
-<li>如果确实怀疑TLAB的配置参数有问题，第一步是开启 Java Application -&gt; Allocation In New TLAB(jdk.ObjectAllocationInNewTLAB) 和 Java Application -&gt;  Allocation outside TLAB(jdk.ObjectAllocationOutsideTLAB)</li>
-<li>确认有大量的 Object Allocation Outside TLAB 事件发生（一般在应用稳定之后，如果很多线程的 Object Allocation Outside TLAB 相对于 Allocation In New TLAB 大于 5%以上就需要调整 TLAB 相关参数了），然后再考虑是否需要调整 TLAB 的配置参数。</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JFR</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>JFR</tag>
-        <tag>监控</tag>
-        <tag>对象分配</tag>
-        <tag>TLAB</tag>
       </tags>
   </entry>
   <entry>
@@ -1903,6 +1778,55 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>loom</title>
+    <url>/2025/02/19/loom/loom/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
+<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
+<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
+<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
+<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
+</ul>
+<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
+<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
+</blockquote>
+<ul>
+<li>Java 代码调用本地代码 (JNI)</li>
+<li>synchronized 块或方法</li>
+</ul>
+<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
+<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
+</ul>
+<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
+<li>Synchronization<ul>
+<li>synchronized最终会解决，但是JNI不会处理</li>
+<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
+</ul>
+</li>
+<li>I&#x2F;O<ul>
+<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
+<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
+<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
+<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
+</ul>
+</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>1-Netty Reactor启动流程</title>
     <url>/2025/02/09/netty/1.netty-reactor-qi-dong-liu-cheng/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><p><a href="https://zhuanlan.zhihu.com/p/459313682">详细图解Netty Reactor启动全流程 | 万字长文 | 多图预警</a></p>
@@ -2012,55 +1936,6 @@ flowchart TD
       <tags>
         <tag>Netty</tag>
         <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>loom</title>
-    <url>/2025/02/19/loom/loom/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
-<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
-<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
-<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
-<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
-</ul>
-<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
-<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
-</blockquote>
-<ul>
-<li>Java 代码调用本地代码 (JNI)</li>
-<li>synchronized 块或方法</li>
-</ul>
-<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
-<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
-</ul>
-<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
-<li>Synchronization<ul>
-<li>synchronized最终会解决，但是JNI不会处理</li>
-<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
-</ul>
-</li>
-<li>I&#x2F;O<ul>
-<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
-<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
-<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
-<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
-</ul>
-</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
       </tags>
   </entry>
   <entry>
@@ -2256,41 +2131,6 @@ flowchart TD
       </tags>
   </entry>
   <entry>
-    <title>Netty中的细节优化</title>
-    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
-    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
-<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
-<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
-</ul>
-<p><img data-src="/images/netty/01.png" alt="netty"></p>
-<ul>
-<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
-</ul>
-<p><img data-src="/images/netty/02.png" alt="netty"></p>
-<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
-<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
-</ul>
-<p><img data-src="/images/netty/03.png" alt="netty"></p>
-<ul>
-<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
-</ul>
-<p><img data-src="/images/netty/04.png" alt="netty"></p>
-<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
-<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
-<p><img data-src="/images/netty/05.png" alt="netty"></p>
-<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
-<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>4-Netty对象池</title>
     <url>/2025/02/12/netty/4.netty-dui-xiang-chi/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
@@ -2365,6 +2205,41 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>Netty中的细节优化</title>
+    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
+    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
+<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
+<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
+</ul>
+<p><img data-src="/images/netty/01.png" alt="netty"></p>
+<ul>
+<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
+</ul>
+<p><img data-src="/images/netty/02.png" alt="netty"></p>
+<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
+<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
+</ul>
+<p><img data-src="/images/netty/03.png" alt="netty"></p>
+<ul>
+<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
+</ul>
+<p><img data-src="/images/netty/04.png" alt="netty"></p>
+<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
+<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
+<p><img data-src="/images/netty/05.png" alt="netty"></p>
+<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
+<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>panama</title>
     <url>/2025/02/19/panama/panama/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2410,6 +2285,44 @@ flowchart TD
         <tag>java</tag>
         <tag>panama</tag>
         <tag>ffi</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>protobuf</title>
+    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
+    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
+<li>所有字段都有默认值，比如string默认为空串</li>
+<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
+<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
+<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
+<li>对于较小范围的数字，用 int32 而不是 int64</li>
+<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
+<li>对于负数多的场景用 sint32&#x2F;sint64</li>
+<li>字段更新规则！！<ol>
+<li>添加新字段</li>
+<li>删除字段(但保留字段号)</li>
+<li>重命名字段(字段号不变)</li>
+<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
+</ol>
+</li>
+<li>字段不能做的更新规则！！<ol>
+<li>改变已有字段的类型</li>
+<li>复用已删除的字段号</li>
+<li>改变已有字段的编号</li>
+</ol>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>protobuf</category>
+      </categories>
+      <tags>
+        <tag>protobuf</tag>
+        <tag>序列化</tag>
       </tags>
   </entry>
   <entry>
@@ -2648,44 +2561,6 @@ flowchart TD
       <tags>
         <tag>BitMap</tag>
         <tag>数据库</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>protobuf</title>
-    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
-    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
-<li>所有字段都有默认值，比如string默认为空串</li>
-<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
-<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
-<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
-<li>对于较小范围的数字，用 int32 而不是 int64</li>
-<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
-<li>对于负数多的场景用 sint32&#x2F;sint64</li>
-<li>字段更新规则！！<ol>
-<li>添加新字段</li>
-<li>删除字段(但保留字段号)</li>
-<li>重命名字段(字段号不变)</li>
-<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
-</ol>
-</li>
-<li>字段不能做的更新规则！！<ol>
-<li>改变已有字段的类型</li>
-<li>复用已删除的字段号</li>
-<li>改变已有字段的编号</li>
-</ol>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>protobuf</category>
-      </categories>
-      <tags>
-        <tag>protobuf</tag>
-        <tag>序列化</tag>
       </tags>
   </entry>
   <entry>
@@ -3278,6 +3153,148 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>JVM内存解析 - 1.Native Memory Tracking</title>
+    <url>/2025/03/01/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-jvm-nei-cun-shen-qing-yu-shi-yong/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 2.JVM 内存申请与使用流程</p>
+</blockquote>
+<ul>
+<li><a href="https://juejin.cn/post/7225875600644407357">JVM 内存申请与使用流程</a></li>
+</ul>
+<h2 id="Linux-下内存管理模型简述"><a href="#Linux-下内存管理模型简述" class="headerlink" title="Linux 下内存管理模型简述"></a>Linux 下内存管理模型简述</h2><ul>
+<li><a href="https://mp.weixin.qq.com/s?__biz=Mzg2MzU3Mjc3Ng==&mid=2247486732&idx=1&sn=435d5e834e9751036c96384f6965b328&chksm=ce77cb4bf900425d33d2adfa632a4684cf7a63beece166c1ffedc4fdacb807c9413e8c73f298&token=1468822011&lang=zh_CN&scene=21&key=d9f8952995f1859ec52d8f5d9e6ab4720ffabd5403c103322ee7ec6f45279c0d6ff004df4d91e603b8da30fc862da32560064a1680e06e498f1478dedf8d24cd54abfe5bbf80610ac6a1ecfcadeceb1ce74fd27e061bc962a5e9d18c369786619a9ac7ad030b16a0f350638aed32ec61ad2c47b2df53b2fffac6419c8a55feb1&ascene=2&uin=MTQxMDM0OTkyNA==&devicetype=Windows+11+x64&version=6308011a&exportkey=n_ChQIAhIQLReSAiPPBq/rjeEsvhWLGhLpAQIE97dBBAEAAAAAAPboBnzhWE0AAAAOpnltbLcz9gKNyK89dVj0LB8MByB+LnarvTJ9k5LjHnaHSiRCVUH6zSSXMnbZ9AQCusp6IDK5hwtnugd9Du4BG2pqPuJHPIkVIcUMia320lXFN61yM/+2MKyl86soaJUlu0zu8x69eop1Fbdi4YBaoocZrDbr+Buq4hsy+Kf6ElIQw+6gPfQqllJ5R86pa0DoVOjdnD2bi7ZuxdMyvcOPEu3pDa5H/BgY1A+DcifqtVZlp+5LoJKYNhtlZg1zOS06RY15Ry0DdonN38efMsG2Req/&acctmode=0&pass_ticket=ywhUvrTZ0ZCaWLuvLdidNGnNwyS7T41V+KEL2N0td3RvwmPJ+ZREM3Zc0lit4wDxNhALtKqF2gPCKD6sLdagzA==&wx_header=1&fontgear=2">bin神系列文章深入理解linux内存</a></li>
+</ul>
+<p>CPU 是通过寻址来访问内存的，目前大部分 CPU 都是 64 位的，即寻址范围是：<code>0x0000 0000 0000 0000 ~ 0xFFFF FFFF FFFF FFFF</code>，即可以管理 16EB 的内存。但是，实际程序并不会直接通过 CPU 寻址访问到实际的物理内存，而是通过引入 <code>MMU</code>（Memory Management Unit 内存管理单元）与实际物理地址隔了一层虚拟内存的抽象。这样，程序申请以及访问的其实是<code>虚拟内存地址</code>，MMU 会将这个虚拟内存地址<code>映射</code>为实际的物理内存地址。同时，<code>为了减少内存碎片，以及增加内存分配效率</code>，在 MMU 的基础上 Linux 抽象了<code>内存分页（Paging）</code>的概念，将虚拟地址按固定大小分割成<code>页</code>（默认是 4K，如果平台支持更多更大的页大小 JVM 也是可以利用的，我们后面分析相关的 JVM 参数会看到），并在页被实际使用写入数据的时候，<code>映射同样大小的实际的物理内存</code>（页帧，Page Frame），或者是在物理内存不足的时候，将某些不常用的页<code>转移到其他存储设备比如磁盘上</code>。</p>
+<p>一般系统中会有多个进程使用内存，每个进程都有自己独立的虚拟内存空间，假设我们这里有三个进程，进程 A 访问的虚拟地址可以与进程 B 和进程 C 的虚拟地址相同，那么操作系统如何区分呢？即操作系统如何将这些虚拟地址转换为物理内存。这就需要页表了，页表也是每个进程独立的，操作系统会在给进程映射物理内存用来保存用户数据的时候，将物理内存保存到进程的页表里面。然后，进程访问虚拟内存空间的时候，通过页表找到物理内存：<br><img data-src="/images/jvm/memory/01.png" alt="img"></p>
+<p>页表如何将一个虚拟内存地址（我们需要注意一点，目前虚拟内存地址，用户空间与内核空间可以使用从 <code>0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF</code> 的地址，即 256TB），转化为物理内存的呢？下面我们举一个在 x86，64 位环境下四级页表的结构视图：<br><img data-src="/images/jvm/memory/02.png" alt="img"></p>
+<p>在这里，页表分为四个级别：PGD（Page Global Directory），PUD（Page Upper Directory），PMD（Page Middle Directory），PTE（Page Table Entry）。每个页表，里面的页表项，保存了指向下一个级别的页表的引用，除了最后一层的 PTE 里面的页表项保存的是指向用户数据内存的指针。如何将虚拟内存地址通过页表找到对应用户数据内存从而读取数据，过程是：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
+<ol>
+<li>取虚拟地址的 <code>39 ~ 47</code> 位（因为用户空间与内核空间可以使用从 0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF 的地址，即 47 位以下的地址）作为 offset，在<code>唯一</code>的 PGD 页面根据 offset 定位到 PGD 页表项 <code>pgd_t</code></li>
+<li>使用 <code>pgd_t</code> 定位到具体的 PUD 页面</li>
+<li>取虚拟地址的 <code>30 ~ 38</code> 位作为 offset，在对应的 PUD 页面根据 offset 定位到 PUD 页表项 <code>pud_t</code></li>
+<li>使用 <code>pud_t</code> 定位到具体的 PMD 页面</li>
+<li>取虚拟地址的 <code>21 ~ 29</code> 位作为 offset，在对应的 PMD 页面根据 offset 定位到 PMD 页表项 <code>pmd_t</code></li>
+<li>使用 <code>pmd_t</code> 定位到具体的 PTE 页面</li>
+<li>取虚拟地址的 <code>12 ~ 20</code> 位作为 offset，在对应的 PTE 页面根据 offset 定位到 PTE 页表项 <code>pte_t</code></li>
+<li>使用 <code>pte_t</code> 定位到具体的用户数据物理内存页面</li>
+<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset</li>
+</ol>
+<p>如果每次访问虚拟内存，都需要访问这个页表翻译成实际物理内存的话，性能太差。所以一般 CPU 里面都有一个 <code>TLB</code>（Translation Lookaside Buffer，翻译后备缓冲）存在，一般它属于 CPU 的 MMU 的一部分。<code>TLB 负责缓存虚拟内存与实际物理内存的映射关系</code>，一般 TLB 容量很小。每次访问虚拟内存，先查看 TLB 中是否有缓存，如果没有才会去页表查询。<br><img data-src="/images/jvm/memory/04.png" alt="img"><br>默认情况下，TLB 缓存的 key 为地址的 <code>12 ~ 47</code> 位，value 是实际的物理内存页面。这样前面从<code>第 1 到第 7 步</code>就可以被替换成访问 TLB 了：</p>
+<ol>
+<li>取虚拟地址的 <code>12 ~ 47</code> 位作为 key，访问 TLB，定位到具体的用户数据物理内存页面。</li>
+<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset。<br><img data-src="/images/jvm/memory/05.png" alt="img"></li>
+</ol>
+<p>TLB 整体可以容纳个数不多；页大小越大，TLB 能容纳的个数越少。但是整体看，TLB 能容纳的页大小还是增多的（比如 Nehalem 的 iTLB，页大小 4K 的时候，一共可以容纳 128 * 4 &#x3D; 512K 的内存，页大小 2M 的时候，一共可以容纳 2 * 7 &#x3D; 14M 的内存）</p>
+<p>JVM 中很多地方需要知道页大小，JVM 在初始化的时候，通过系统调用 <code>sysconf(_SC_PAGESIZE)</code> 读取出页大小，并保存下来以供后续使用。参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp</a></p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">//设置全局默认页大小，通过 Linux::page_size() 可以获取全局默认页大小</span></span><br><span class="line">Linux::<span class="built_in">set_page_size</span>(<span class="built_in">sysconf</span>(_SC_PAGESIZE));</span><br><span class="line"><span class="keyword">if</span> (Linux::<span class="built_in">page_size</span>() == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fatal</span>(<span class="string">&quot;os_linux.cpp: os::init: sysconf failed (%s)&quot;</span>,</span><br><span class="line">      os::<span class="built_in">strerror</span>(errno));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//将默认页大小加入可选的页大小列表，在涉及大页分配的时候有用</span></span><br><span class="line">_page_sizes.<span class="built_in">add</span>(Linux::<span class="built_in">page_size</span>());</span><br></pre></td></tr></table></figure>
+
+<h2 id="JVM-主要内存申请分配流程"><a href="#JVM-主要内存申请分配流程" class="headerlink" title="JVM 主要内存申请分配流程"></a>JVM 主要内存申请分配流程</h2><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM内存解析</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>内存</tag>
+        <tag>linux内存</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ES</title>
+    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
+</ul>
+<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
+<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
+<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
+<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
+</ul>
+</li>
+<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
+<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
+<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
+</ul>
+</li>
+<li>最佳实践<ul>
+<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
+<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
+<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
+<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
+<li>作用：添加或替换文档。</li>
+<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
+<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
+<li>特点：不关心之前是否存在这本书。</li>
+</ul>
+<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
+<li>作用：仅添加新文档，如果文档已存在则失败。</li>
+<li>类比：只有当书架上没有这本书时，才能放上去。</li>
+<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
+<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
+</ul>
+<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
+<li>作用：修改现有文档的部分内容。</li>
+<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
+<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
+<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
+</ul>
+<ol>
+<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
+<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
+<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
+<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
+<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
+</ol>
+<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
+<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
+<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
+<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
+</blockquote>
+<ol>
+<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
+<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
+<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
+</blockquote>
+<ol>
+<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
+<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
+</blockquote>
+<ol>
+<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
+<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
+<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>ES</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>ES</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>raft</title>
     <url>/2025/02/09/fen-bu-shi/suan-fa/raft/posts/undefined/</url>
     <content><![CDATA[<h2 id="Raft-的核心目标和基本工作原理"><a href="#Raft-的核心目标和基本工作原理" class="headerlink" title="Raft 的核心目标和基本工作原理"></a>Raft 的核心目标和基本工作原理</h2><p>核心目标：</p>
@@ -3467,102 +3484,6 @@ sequenceDiagram
         <tag>分布式</tag>
         <tag>算法</tag>
         <tag>raft</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ES</title>
-    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
-</ul>
-<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
-<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
-<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
-<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
-</ul>
-</li>
-<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
-<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
-<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
-</ul>
-</li>
-<li>最佳实践<ul>
-<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
-<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
-<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
-<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
-<li>作用：添加或替换文档。</li>
-<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
-<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
-<li>特点：不关心之前是否存在这本书。</li>
-</ul>
-<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
-<li>作用：仅添加新文档，如果文档已存在则失败。</li>
-<li>类比：只有当书架上没有这本书时，才能放上去。</li>
-<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
-<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
-</ul>
-<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
-<li>作用：修改现有文档的部分内容。</li>
-<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
-<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
-<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
-</ul>
-<ol>
-<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
-<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
-<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
-<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
-<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
-</ol>
-<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
-<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
-<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
-<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
-</blockquote>
-<ol>
-<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
-<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
-<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
-</blockquote>
-<ol>
-<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
-<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
-</blockquote>
-<ol>
-<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
-<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ol>
-<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
-<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>ES</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>ES</tag>
       </tags>
   </entry>
   <entry>
@@ -5443,6 +5364,131 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
         <tag>消息队列</tag>
         <tag>中间件</tag>
         <tag>pulsar</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Arthas</title>
+    <url>/2025/02/09/arthas/arthas/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><p><a href="https://github.com/alibaba/arthas/issues/71">Arthas的一些特殊用法文档说明 · Issue #71 · alibaba&#x2F;arthas</a></p>
+</li>
+<li><p><a href="https://github.com/alibaba/arthas/issues/1424">arthas 获取spring被代理的目标对象 · Issue #1424 · alibaba&#x2F;arthas</a></p>
+</li>
+<li><p><a href="https://github.com/alibaba/arthas/issues/537">Arthas实践–jad&#x2F;mc&#x2F;redefine线上热更新一条龙 · Issue #537 · alibaba&#x2F;arthas</a></p>
+</li>
+</ul>
+<h3 id="1-获取当前HttpServletRequest"><a href="#1-获取当前HttpServletRequest" class="headerlink" title="1. 获取当前HttpServletRequest"></a>1. 获取当前HttpServletRequest</h3><ul>
+<li><p>执行某个request方法</p>
+<p>  <code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes().getRequest().xxx</code></p>
+</li>
+<li><p>获取全部的请求头</p>
+<p>  <code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes().getRequest().getHeaderNames()</code></p>
+</li>
+</ul>
+<h3 id="2-获取spring-context-并执行某些操作"><a href="#2-获取spring-context-并执行某些操作" class="headerlink" title="2. 获取spring context 并执行某些操作"></a>2. 获取spring context 并执行某些操作</h3><blockquote>
+<p><strong>前置</strong> 使用tt记录请求，获取到上下文</p>
+</blockquote>
+<ul>
+<li><p>tt -t org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter invokeHandlerMethod -n 3</p>
+</li>
+<li><p>tt -i 1000 -w ‘target.getApplicationContext().getBean(“jdbcTemplate”)’</p>
+</li>
+<li><p>tt -i 1000 -w ‘target.getApplicationContext().getBean(“jdbcTemplate”).dataSource.ConnectionPool’</p>
+</li>
+<li><p>tt -i 1000 -w ‘target.getApplicationContext().getBean(“jdbcTemplate”).getTargetSource().target’</p>
+</li>
+<li><p>tt -i 1000 -w ‘target.getApplicationContext().getBean(“jdbcTemplate”).getTargetSource().target.cacheMap’</p>
+</li>
+<li><p>tt -i 1000  -w ‘target.getApplicationContext().getEnvironment().getProperty(“spring.datasource.riskctrl.url”)’</p>
+</li>
+</ul>
+<h3 id="3-使用ognl"><a href="#3-使用ognl" class="headerlink" title="3. 使用ognl"></a>3. 使用<a href="https://commons.apache.org/dormant/commons-ognl/language-guide.html">ognl</a></h3><ul>
+<li><p>对前置表达式值进行二次计算  #this 表示前置表达式的值 <strong><code>.()</code></strong> 表示自表达式，产生一个单一值</p>
+<p>  <strong><code>listeners.size().(#this &gt; 100? 2\*#this : 20+#this)</code></strong></p>
+</li>
+<li><p>对前置表达式进行二次计算，产生一个数组</p>
+<p>  <strong><code>params[0].&#123;#this == &quot;lei&quot; ?  &quot;yes&quot; : &quot;no&quot;&#125;</code></strong></p>
+</li>
+<li><p>对前置表达式(数组类型)进行二次计算，产生一个新的数组</p>
+<p>  <strong><code>params.&#123;#this instanceof String ?  &quot;yes&quot; : &quot;no&quot;&#125;</code></strong></p>
+</li>
+<li><p>返回数组中第一个匹配的对象</p>
+<p>  <strong><code>params.&#123;^#this instanceof Integer&#125;</code></strong></p>
+</li>
+<li><p>调用static方法 使用  <strong>@class@method(<strong><strong>args</strong></strong>)</strong></p>
+<p>  <strong><code>@org.springframework.web.context.request.RequestContextHolder@currentRequestAttributes()</code></strong></p>
+</li>
+<li><p>获取静态字段 <strong>@class@field</strong></p>
+</li>
+</ul>
+<h3 id="4-一些常用命令"><a href="#4-一些常用命令" class="headerlink" title="4. 一些常用命令"></a>4. 一些常用命令</h3><ul>
+<li><p>获取classloader hash，如果是springBoot项目取 org.springframework.boot.loader.LaunchedURLClassLoader</p>
+<p>  <strong><code>classloader -t</code></strong></p>
+</li>
+<li><p>容器安装 vim</p>
+<p>  <strong><code>apt-get update &amp;&amp; apt-get install -y vim</code></strong></p>
+</li>
+<li><p>Ognl 获取spring context</p>
+  <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># 49c2faae 表示classloader hash</span><br><span class="line"># cn.hutool.extra.spring.SpringUtil 表示能获取到spring容器的方法</span><br><span class="line">ognl -c 49c2faae &#x27;#beanName=&quot;eventDataAuthManage&quot;, #bean=@cn.hutool.extra.spring.SpringUtil@getBean(#beanName), @org.springframework.aop.support.AopUtils@getTargetClass(#bean).getName()&#x27;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Ognl lambda 表达式</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 使用 =:[] 定义lambda即函数</span><br><span class="line">-- 使用 #getBean() 调用</span><br><span class="line">ognl -c 49c2faae &#x27;</span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash">getBean =:[@cn.hutool.extra.spring.SpringUtil@getBean(#this)],</span></span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash">getBean(<span class="string">&quot;syncDataAuthController&quot;</span>).dataCodeList<span class="string">&#x27;</span></span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查找方法</p>
+<p>  <strong><code>sm com.xx.class</code></strong></p>
+</li>
+<li><p>修改静态变量的值</p>
+<p>  <strong><code>getstatic com.xyz.HelloWorld s &quot;#s=&#39;abc&#39;&quot;</code></strong></p>
+</li>
+<li><p>修改变量的值</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 1. 使用 tt 记录方法调用</span><br><span class="line">tt -t com.example.UserService getUserById</span><br><span class="line">-- 2. 查看记录</span><br><span class="line">tt -l</span><br><span class="line">-- 3. 修改捕获的对象 target 代表当前被调用方法的对象实例（即 &quot;this&quot; 对象）</span><br><span class="line">tt -i 1000 -w &#x27;target.name=&quot;newName&quot;&#x27;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>过滤参数类型为class的方法</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-- 过滤要点就是通过全类名@class拿到class对象，再getName()获取名称</span><br><span class="line">watch com.wangji92.arthas.plugin.demo.controller.StaticTest invokeClass &#x27;&#123;returnObj,throwExp&#125;&#x27;  -n 5  -x 3  </span><br><span class="line">&#x27;params[0].getName().equals(@com.wangji92.arthas.plug.demo.controller.User@class.getName())&#x27; -v</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查找response404的堆栈</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">stack -E javax.servlet.http.HttpServletResponse sendError|setStatus params[0]==404</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="5-特殊命令"><a href="#5-特殊命令" class="headerlink" title="5. 特殊命令"></a>5. 特殊命令</h3><ul>
+<li><p>Trace 命令多个类、多个方法、指定线程、指定耗时时间</p>
+  <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># trace -E 表示正则</span><br><span class="line">trace -E </span><br><span class="line"># 表示类是 NioEventLoop 或者 SingleThreadEventExecutor</span><br><span class="line">&#x27;io\.netty\.channel\.nio\.NioEventLoop|io\.netty\.util\.concurrent\.SingleThreadEventExecutor&#x27;  </span><br><span class="line"># 表示方法是 select processSelectedKeys runAllTasks</span><br><span class="line">&#x27;select|processSelectedKeys|runAllTasks&#x27; </span><br><span class="line"># @Thread arthas提供表示当前线程 #cost arthas提供，表示耗时</span><br><span class="line">&#x27;@Thread@currentThread().getName().contains(&quot;IO-HTTP-WORKER-IOPool&quot;)&amp;&amp;#cost&gt;500&#x27;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取代理对象的原始对象</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tt -w &#x27;#isProxy=:[ @org.springframework.aop.support.AopUtils@isAopProxy(#this)?1: #this instanceof java.lang.reflect.Proxy ? 0 :-1],#isJdkDynamicProxy =:[@org.springframework.aop.support.AopUtils@isJdkDynamicProxy(#this) ? true :false ],#cglibTarget =:[#hField =#this.getClass().getDeclaredField(&quot;CGLIB$CALLBACK_0&quot;),#hField.setAccessible(true),#dynamicAdvisedInterceptor=#hField.get(#this),#fieldAdvised=#dynamicAdvisedInterceptor.getClass().getDeclaredField(&quot;advised&quot;),#fieldAdvised.setAccessible(true),1==1? #fieldAdvised.get(#dynamicAdvisedInterceptor).getTargetSource().getTarget():null],#jdkTarget=:[ #hField=#this.getClass().getSuperclass().getDeclaredField(&quot;h&quot;),#hField.setAccessible(true),#aopProxy=#hField.get(#this),#advisedField=#aopProxy.getClass().getDeclaredField(&quot;advised&quot;),#advisedField.setAccessible(true),1==1?#advisedField.get(#aopProxy).getTargetSource().getTarget():null],#nonProxyResultFunc = :[#proxyResul=#isProxy(#this),#proxyResul== -1 ?#this :#proxyResul== 0? @java.lang.reflect.Proxy@getInvocationHandler(#this):#isJdkDynamicProxy(#this)? #isJdkDynamicProxy(#this) : #cglibTarget(#this)],#nonProxyTarget=#nonProxyResultFunc(target),#nonProxyTarget&#x27;  -x 1 -i 1002</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="6-Vmtool-使用"><a href="#6-Vmtool-使用" class="headerlink" title="6. Vmtool 使用"></a>6. Vmtool 使用</h3><blockquote>
+<p><code>vmtool</code> 利用 Java 的 Instrumentation API 和 JVM TI（JVM Tool Interface）与 JVM 进行交互，可以绕过spring context 直接获取对象</p>
+</blockquote>
+<ul>
+<li><p>常用子命令</p>
+<ul>
+<li><code>--action getInstances</code>：获取类的实例</li>
+<li><code>--action forceGc</code>：强制执行垃圾回收</li>
+<li><code>--action getClassLoader</code>：获取类加载器信息</li>
+</ul>
+</li>
+<li><p>com.xxx.cache.CacheAspect 中的 boolean 变量 cacheEnabled 修改为false</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool: Arthas 的一个命令，用于对 JVM 进行底层操作。</span><br><span class="line">-x 3: 设置执行次数限制为 3 次。</span><br><span class="line">--action getInstances: 指定操作为获取类的实例。</span><br><span class="line">--className com.xxx.cache.CacheAspect: 指定要操作的类名。</span><br><span class="line">--express: 后面跟着的是要执行的 OGNL 表达式</span><br><span class="line">ongl表达式:</span><br><span class="line">反射获取字段 #field=instances[0].getClass().getDeclaredField(&quot;cacheEnabled&quot;)</span><br><span class="line">设置为true #field.setAccessible(true)</span><br><span class="line">修改字段 #field.set(instances[0],false)</span><br><span class="line"></span><br><span class="line">vmtool -x 3 --action getInstances --className com.xxx.cache.CacheAspect --express &#x27;#field=instances[0].getClass().getDeclaredField(&quot;cacheEnabled&quot;),#field.setAccessible(true),#field.set(instances[0],false)&#x27; -c 3bd94634</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改final变量</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 4 --action getInstances --className com.wangji92.arthas.plugin.demo.controller.CommonController  --express &#x27;#field=instances[0].getClass().getDeclaredField(&quot;FINAL_VALUE&quot;),#modifiers=#field.getClass().getDeclaredField(&quot;modifiers&quot;),#modifiers.setAccessible(true),#modifiers.setInt(#field,#field.getModifiers() &amp; ~@java.lang.reflect.Modifier@FINAL),#field.setAccessible(true),#field.set(instances[0],&quot; 3333&quot;)&#x27; -c  18b4aac2</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>执行某个方法</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 1 --action getInstances </span><br><span class="line">--className com.xx.SyncDataAuthController </span><br><span class="line">--express &#x27;instances[0].getDataCodePage(@com.xx.UtilJson@convertValue(&quot;&#123;\&quot;pageIndex\&quot;:0,\&quot;pageSize\&quot;:0&#125;&quot;, @com.xx.BaseQuery@class))&#x27;</span><br><span class="line">-c 49c2faae</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取spring context</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool --action getInstances --className org.springframework.context.ConfigurableApplicationContext --express &#x27;instances[0].getEnvironment().getProperty(&quot;server.port&quot;)&#x27;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取 spring Environment 配置</p>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vmtool -x 3 --action getInstances --className org.springframework.core.env.Environment  --express &#x27;instances[0].getProperty(&quot;server.port&quot;)&#x27; -c 7b5a12ae</span><br></pre></td></tr></table></figure></li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Arthas</category>
+      </categories>
+      <tags>
+        <tag>Arthas</tag>
+        <tag>问题排查</tag>
       </tags>
   </entry>
 </search>
