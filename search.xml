@@ -208,38 +208,6 @@
       </tags>
   </entry>
   <entry>
-    <title>dockerfile</title>
-    <url>/2025/02/10/docker/dockerfile/posts/undefined/</url>
-    <content><![CDATA[<h3 id="Dockerignore"><a href="#Dockerignore" class="headerlink" title="Dockerignore"></a>Dockerignore</h3><blockquote>
-<p>dockerfile中忽略特定的文件和目录</p>
-</blockquote>
-<ul>
-<li>示例表示忽略全部，除了一些必要的</li>
-</ul>
-<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line">*</span><br><span class="line">!pom.xml</span><br><span class="line">!sh</span><br><span class="line">!src</span><br></pre></td></tr></table></figure>
-
-<h3 id="DockerFile"><a href="#DockerFile" class="headerlink" title="DockerFile"></a>DockerFile</h3><blockquote>
-<p>构建java基础项目docker镜像</p>
-</blockquote>
-<ul>
-<li>提供 maven 编译构建 + 运行</li>
-<li><code>BASE_JAVA_IMAGE</code> 基础的java镜像，建议选择带有jre的基础java镜像</li>
-<li><code>MAVEN_IMAGE</code> maven编译的基础镜像，建议与java版本对应</li>
-<li>内置 <code>arthas</code></li>
-<li>内置运行脚本 <a href="/files/java/run.sh">run.sh</a></li>
-</ul>
-<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Global ARGs (build-time variables)</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在 FROM 指令中是可以直接使用的</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在不同的构建阶段需要重新定义</span></span><br><span class="line"><span class="comment"># ARG 是构建时的变量，不能在容器中访问，而ENV是环境变量</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Base images</span></span><br><span class="line"><span class="keyword">ARG</span> BASE_JAVA_IMAGE=eclipse-temurin:<span class="number">8</span>-jdk-jammy</span><br><span class="line"><span class="keyword">ARG</span> MAVEN_IMAGE=maven:<span class="number">3</span>-eclipse-temurin-<span class="number">8</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Application info</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME=aws-starter</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION=<span class="number">1.0</span></span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span>=<span class="number">17674030991</span>@<span class="number">163</span>.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># Arthas</span></span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION=<span class="number">3.7</span>.<span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Directory structure</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME=/opt/deployments</span><br><span class="line"><span class="keyword">ARG</span> APP_USER=app</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP=app</span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 0 : Download Arthas</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> alpine:latest AS arthas-downloader</span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION</span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> apk add --no-cache wget unzip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">mkdir</span> -p /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    wget -q https://maven.aliyun.com/repository/public/com/taobao/arthas/arthas-packaging/<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>/arthas-packaging-<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>-bin.zip -O arthas-bin.zip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    unzip -q arthas-bin.zip -d /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">rm</span> -f arthas-bin.zip</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 1 : BUILD JAR</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;MAVEN_IMAGE&#125; AS maven-builder</span><br><span class="line"></span><br><span class="line"><span class="comment"># Maven configuration</span></span><br><span class="line"><span class="keyword">ENV</span> MAVEN_OPTS=<span class="string">&quot;-Dmaven.test.skip=true -Dmaven.compile.fork=true&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 自定义 settings.xml</span></span><br><span class="line"><span class="comment"># 使用 --build-arg 传入本地 settings.xml 的路径</span></span><br><span class="line"><span class="comment"># ARG MAVEN_SETTINGS</span></span><br><span class="line"><span class="comment"># COPY $&#123;MAVEN_SETTINGS&#125; /root/.m2/settings.xml</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 先复制 pom 文件以利用缓存</span></span><br><span class="line"><span class="comment"># pom 文件不变，依赖的下载就会使用缓存，源代码改变只会触发编译，不会重新下载依赖</span></span><br><span class="line"><span class="comment"># -B: 批处理模式</span></span><br><span class="line"><span class="comment"># dependency:resolve: 预下载声明在 pom.xml 中的依赖</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> pom.xml ./</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn dependency:resolve -B</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制源代码和其他文件</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> src ./src/</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> sh ./sh/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 构建应用</span></span><br><span class="line"><span class="comment"># -am 同时构建所列模块的依赖模块</span></span><br><span class="line"><span class="comment"># -B 以&quot;批处理模式&quot;运行 Maven，减少输出信息</span></span><br><span class="line"><span class="comment"># -DskipUTs 跳过单元测试</span></span><br><span class="line"><span class="comment"># -DskipITs 跳过集成测试</span></span><br><span class="line"><span class="comment"># --no-transfer-progress 不显示文件传输进度，减少输出</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn clean package -am -B -DskipUTs -DskipITs --no-transfer-progress</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 2: BUILD IMAGE</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;BASE_JAVA_IMAGE&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ARGs in LABEL</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> maintainer=<span class="string">&quot;<span class="variable">$&#123;MAINTAINER&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      version=<span class="string">&quot;<span class="variable">$&#123;APP_VERSION&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      description=<span class="string">&quot;<span class="variable">$&#123;APP_NAME&#125;</span>&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set environment variables</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME</span><br><span class="line"><span class="keyword">ARG</span> APP_USER</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> WORK_HOME=$&#123;WORK_HOME&#125;</span><br><span class="line"><span class="keyword">ENV</span> ARTHAS_OUTPUT_DIR=$&#123;WORK_HOME&#125;/arthas-output</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian 方式创建用户和目录</span></span><br><span class="line"><span class="comment"># install -d -m 避免 chown 命令导致镜像膨胀</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> groupadd --system <span class="variable">$&#123;APP_GROUP&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    useradd --system --gid <span class="variable">$&#123;APP_GROUP&#125;</span> --shell /bin/false <span class="variable">$&#123;APP_USER&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    install -d -m 755 -o <span class="variable">$&#123;APP_USER&#125;</span> -g <span class="variable">$&#123;APP_GROUP&#125;</span> <span class="variable">$&#123;WORK_HOME&#125;</span>/logs <span class="variable">$&#123;WORK_HOME&#125;</span>/arthas-output</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> <span class="variable">$&#123;WORK_HOME&#125;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy application files</span></span><br><span class="line"><span class="comment"># 这里使用 --chown=$&#123;APP_USER&#125;:$&#123;APP_GROUP&#125; 是为了避免单独使用chown -R $&#123;APP_USER&#125;:$&#123;APP_GROUP&#125;命令，导致镜像大小膨胀1倍</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> target/*-exec.jar ./app.jar</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> sh ./</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=arthas-downloader --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> /opt/arthas ./arthas/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">chmod</span> +x ./run.sh</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Switch to app user</span></span><br><span class="line"><span class="keyword">USER</span> $&#123;APP_USER&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;./run.sh&quot;</span>]</span></span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>docker</category>
-      </categories>
-      <tags>
-        <tag>docker</tag>
-        <tag>dockerfile</tag>
-        <tag>基础镜像</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Feign 更换 Client</title>
     <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
     <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
@@ -407,6 +375,38 @@
         <tag>feign</tag>
         <tag>rpc</tag>
         <tag>微服务</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>dockerfile</title>
+    <url>/2025/02/10/docker/dockerfile/posts/undefined/</url>
+    <content><![CDATA[<h3 id="Dockerignore"><a href="#Dockerignore" class="headerlink" title="Dockerignore"></a>Dockerignore</h3><blockquote>
+<p>dockerfile中忽略特定的文件和目录</p>
+</blockquote>
+<ul>
+<li>示例表示忽略全部，除了一些必要的</li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line">*</span><br><span class="line">!pom.xml</span><br><span class="line">!sh</span><br><span class="line">!src</span><br></pre></td></tr></table></figure>
+
+<h3 id="DockerFile"><a href="#DockerFile" class="headerlink" title="DockerFile"></a>DockerFile</h3><blockquote>
+<p>构建java基础项目docker镜像</p>
+</blockquote>
+<ul>
+<li>提供 maven 编译构建 + 运行</li>
+<li><code>BASE_JAVA_IMAGE</code> 基础的java镜像，建议选择带有jre的基础java镜像</li>
+<li><code>MAVEN_IMAGE</code> maven编译的基础镜像，建议与java版本对应</li>
+<li>内置 <code>arthas</code></li>
+<li>内置运行脚本 <a href="/files/java/run.sh">run.sh</a></li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="code"><pre><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Global ARGs (build-time variables)</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在 FROM 指令中是可以直接使用的</span></span><br><span class="line"><span class="comment"># ARG 定义的变量在不同的构建阶段需要重新定义</span></span><br><span class="line"><span class="comment"># ARG 是构建时的变量，不能在容器中访问，而ENV是环境变量</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Base images</span></span><br><span class="line"><span class="keyword">ARG</span> BASE_JAVA_IMAGE=eclipse-temurin:<span class="number">8</span>-jdk-jammy</span><br><span class="line"><span class="keyword">ARG</span> MAVEN_IMAGE=maven:<span class="number">3</span>-eclipse-temurin-<span class="number">8</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Application info</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME=aws-starter</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION=<span class="number">1.0</span></span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span>=<span class="number">17674030991</span>@<span class="number">163</span>.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># Arthas</span></span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION=<span class="number">3.7</span>.<span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Directory structure</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME=/opt/deployments</span><br><span class="line"><span class="keyword">ARG</span> APP_USER=app</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP=app</span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 0 : Download Arthas</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> alpine:latest AS arthas-downloader</span><br><span class="line"><span class="keyword">ARG</span> ARTHAS_VERSION</span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> apk add --no-cache wget unzip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">mkdir</span> -p /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    wget -q https://maven.aliyun.com/repository/public/com/taobao/arthas/arthas-packaging/<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>/arthas-packaging-<span class="variable">$&#123;ARTHAS_VERSION&#125;</span>-bin.zip -O arthas-bin.zip &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    unzip -q arthas-bin.zip -d /opt/arthas &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    <span class="built_in">rm</span> -f arthas-bin.zip</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 1 : BUILD JAR</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;MAVEN_IMAGE&#125; AS maven-builder</span><br><span class="line"></span><br><span class="line"><span class="comment"># Maven configuration</span></span><br><span class="line"><span class="keyword">ENV</span> MAVEN_OPTS=<span class="string">&quot;-Dmaven.test.skip=true -Dmaven.compile.fork=true&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 自定义 settings.xml</span></span><br><span class="line"><span class="comment"># 使用 --build-arg 传入本地 settings.xml 的路径</span></span><br><span class="line"><span class="comment"># ARG MAVEN_SETTINGS</span></span><br><span class="line"><span class="comment"># COPY $&#123;MAVEN_SETTINGS&#125; /root/.m2/settings.xml</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 先复制 pom 文件以利用缓存</span></span><br><span class="line"><span class="comment"># pom 文件不变，依赖的下载就会使用缓存，源代码改变只会触发编译，不会重新下载依赖</span></span><br><span class="line"><span class="comment"># -B: 批处理模式</span></span><br><span class="line"><span class="comment"># dependency:resolve: 预下载声明在 pom.xml 中的依赖</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> pom.xml ./</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn dependency:resolve -B</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制源代码和其他文件</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> src ./src/</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> sh ./sh/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 构建应用</span></span><br><span class="line"><span class="comment"># -am 同时构建所列模块的依赖模块</span></span><br><span class="line"><span class="comment"># -B 以&quot;批处理模式&quot;运行 Maven，减少输出信息</span></span><br><span class="line"><span class="comment"># -DskipUTs 跳过单元测试</span></span><br><span class="line"><span class="comment"># -DskipITs 跳过集成测试</span></span><br><span class="line"><span class="comment"># --no-transfer-progress 不显示文件传输进度，减少输出</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> mvn clean package -am -B -DskipUTs -DskipITs --no-transfer-progress</span></span><br><span class="line"></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="comment"># Stage 2: BUILD IMAGE</span></span><br><span class="line"><span class="comment">####################################################################</span></span><br><span class="line"><span class="keyword">FROM</span> $&#123;BASE_JAVA_IMAGE&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ARGs in LABEL</span></span><br><span class="line"><span class="keyword">ARG</span> APP_NAME</span><br><span class="line"><span class="keyword">ARG</span> APP_VERSION</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">MAINTAINER</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> maintainer=<span class="string">&quot;<span class="variable">$&#123;MAINTAINER&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      version=<span class="string">&quot;<span class="variable">$&#123;APP_VERSION&#125;</span>&quot;</span> \</span></span><br><span class="line"><span class="language-bash">      description=<span class="string">&quot;<span class="variable">$&#123;APP_NAME&#125;</span>&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set environment variables</span></span><br><span class="line"><span class="keyword">ARG</span> WORK_HOME</span><br><span class="line"><span class="keyword">ARG</span> APP_USER</span><br><span class="line"><span class="keyword">ARG</span> APP_GROUP</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> WORK_HOME=$&#123;WORK_HOME&#125;</span><br><span class="line"><span class="keyword">ENV</span> ARTHAS_OUTPUT_DIR=$&#123;WORK_HOME&#125;/arthas-output</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian 方式创建用户和目录</span></span><br><span class="line"><span class="comment"># install -d -m 避免 chown 命令导致镜像膨胀</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> groupadd --system <span class="variable">$&#123;APP_GROUP&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    useradd --system --gid <span class="variable">$&#123;APP_GROUP&#125;</span> --shell /bin/false <span class="variable">$&#123;APP_USER&#125;</span> &amp;&amp; \</span></span><br><span class="line"><span class="language-bash">    install -d -m 755 -o <span class="variable">$&#123;APP_USER&#125;</span> -g <span class="variable">$&#123;APP_GROUP&#125;</span> <span class="variable">$&#123;WORK_HOME&#125;</span>/logs <span class="variable">$&#123;WORK_HOME&#125;</span>/arthas-output</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> <span class="variable">$&#123;WORK_HOME&#125;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy application files</span></span><br><span class="line"><span class="comment"># 这里使用 --chown=$&#123;APP_USER&#125;:$&#123;APP_GROUP&#125; 是为了避免单独使用chown -R $&#123;APP_USER&#125;:$&#123;APP_GROUP&#125;命令，导致镜像大小膨胀1倍</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> target/*-exec.jar ./app.jar</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=maven-builder --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> sh ./</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> --from=arthas-downloader --<span class="built_in">chown</span>=<span class="variable">$&#123;APP_USER&#125;</span>:<span class="variable">$&#123;APP_GROUP&#125;</span> /opt/arthas ./arthas/</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">chmod</span> +x ./run.sh</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Switch to app user</span></span><br><span class="line"><span class="keyword">USER</span> $&#123;APP_USER&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;./run.sh&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>docker</category>
+      </categories>
+      <tags>
+        <tag>docker</tag>
+        <tag>dockerfile</tag>
+        <tag>基础镜像</tag>
       </tags>
   </entry>
   <entry>
@@ -1125,6 +1125,86 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>JVM与JFR事件-Java Virtual Machine/GC/Detailed/Z Allocation Stall</title>
+    <url>/2025/03/01/jfr/7.jvm-yu-jfr-shi-jian-z-allocation-stall/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本系列参考张哥JFR全系列</a></li>
+</ul>
+<h3 id="基础信息"><a href="#基础信息" class="headerlink" title="基础信息"></a>基础信息</h3><ul>
+<li>Type(JVM,JDK内部唯一标识，用于jfr配置): <code>jdk.ZAllocationStall</code></li>
+<li>Label(Event Type，用于显示): Z Allocation Stall</li>
+<li>Category(用于分类显示): Java Virtual Machine，GC，Detailed</li>
+<li>事件从<code>Java15</code>引入</li>
+<li>事件类型<ul>
+<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
+<li><code>JVM内部事件</code></li>
+</ul>
+</li>
+<li>此事件是基于使用的GC是 <code>ZGC</code></li>
+<li>此事件与 Object Allocation In New TLAB，Object Allocation Outside TLAB，Object Allocation Sample的<code>核心区别</code><ul>
+<li>如果对象分配失败，比如 java 对象堆内存不足抛出 OufOfMemoryError，那么这个分配<code>不会</code>被 Object Allocation In New TLAB，Object Allocation Outside TLAB，Object Allocation Sample 采集到</li>
+<li>但是对于最后分配失败的对象，在尝试分配前，很大概率会触发内存不足</li>
+<li><code>ZGC</code> 思路与其他 GC 不同，ZGC 的实现思路是尽量避免阻塞线程。其他 GC 或多或少有需要全局安全点（SafePoint）的阶段，阻塞所有应用线程，<br>不管应用线程是否需要分配对象。但是 ZGC 在 GC 跟不上应用线程分配内存的速度的时候，触发 <code>Allocation Stall</code>（从而被<code>Z Allocation Stall</code>这个事件采集到），<br>但是只有当前尝试分配内存的线程会遇到，没有尝试分配内存的线程会继续执行。</li>
+</ul>
+</li>
+</ul>
+<h3 id="事件触发时机"><a href="#事件触发时机" class="headerlink" title="事件触发时机"></a>事件触发时机</h3><ul>
+<li>使用 <code>ZGC</code></li>
+<li>在 GC 速度跟不上应用线程分配对象的速度时，应用线程尝试分配内存但是内存不足以分配的时候，该线程遇到 <code>Allocation Stall</code>，从而触发这个事件</li>
+</ul>
+<h3 id="jfc配置"><a href="#jfc配置" class="headerlink" title="jfc配置"></a>jfc配置</h3><ul>
+<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ZAllocationStall&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;threshold&quot;</span>&gt;</span>0 ms<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ZAllocationStall&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;threshold&quot;</span>&gt;</span>0 ms<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="事件字段"><a href="#事件字段" class="headerlink" title="事件字段"></a>事件字段</h3><ul>
+<li>Event Thread：线程的名字</li>
+<li><code>Duration</code>: 线程因 Allocation Stall 被阻塞等待 GC 回收足够内存的时间</li>
+<li><code>Size</code>: 触发事件的分配大小<ul>
+<li>对于小对象，很可能不是对象大小，大概率是 <code>TLAB</code> 大小</li>
+<li>对于大对象（超过 TLAB 大小），是实际大小</li>
+</ul>
+</li>
+<li><code>Type</code>: 从哪个区域分配（不同区域的分配策略，以及扫描回收的策略不一样）<ul>
+<li>small: 小对象在这个区域分配</li>
+<li>medium: 如果最大堆内存大于一定程度，就没必须有 medium。大于一定程度的堆内存，需要在 small 和 large 之间再增加一个区域粒度进行分配和管理</li>
+<li>large: 大对象在这个区域分配</li>
+</ul>
+</li>
+<li>线程栈</li>
+</ul>
+<h3 id="模拟突发分配大块内存"><a href="#模拟突发分配大块内存" class="headerlink" title="模拟突发分配大块内存"></a>模拟突发分配大块内存</h3><blockquote>
+<p>分配大块内存，甚至超过 Java 对象堆内存（类似于显示错误扫描全表，大查询等等）<br>启动参数使用 ZGC</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestZAllocationStall</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">      <span class="comment">// -Xmx32m</span></span><br><span class="line">      <span class="comment">// jdk 23</span></span><br><span class="line">      <span class="comment">// -XX:+UseZGC</span></span><br><span class="line">  </span><br><span class="line">      <span class="comment">// 初始化 JFR 记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      <span class="comment">// 启用 ZAllocationStall 事件和 JavaErrorThrow 事件</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.ZAllocationStall&quot;</span>);</span><br><span class="line">      <span class="comment">// JavaErrorThrow 会采集所有的Error，只有 OutOfMemoryError 不会采集(因为内存都不够了，再采集很大概率也采集不到)</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.JavaErrorThrow&quot;</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="comment">// jfr 启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">  </span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 分配一个 8 * 1G 的数组（ZGC无法使用压缩指针），超过 Xmx，抛出 OutOfMemoryError</span></span><br><span class="line">        Object[] array = <span class="keyword">new</span> <span class="title class_">Object</span>[<span class="number">1024</span> * <span class="number">1024</span> * <span class="number">1024</span>];</span><br><span class="line">      &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">                <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                        + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                        + ProcessHandle.current().pid()</span><br><span class="line">                        + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">        ).toPath();</span><br><span class="line">        recording.dump(path);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>查看 JFR，发现 Java Error 中并没有采集到 <code>OutOfMemoryError</code><br><img data-src="/images/jfr/22.png" alt="img"></li>
+<li>因为 JDK 的设计，对于 <code>OutOfMemoryError</code>，故意让 Java Error 采集不到，这有这个 Error（以及子类），Java Error 采集不到。<br>因为发生 OutOfMemoryError 的时候，是内存不足的时候，再产生 JFR 事件很可能失败，所以估计忽略这个 Error</li>
+<li>查看 <code>Z Allocation Stall</code> 事件，可以看到这个分配<br><img data-src="/images/jfr/25.png" alt="img"></li>
+</ul>
+<h3 id="模拟热点分配情况下发生内存泄漏"><a href="#模拟热点分配情况下发生内存泄漏" class="headerlink" title="模拟热点分配情况下发生内存泄漏"></a>模拟热点分配情况下发生内存泄漏</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestZAllocationStall</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, IOException &#123;</span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      <span class="comment">// 启用 ObjectAllocationSample 事件，每秒最多采样 5 个对象</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.ObjectAllocationSample&quot;</span>).with(<span class="string">&quot;throttle&quot;</span>, <span class="string">&quot;5/s&quot;</span>);</span><br><span class="line">      <span class="comment">// 启用 ObjectAllocationOutsideTLAB 事件</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>);</span><br><span class="line">      <span class="comment">// 启用 ZAllocationStall 事件</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.ZAllocationStall&quot;</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">  </span><br><span class="line">      <span class="comment">// 模拟正常业务运行分配对象</span></span><br><span class="line">      runBiz();</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">3</span>);</span><br><span class="line">      System.out.println(<span class="string">&quot;Start to create OOM&quot;</span>);</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM，看看 Allocation  Outside TLAB 是否可以捕捉到</span></span><br><span class="line">      runOOM();</span><br><span class="line">  </span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">7</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">  </span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">enum</span> <span class="title class_">TestEnum</span> &#123;</span><br><span class="line">      T1, T2, T3;</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runBiz</span><span class="params">()</span> &#123;</span><br><span class="line">      <span class="comment">// 模拟正常业务运行，多线程并发分配对象，朝生夕死</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">5</span>];</span><br><span class="line">      <span class="comment">// 创建虚拟线程的 Builder，前缀是 biz，编号从 0 开始</span></span><br><span class="line">      Thread.Builder.<span class="type">OfVirtual</span> <span class="variable">builder</span> <span class="operator">=</span> Thread.ofVirtual().name(<span class="string">&quot;biz&quot;</span>, <span class="number">0</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">        threads[i] = builder.start(() -&gt; &#123;</span><br><span class="line">          List&lt;Object&gt; objects = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">          <span class="keyword">while</span> (!Thread.currentThread().isInterrupted()) &#123;</span><br><span class="line">            <span class="comment">// 分配普通 Object 和 Enum 对象数组</span></span><br><span class="line">            objects.add(<span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">            objects.add(TestAllocationSample.TestEnum.values());</span><br><span class="line">            <span class="keyword">if</span> (objects.size() &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">              objects.clear();</span><br><span class="line">            &#125;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">  </span><br><span class="line">      <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">          TimeUnit.SECONDS.sleep(<span class="number">10</span>);</span><br><span class="line">          <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">            threads[i].interrupt();</span><br><span class="line">            System.out.println(<span class="string">&quot;Thread &quot;</span> + threads[i].getName() + <span class="string">&quot; interrupted&quot;</span>);</span><br><span class="line">          &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">          <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">      thread.start();</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">static</span> Map&lt;Object, Object&gt; map = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;();</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runOOM</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，一直不回收，但是不触发 OutOfMemoryError</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">5</span>];</span><br><span class="line">      Thread.Builder.<span class="type">OfVirtual</span> <span class="variable">builder</span> <span class="operator">=</span> Thread.ofVirtual().name(<span class="string">&quot;oom&quot;</span>, <span class="number">0</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">        threads[i] = builder.start(() -&gt; &#123;</span><br><span class="line">          <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> <span class="number">0</span>; j &lt; <span class="number">1000000</span>; j++) &#123;</span><br><span class="line">            map.put(<span class="keyword">new</span> <span class="title class_">Object</span>(), <span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">          &#125;</span><br><span class="line">          System.out.println(<span class="string">&quot;Thread &quot;</span> + Thread.currentThread().getName() + <span class="string">&quot; finish&quot;</span>);</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">  </span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">        threads[i].join();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><img data-src="/images/jfr/26.png" alt="img"></li>
+</ul>
+<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><ul>
+<li>保持打开这个事件的采集<ul>
+<li>对于显示那种异常的大查询，无论分配成功与否，只要触发 Allocation Stall 基本就能采集到，针对大对象，大概率可以采集到，如果对象大小大于 Java 堆内存，必定可以采集到</li>
+<li>对于持续小对象的内存泄漏，很可能也是因为放入一个容器导致。这个容器扩容的时候，大概率触发这个事件。但是对于这个场景，看到的噪声比较多。</li>
+</ul>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JFR</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>JFR</tag>
+        <tag>监控</tag>
+        <tag>对象分配</tag>
+        <tag>GC</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>JVM与JFR事件-Java Application/Statistics/Class Loading Statistics</title>
     <url>/2025/03/01/jfr/8.jvm-yu-jfr-shi-jian-class-loading-statistics/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -1214,86 +1294,6 @@ flowchart TD
         <tag>JFR</tag>
         <tag>监控</tag>
         <tag>类加载</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>JVM与JFR事件-Java Virtual Machine/GC/Detailed/Z Allocation Stall</title>
-    <url>/2025/03/01/jfr/7.jvm-yu-jfr-shi-jian-z-allocation-stall/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本系列参考张哥JFR全系列</a></li>
-</ul>
-<h3 id="基础信息"><a href="#基础信息" class="headerlink" title="基础信息"></a>基础信息</h3><ul>
-<li>Type(JVM,JDK内部唯一标识，用于jfr配置): <code>jdk.ZAllocationStall</code></li>
-<li>Label(Event Type，用于显示): Z Allocation Stall</li>
-<li>Category(用于分类显示): Java Virtual Machine，GC，Detailed</li>
-<li>事件从<code>Java15</code>引入</li>
-<li>事件类型<ul>
-<li><code>埋点事件：即满足某些条件会触发的采集事件</code></li>
-<li><code>JVM内部事件</code></li>
-</ul>
-</li>
-<li>此事件是基于使用的GC是 <code>ZGC</code></li>
-<li>此事件与 Object Allocation In New TLAB，Object Allocation Outside TLAB，Object Allocation Sample的<code>核心区别</code><ul>
-<li>如果对象分配失败，比如 java 对象堆内存不足抛出 OufOfMemoryError，那么这个分配<code>不会</code>被 Object Allocation In New TLAB，Object Allocation Outside TLAB，Object Allocation Sample 采集到</li>
-<li>但是对于最后分配失败的对象，在尝试分配前，很大概率会触发内存不足</li>
-<li><code>ZGC</code> 思路与其他 GC 不同，ZGC 的实现思路是尽量避免阻塞线程。其他 GC 或多或少有需要全局安全点（SafePoint）的阶段，阻塞所有应用线程，<br>不管应用线程是否需要分配对象。但是 ZGC 在 GC 跟不上应用线程分配内存的速度的时候，触发 <code>Allocation Stall</code>（从而被<code>Z Allocation Stall</code>这个事件采集到），<br>但是只有当前尝试分配内存的线程会遇到，没有尝试分配内存的线程会继续执行。</li>
-</ul>
-</li>
-</ul>
-<h3 id="事件触发时机"><a href="#事件触发时机" class="headerlink" title="事件触发时机"></a>事件触发时机</h3><ul>
-<li>使用 <code>ZGC</code></li>
-<li>在 GC 速度跟不上应用线程分配对象的速度时，应用线程尝试分配内存但是内存不足以分配的时候，该线程遇到 <code>Allocation Stall</code>，从而触发这个事件</li>
-</ul>
-<h3 id="jfc配置"><a href="#jfc配置" class="headerlink" title="jfc配置"></a>jfc配置</h3><ul>
-<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ZAllocationStall&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;threshold&quot;</span>&gt;</span>0 ms<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ZAllocationStall&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;stackTrace&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;threshold&quot;</span>&gt;</span>0 ms<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="事件字段"><a href="#事件字段" class="headerlink" title="事件字段"></a>事件字段</h3><ul>
-<li>Event Thread：线程的名字</li>
-<li><code>Duration</code>: 线程因 Allocation Stall 被阻塞等待 GC 回收足够内存的时间</li>
-<li><code>Size</code>: 触发事件的分配大小<ul>
-<li>对于小对象，很可能不是对象大小，大概率是 <code>TLAB</code> 大小</li>
-<li>对于大对象（超过 TLAB 大小），是实际大小</li>
-</ul>
-</li>
-<li><code>Type</code>: 从哪个区域分配（不同区域的分配策略，以及扫描回收的策略不一样）<ul>
-<li>small: 小对象在这个区域分配</li>
-<li>medium: 如果最大堆内存大于一定程度，就没必须有 medium。大于一定程度的堆内存，需要在 small 和 large 之间再增加一个区域粒度进行分配和管理</li>
-<li>large: 大对象在这个区域分配</li>
-</ul>
-</li>
-<li>线程栈</li>
-</ul>
-<h3 id="模拟突发分配大块内存"><a href="#模拟突发分配大块内存" class="headerlink" title="模拟突发分配大块内存"></a>模拟突发分配大块内存</h3><blockquote>
-<p>分配大块内存，甚至超过 Java 对象堆内存（类似于显示错误扫描全表，大查询等等）<br>启动参数使用 ZGC</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestZAllocationStall</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">      <span class="comment">// -Xmx32m</span></span><br><span class="line">      <span class="comment">// jdk 23</span></span><br><span class="line">      <span class="comment">// -XX:+UseZGC</span></span><br><span class="line">  </span><br><span class="line">      <span class="comment">// 初始化 JFR 记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      <span class="comment">// 启用 ZAllocationStall 事件和 JavaErrorThrow 事件</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.ZAllocationStall&quot;</span>);</span><br><span class="line">      <span class="comment">// JavaErrorThrow 会采集所有的Error，只有 OutOfMemoryError 不会采集(因为内存都不够了，再采集很大概率也采集不到)</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.JavaErrorThrow&quot;</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="comment">// jfr 启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">  </span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 分配一个 8 * 1G 的数组（ZGC无法使用压缩指针），超过 Xmx，抛出 OutOfMemoryError</span></span><br><span class="line">        Object[] array = <span class="keyword">new</span> <span class="title class_">Object</span>[<span class="number">1024</span> * <span class="number">1024</span> * <span class="number">1024</span>];</span><br><span class="line">      &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">                <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                        + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                        + ProcessHandle.current().pid()</span><br><span class="line">                        + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">        ).toPath();</span><br><span class="line">        recording.dump(path);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li>查看 JFR，发现 Java Error 中并没有采集到 <code>OutOfMemoryError</code><br><img data-src="/images/jfr/22.png" alt="img"></li>
-<li>因为 JDK 的设计，对于 <code>OutOfMemoryError</code>，故意让 Java Error 采集不到，这有这个 Error（以及子类），Java Error 采集不到。<br>因为发生 OutOfMemoryError 的时候，是内存不足的时候，再产生 JFR 事件很可能失败，所以估计忽略这个 Error</li>
-<li>查看 <code>Z Allocation Stall</code> 事件，可以看到这个分配<br><img data-src="/images/jfr/25.png" alt="img"></li>
-</ul>
-<h3 id="模拟热点分配情况下发生内存泄漏"><a href="#模拟热点分配情况下发生内存泄漏" class="headerlink" title="模拟热点分配情况下发生内存泄漏"></a>模拟热点分配情况下发生内存泄漏</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestZAllocationStall</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, IOException &#123;</span><br><span class="line">      <span class="type">WhiteBox</span> <span class="variable">whiteBox</span> <span class="operator">=</span> WhiteBox.getWhiteBox();</span><br><span class="line">      <span class="comment">// 初始化jfr记录</span></span><br><span class="line">      <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">      <span class="comment">// 启用 ObjectAllocationSample 事件，每秒最多采样 5 个对象</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.ObjectAllocationSample&quot;</span>).with(<span class="string">&quot;throttle&quot;</span>, <span class="string">&quot;5/s&quot;</span>);</span><br><span class="line">      <span class="comment">// 启用 ObjectAllocationOutsideTLAB 事件</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.ObjectAllocationOutsideTLAB&quot;</span>);</span><br><span class="line">      <span class="comment">// 启用 ZAllocationStall 事件</span></span><br><span class="line">      recording.enable(<span class="string">&quot;jdk.ZAllocationStall&quot;</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="comment">// JFR 记录启动</span></span><br><span class="line">      recording.start();</span><br><span class="line">      <span class="comment">// 强制 fullgc 防止程序接下来发生 gc</span></span><br><span class="line">      <span class="comment">// 同时可以区分初始化带来的其他线程的TLAB相关的日志</span></span><br><span class="line">      whiteBox.fullGC();</span><br><span class="line">  </span><br><span class="line">      <span class="comment">// 模拟正常业务运行分配对象</span></span><br><span class="line">      runBiz();</span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">3</span>);</span><br><span class="line">      System.out.println(<span class="string">&quot;Start to create OOM&quot;</span>);</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，但是不触发 OOM，看看 Allocation  Outside TLAB 是否可以捕捉到</span></span><br><span class="line">      runOOM();</span><br><span class="line">  </span><br><span class="line">      TimeUnit.SECONDS.sleep(<span class="number">7</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">      <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">              <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                      + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                      + ProcessHandle.current().pid()</span><br><span class="line">                      + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">      ).toPath();</span><br><span class="line">      recording.dump(path);</span><br><span class="line">  </span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">enum</span> <span class="title class_">TestEnum</span> &#123;</span><br><span class="line">      T1, T2, T3;</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runBiz</span><span class="params">()</span> &#123;</span><br><span class="line">      <span class="comment">// 模拟正常业务运行，多线程并发分配对象，朝生夕死</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">5</span>];</span><br><span class="line">      <span class="comment">// 创建虚拟线程的 Builder，前缀是 biz，编号从 0 开始</span></span><br><span class="line">      Thread.Builder.<span class="type">OfVirtual</span> <span class="variable">builder</span> <span class="operator">=</span> Thread.ofVirtual().name(<span class="string">&quot;biz&quot;</span>, <span class="number">0</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">        threads[i] = builder.start(() -&gt; &#123;</span><br><span class="line">          List&lt;Object&gt; objects = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">          <span class="keyword">while</span> (!Thread.currentThread().isInterrupted()) &#123;</span><br><span class="line">            <span class="comment">// 分配普通 Object 和 Enum 对象数组</span></span><br><span class="line">            objects.add(<span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">            objects.add(TestAllocationSample.TestEnum.values());</span><br><span class="line">            <span class="keyword">if</span> (objects.size() &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">              objects.clear();</span><br><span class="line">            &#125;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">  </span><br><span class="line">      <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">          TimeUnit.SECONDS.sleep(<span class="number">10</span>);</span><br><span class="line">          <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">            threads[i].interrupt();</span><br><span class="line">            System.out.println(<span class="string">&quot;Thread &quot;</span> + threads[i].getName() + <span class="string">&quot; interrupted&quot;</span>);</span><br><span class="line">          &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">          <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">      thread.start();</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">static</span> Map&lt;Object, Object&gt; map = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;();</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runOOM</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">      <span class="comment">// 模拟并发向 ConcurrentHashMap 分配对象，一直不回收，但是不触发 OutOfMemoryError</span></span><br><span class="line">      Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[<span class="number">5</span>];</span><br><span class="line">      Thread.Builder.<span class="type">OfVirtual</span> <span class="variable">builder</span> <span class="operator">=</span> Thread.ofVirtual().name(<span class="string">&quot;oom&quot;</span>, <span class="number">0</span>);</span><br><span class="line">  </span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">        threads[i] = builder.start(() -&gt; &#123;</span><br><span class="line">          <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> <span class="number">0</span>; j &lt; <span class="number">1000000</span>; j++) &#123;</span><br><span class="line">            map.put(<span class="keyword">new</span> <span class="title class_">Object</span>(), <span class="keyword">new</span> <span class="title class_">Object</span>());</span><br><span class="line">          &#125;</span><br><span class="line">          System.out.println(<span class="string">&quot;Thread &quot;</span> + Thread.currentThread().getName() + <span class="string">&quot; finish&quot;</span>);</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">  </span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">        threads[i].join();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ul>
-<li><img data-src="/images/jfr/26.png" alt="img"></li>
-</ul>
-<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><ul>
-<li>保持打开这个事件的采集<ul>
-<li>对于显示那种异常的大查询，无论分配成功与否，只要触发 Allocation Stall 基本就能采集到，针对大对象，大概率可以采集到，如果对象大小大于 Java 堆内存，必定可以采集到</li>
-<li>对于持续小对象的内存泄漏，很可能也是因为放入一个容器导致。这个容器扩容的时候，大概率触发这个事件。但是对于这个场景，看到的噪声比较多。</li>
-</ul>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JFR</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>JFR</tag>
-        <tag>监控</tag>
-        <tag>对象分配</tag>
-        <tag>GC</tag>
       </tags>
   </entry>
   <entry>
@@ -2064,6 +2064,89 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>2-Reactor线程运转架构</title>
+    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
+    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
+<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
+</ul>
+<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
+<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
+</blockquote>
+<ul>
+<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
+</ul>
+<p>轮询策略如下：</p>
+<ul>
+<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
+<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
+<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
+</ul>
+<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
+<ul>
+<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
+</ul>
+<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
+<ul>
+<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
+</ul>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
+<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
+<ol>
+<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
+<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
+<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
+<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
+</ol>
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
+<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
+</blockquote>
+<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
+<blockquote>
+<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
+</blockquote>
+<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
+<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
+<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
+<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
+<blockquote>
+<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
+</blockquote>
+<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
+<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
+<ol>
+<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
+</ol>
+<blockquote>
+<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
+</blockquote>
+<ul>
+<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
+<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
+</ul>
+<blockquote>
+<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
+</blockquote>
+<ul>
+<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
+</ul>
+<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
+<ul>
+<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
+</ul>
+<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>3-Netty接收网络连接</title>
     <url>/2025/02/12/netty/3.netty-jie-shou-wang-luo-lian-jie/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
@@ -2163,89 +2246,6 @@ flowchart TD
 </ul>
 <p><img data-src="/images/netty/03_07.png" alt="netty"></p>
 <p><img data-src="/images/netty/03_08.png" alt="netty"></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>2-Reactor线程运转架构</title>
-    <url>/2025/02/10/netty/2.reactor-xian-cheng-yun-zhuan-jia-gou/posts/undefined/</url>
-    <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
-<li><a href="https://zhuanlan.zhihu.com/p/462717234">一文聊透Netty核心引擎Reactor的运转架构</a></li>
-</ul>
-<h2 id="Reactor-线程唤醒"><a href="#Reactor-线程唤醒" class="headerlink" title="Reactor 线程唤醒"></a>Reactor 线程唤醒</h2><blockquote>
-<p>以下三个条件中只要满足任意一个条件，Reactor 线程就会被从 Selector 上唤醒</p>
-</blockquote>
-<ul>
-<li>当 Selector 轮询到有 IO 活跃事件发生时。</li>
-</ul>
-<p>轮询策略如下：</p>
-<ul>
-<li><code>返回 -1：</code> switch 逻辑分支进入<code>SelectStrategy.SELECT分支</code>，表示此时<code>Reactor</code>中没有<code>异步任务</code>需要执行，<code>Reactor线程</code>可以安心的阻塞在<code>Selector</code>上等待<code>IO就绪事件</code>发生。</li>
-<li><code>返回 0：</code> switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中没有<code>IO就绪事件</code>但是有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>异步任务</code>的逻辑部分。</li>
-<li><code>返回 &gt; 0：</code>switch 逻辑分支进入<code>default分支</code>，表示此时<code>Reactor</code>中既有<code>IO就绪事件</code>发生也有<code>异步任务</code>需要执行，流程通过<code>default分支</code>直接进入了处理<code>IO就绪事件</code>和执行<code>异步任务</code>逻辑部分</li>
-</ul>
-<p><img data-src="/images/netty/02_01.PNG" alt="netty"></p>
-<ul>
-<li>当 Reactor 线程需要执行的<code>定时任务</code>到达任务执行时间<code>deadline</code>时。</li>
-</ul>
-<p><img data-src="/images/netty/02_02.PNG" alt="netty"></p>
-<ul>
-<li>当有<code>异步任务</code>提交给 Reactor 时，Reactor 线程需要从<code>Selector</code>上被唤醒，这样才能及时的去执行<code>异步任务</code>。</li>
-</ul>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p><img data-src="/images/netty/02_03.PNG" alt="netty"></p>
-<h2 id="Reactor-线程工作体系"><a href="#Reactor-线程工作体系" class="headerlink" title="Reactor 线程工作体系"></a>Reactor 线程工作体系</h2><p><img data-src="/images/netty/02_04.PNG" alt="netty"></p>
-<ol>
-<li>Reactor 线程在 Selector 上阻塞获取 IO 就绪事件。在这个模块中首先会去检查当前是否有异步任务需要执行，如果有异步需要执行，那么不管当前有没有 IO 就绪事件都不能阻塞在 Selector 上，随后会去非阻塞的轮询一下 Selector 上是否有 IO 就绪事件，如果有，正好可以和异步任务一起执行。优先处理 IO 就绪事件，在执行异步任务</li>
-<li>如果当前没有异步任务需要执行，那么 Reactor 线程会接着查看是否有定时任务需要执行，如果有则在 Selector 上阻塞直到定时任务的到期时间 deadline，或者满足其他唤醒条件被唤醒。如果没有定时任务需要执行，Reactor 线程则会在 Selector 上一直阻塞直到满足唤醒条件。</li>
-<li>当 Reactor 线程满足唤醒条件被唤醒后，首先会去判断当前是因为有 IO 就绪事件被唤醒还是因为有异步任务需要执行被唤醒或者是两者都有。随后 Reactor 线程就会去处理 IO 就绪事件和执行异步任务</li>
-<li>最后 Reactor 线程返回循环起点不断的重复上述三个步骤</li>
-</ol>
-<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><h3 id="外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？"><a href="#外部线程提交一个任务给-Reactor-线程，reactor-线程怎么从-select-阻塞中释放出来，执行任务？" class="headerlink" title="外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？"></a>外部线程提交一个任务给 Reactor 线程，reactor 线程怎么从 select 阻塞中释放出来，执行任务？</h3><blockquote>
-<p>通过外部线程执行 selector.wakeup（） 方法唤醒线程</p>
-</blockquote>
-<p>外部线程通过 <code>execute</code> 方法添加任务时会判断是否需要唤醒线程，如果需要则唤醒线程</p>
-<blockquote>
-<p>io.netty.util.concurrent.SingleThreadEventExecutor#execute(java.lang.Runnable)</p>
-</blockquote>
-<p>只要不是 LazyRunnable 任务，都会唤醒线程</p>
-<p><img data-src="/images/netty/02_05.png" alt="netty"></p>
-<p>这里会调用到👇🏻这个方法，其中 <code>immediate</code> 是上面的第二个参数，这里是 true，<code>addTaskWakesUp</code> 表示是否只有 addTask 方法时才唤醒线程，这里默认为<code>false</code>，所以会继续执行 wake（） 方法</p>
-<p><img data-src="/images/netty/02_06.png" alt="netty"></p>
-<blockquote>
-<p>io.netty.channel.nio.NioEventLoop#wakeup</p>
-</blockquote>
-<p>会调用到 NioEventLoop#wake 方法，nextWakeupNanos 是一个 AtomicLong 类型的值，默认是 AWAKE（-1）表示当前 reactor 线程是唤醒的状态，下面判断很简单，如果 reactor 线程当前不是唤醒的状态，那么调用  <code>selector.wakeup()</code> 进行唤醒</p>
-<p><img data-src="/images/netty/02_07.png" alt="netty"></p>
-<ol>
-<li><h3 id="待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？"><a href="#待执行的异步任务非常多，是否会影响到-reactor-线程的-IO-任务？" class="headerlink" title="待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？"></a>待执行的异步任务非常多，是否会影响到 reactor 线程的 IO 任务？</h3></li>
-</ol>
-<blockquote>
-<p>无论什么时候，当有<code>IO就绪事件</code>到来时，<code>Reactor</code>都需要保证<code>IO事件</code>被及时完整的处理完，而<code>ioRatio</code>主要限制的是执行<code>异步任务</code>所需用时，防止<code>Reactor线程</code>处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</p>
-</blockquote>
-<ul>
-<li>当<code>ioRatio = 100</code>时，表示无需考虑执行时间的限制，当有<code>IO就绪事件</code>时（<code>strategy &gt; 0</code>）<code>Reactor线程</code>需要优先处理<code>IO就绪事件</code>，处理完<code>IO事件</code>后，执行所有的<code>异步任务</code>包括：普通任务，尾部任务，定时任务。无时间限制</li>
-<li>当<code>ioRatio</code>设置的值不为<code>100</code>时，默认为<code>50</code>。需要先统计出执行<code>IO事件</code>的用时<code>ioTime</code>，根据<code>ioTime * (100 - ioRatio) / ioRatio</code>计算出，后面执行<code>异步任务</code>的限制时间。也就是说<code>Reactor线程</code>需要在这个限定的时间内，执行有限的异步任务，防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<blockquote>
-<p>默认情况下，执行<code>IO事件</code>用时和执行<code>异步任务</code>用时比例设置的是一比一。 <code>ioRatio</code>设置的越高，则<code>Reactor线程</code>执行异步任务的时间占比<code>越小</code></p>
-</blockquote>
-<ul>
-<li>如果此时没有<code>IO事件</code>需要处理，Netty 只允许<code>Reactor线程</code>最多执行<code>64</code>个异步任务，然后就结束执行。转去继续轮训<code>IO就绪事件</code>。核心目的还是防止<code>Reactor线程</code>由于处理<code>异步任务</code>时间过长而导致<code>I/O 事件</code>得不到及时地处理</li>
-</ul>
-<p><img data-src="/images/netty/02_08.png" alt="netty"></p>
-<ul>
-<li>由于系统调用<code>System.nanoTime()</code>需要一定的系统开销，所以每执行完<code>64</code>个<code>异步任务</code>的时候才会去检查一下<code>执行时间</code>是否到达了<code>deadline</code>。如果到达了执行截止时间<code>deadline</code>则退出停止执行<code>异步任务</code>。如果没有到达<code>deadline</code>则继续从普通任务队列中取出任务循环执行下</li>
-</ul>
-<p><img data-src="/images/netty/02_09.png" alt="netty"></p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>Netty</category>
@@ -3149,62 +3149,6 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>JVM内存解析 - 2.JVM 内存申请与使用流程</title>
-    <url>/2025/03/01/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-jvm-nei-cun-shen-qing-yu-shi-yong/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 2.JVM 内存申请与使用流程</p>
-</blockquote>
-<ul>
-<li><a href="https://juejin.cn/post/7225875600644407357">JVM 内存申请与使用流程</a></li>
-</ul>
-<h2 id="Linux-下内存管理模型简述"><a href="#Linux-下内存管理模型简述" class="headerlink" title="Linux 下内存管理模型简述"></a>Linux 下内存管理模型简述</h2><ul>
-<li><a href="https://mp.weixin.qq.com/s?__biz=Mzg2MzU3Mjc3Ng==&mid=2247486732&idx=1&sn=435d5e834e9751036c96384f6965b328&chksm=ce77cb4bf900425d33d2adfa632a4684cf7a63beece166c1ffedc4fdacb807c9413e8c73f298&token=1468822011&lang=zh_CN&scene=21&key=d9f8952995f1859ec52d8f5d9e6ab4720ffabd5403c103322ee7ec6f45279c0d6ff004df4d91e603b8da30fc862da32560064a1680e06e498f1478dedf8d24cd54abfe5bbf80610ac6a1ecfcadeceb1ce74fd27e061bc962a5e9d18c369786619a9ac7ad030b16a0f350638aed32ec61ad2c47b2df53b2fffac6419c8a55feb1&ascene=2&uin=MTQxMDM0OTkyNA==&devicetype=Windows+11+x64&version=6308011a&exportkey=n_ChQIAhIQLReSAiPPBq/rjeEsvhWLGhLpAQIE97dBBAEAAAAAAPboBnzhWE0AAAAOpnltbLcz9gKNyK89dVj0LB8MByB+LnarvTJ9k5LjHnaHSiRCVUH6zSSXMnbZ9AQCusp6IDK5hwtnugd9Du4BG2pqPuJHPIkVIcUMia320lXFN61yM/+2MKyl86soaJUlu0zu8x69eop1Fbdi4YBaoocZrDbr+Buq4hsy+Kf6ElIQw+6gPfQqllJ5R86pa0DoVOjdnD2bi7ZuxdMyvcOPEu3pDa5H/BgY1A+DcifqtVZlp+5LoJKYNhtlZg1zOS06RY15Ry0DdonN38efMsG2Req/&acctmode=0&pass_ticket=ywhUvrTZ0ZCaWLuvLdidNGnNwyS7T41V+KEL2N0td3RvwmPJ+ZREM3Zc0lit4wDxNhALtKqF2gPCKD6sLdagzA==&wx_header=1&fontgear=2">bin神系列文章深入理解linux内存</a></li>
-</ul>
-<p>CPU 是通过寻址来访问内存的，目前大部分 CPU 都是 64 位的，即寻址范围是：<code>0x0000 0000 0000 0000 ~ 0xFFFF FFFF FFFF FFFF</code>，即可以管理 16EB 的内存。但是，实际程序并不会直接通过 CPU 寻址访问到实际的物理内存，而是通过引入 <code>MMU</code>（Memory Management Unit 内存管理单元）与实际物理地址隔了一层虚拟内存的抽象。这样，程序申请以及访问的其实是<code>虚拟内存地址</code>，MMU 会将这个虚拟内存地址<code>映射</code>为实际的物理内存地址。同时，<code>为了减少内存碎片，以及增加内存分配效率</code>，在 MMU 的基础上 Linux 抽象了<code>内存分页（Paging）</code>的概念，将虚拟地址按固定大小分割成<code>页</code>（默认是 4K，如果平台支持更多更大的页大小 JVM 也是可以利用的，我们后面分析相关的 JVM 参数会看到），并在页被实际使用写入数据的时候，<code>映射同样大小的实际的物理内存</code>（页帧，Page Frame），或者是在物理内存不足的时候，将某些不常用的页<code>转移到其他存储设备比如磁盘上</code>。</p>
-<p>一般系统中会有多个进程使用内存，每个进程都有自己独立的虚拟内存空间，假设我们这里有三个进程，进程 A 访问的虚拟地址可以与进程 B 和进程 C 的虚拟地址相同，那么操作系统如何区分呢？即操作系统如何将这些虚拟地址转换为物理内存。这就需要页表了，页表也是每个进程独立的，操作系统会在给进程映射物理内存用来保存用户数据的时候，将物理内存保存到进程的页表里面。然后，进程访问虚拟内存空间的时候，通过页表找到物理内存：<br><img data-src="/images/jvm/memory/01.png" alt="img"></p>
-<p>页表如何将一个虚拟内存地址（我们需要注意一点，目前虚拟内存地址，用户空间与内核空间可以使用从 <code>0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF</code> 的地址，即 256TB），转化为物理内存的呢？下面我们举一个在 x86，64 位环境下四级页表的结构视图：<br><img data-src="/images/jvm/memory/02.png" alt="img"></p>
-<p>在这里，页表分为四个级别：PGD（Page Global Directory），PUD（Page Upper Directory），PMD（Page Middle Directory），PTE（Page Table Entry）。每个页表，里面的页表项，保存了指向下一个级别的页表的引用，除了最后一层的 PTE 里面的页表项保存的是指向用户数据内存的指针。如何将虚拟内存地址通过页表找到对应用户数据内存从而读取数据，过程是：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
-<ol>
-<li>取虚拟地址的 <code>39 ~ 47</code> 位（因为用户空间与内核空间可以使用从 0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF 的地址，即 47 位以下的地址）作为 offset，在<code>唯一</code>的 PGD 页面根据 offset 定位到 PGD 页表项 <code>pgd_t</code></li>
-<li>使用 <code>pgd_t</code> 定位到具体的 PUD 页面</li>
-<li>取虚拟地址的 <code>30 ~ 38</code> 位作为 offset，在对应的 PUD 页面根据 offset 定位到 PUD 页表项 <code>pud_t</code></li>
-<li>使用 <code>pud_t</code> 定位到具体的 PMD 页面</li>
-<li>取虚拟地址的 <code>21 ~ 29</code> 位作为 offset，在对应的 PMD 页面根据 offset 定位到 PMD 页表项 <code>pmd_t</code></li>
-<li>使用 <code>pmd_t</code> 定位到具体的 PTE 页面</li>
-<li>取虚拟地址的 <code>12 ~ 20</code> 位作为 offset，在对应的 PTE 页面根据 offset 定位到 PTE 页表项 <code>pte_t</code></li>
-<li>使用 <code>pte_t</code> 定位到具体的用户数据物理内存页面</li>
-<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset</li>
-</ol>
-<p>如果每次访问虚拟内存，都需要访问这个页表翻译成实际物理内存的话，性能太差。所以一般 CPU 里面都有一个 <code>TLB</code>（Translation Lookaside Buffer，翻译后备缓冲）存在，一般它属于 CPU 的 MMU 的一部分。<code>TLB 负责缓存虚拟内存与实际物理内存的映射关系</code>，一般 TLB 容量很小。每次访问虚拟内存，先查看 TLB 中是否有缓存，如果没有才会去页表查询。<br><img data-src="/images/jvm/memory/04.png" alt="img"><br>默认情况下，TLB 缓存的 key 为地址的 <code>12 ~ 47</code> 位，value 是实际的物理内存页面。这样前面从<code>第 1 到第 7 步</code>就可以被替换成访问 TLB 了：</p>
-<ol>
-<li>取虚拟地址的 <code>12 ~ 47</code> 位作为 key，访问 TLB，定位到具体的用户数据物理内存页面。</li>
-<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset。<br><img data-src="/images/jvm/memory/05.png" alt="img"></li>
-</ol>
-<p>TLB 整体可以容纳个数不多；页大小越大，TLB 能容纳的个数越少。但是整体看，TLB 能容纳的页大小还是增多的（比如 Nehalem 的 iTLB，页大小 4K 的时候，一共可以容纳 128 * 4 &#x3D; 512K 的内存，页大小 2M 的时候，一共可以容纳 2 * 7 &#x3D; 14M 的内存）</p>
-<p>JVM 中很多地方需要知道页大小，JVM 在初始化的时候，通过系统调用 <code>sysconf(_SC_PAGESIZE)</code> 读取出页大小，并保存下来以供后续使用。参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp</a></p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">//设置全局默认页大小，通过 Linux::page_size() 可以获取全局默认页大小</span></span><br><span class="line">Linux::<span class="built_in">set_page_size</span>(<span class="built_in">sysconf</span>(_SC_PAGESIZE));</span><br><span class="line"><span class="keyword">if</span> (Linux::<span class="built_in">page_size</span>() == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fatal</span>(<span class="string">&quot;os_linux.cpp: os::init: sysconf failed (%s)&quot;</span>,</span><br><span class="line">      os::<span class="built_in">strerror</span>(errno));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//将默认页大小加入可选的页大小列表，在涉及大页分配的时候有用</span></span><br><span class="line">_page_sizes.<span class="built_in">add</span>(Linux::<span class="built_in">page_size</span>());</span><br></pre></td></tr></table></figure>
-
-<h2 id="JVM-主要内存申请分配流程"><a href="#JVM-主要内存申请分配流程" class="headerlink" title="JVM 主要内存申请分配流程"></a>JVM 主要内存申请分配流程</h2><h3 id="每个子系统-Reserve-内存"><a href="#每个子系统-Reserve-内存" class="headerlink" title="每个子系统 Reserve 内存"></a>每个子系统 <code>Reserve</code> 内存</h3><p><strong>第一步，JVM 的每个子系统</strong>（例如 Java 堆，元空间，JIT 代码缓存，GC 等等等等），<strong>如果需要的话，在初始化的时候首先 <code>Reserve</code> 要分配区域的最大限制大小的内存</strong>（这个最大大小，需要按照<code>页大小对齐</code>（即是页大小的整数倍），默认页大小是前面提到的 <code>Linux::page_size()</code>），例如对于 Java 堆，就是最大堆大小（通过 <code>-Xmx</code> 或者 <code>-XX:MaxHeapSize</code>限制），还有对于代码缓存，也是最大代码缓存大小（通过 <code>-XX:ReservedCodeCacheSize</code> 限制）。Reserve 的目的是在虚拟内存空间划出一块内存专门给某个区域使用，这样做的好处是：</p>
-<ol>
-<li>隔离每个 JVM 子系统使用的内存的<code>虚拟空间</code>，这样在 JVM 代码有 bug 的时候（例如发生 Segment Fault 异常），通过报错中的<code>虚拟内存地址</code>可以快速定位到是哪个子系统出了问题。</li>
-<li>可以很方便的限制这个区域使用的最大内存大小。</li>
-<li>便于管理，<code>Reserve 不会触发操作系统分配映射实际物理内存</code>，这个区域可以在 Reserve 的区域内按需伸缩。</li>
-<li>便于一些 JIT 优化，例如我们故意将这个区域保留起来但是故意不将这个区域的虚拟内存映射物理内存，访问这块内存会造成 Segment Fault 异常。JVM 会预设 Segment Fault 异常的处理器，在处理器里面检查发生 Segment Fault 异常的内存地址属于哪个子系统的 Reserve 的区域，判断要做什么操作。后面我们会看到，null 检查抛出 <code>NullPointerException</code> 异常的优化，全局安全点，抛出 <code>StackOverflowError</code> 的实现，都和这个机制有关。</li>
-</ol>
-<p>在 Linux 的环境下，Reserve 通过  <code>mmap(2)</code> 系统调用实现，参数传入 <code>prot = PROT_NONE</code>，<code>PROT_NONE</code> 代表不会使用，即<code>不能做任何操作，包括读和写</code>。如果 JVM 使用这块内存，会发生 Segment Fault 异常。</p>
-<h3 id="每个子系统按照各自策略向操作系统申请映射物理内存"><a href="#每个子系统按照各自策略向操作系统申请映射物理内存" class="headerlink" title="每个子系统按照各自策略向操作系统申请映射物理内存"></a>每个子系统按照各自策略向操作系统申请映射物理内存</h3><p><strong>第二步，JVM 的每个子系统，按照各自的策略，通过 <code>Commit</code> 第一步 Reserve 的区域的<code>一部分扩展内存</code>（大小也一般页大小对齐的），从而<code>向操作系统申请映射物理内存</code>，通过 <code>Uncommit</code> 已经 Commit 的内存来释放物理内存给操作系统</strong></p>
-<p>Commit 内存之后，并不是操作系统会立刻分配物理内存，而是在向 <code>Commit 的内存里面写入数据的时候，操作系统才会实际映射内存</code>，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 AlwaysPreTouch 这个参数</p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JVM内存解析</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>内存</tag>
-        <tag>linux内存</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>JVM内存解析 - 1.Native Memory Tracking</title>
     <url>/2025/02/23/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-native-memory-tracking/posts/undefined/</url>
     <content><![CDATA[<blockquote>
@@ -3331,6 +3275,91 @@ sequenceDiagram
         <tag>JVM</tag>
         <tag>内存</tag>
         <tag>NMT</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM内存解析 - 2.JVM 内存申请与使用流程</title>
+    <url>/2025/03/01/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-jvm-nei-cun-shen-qing-yu-shi-yong/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 2.JVM 内存申请与使用流程</p>
+</blockquote>
+<ul>
+<li><a href="https://juejin.cn/post/7225875600644407357">JVM 内存申请与使用流程</a></li>
+</ul>
+<h2 id="Linux-下内存管理模型简述"><a href="#Linux-下内存管理模型简述" class="headerlink" title="Linux 下内存管理模型简述"></a>Linux 下内存管理模型简述</h2><ul>
+<li><a href="https://mp.weixin.qq.com/s?__biz=Mzg2MzU3Mjc3Ng==&mid=2247486732&idx=1&sn=435d5e834e9751036c96384f6965b328&chksm=ce77cb4bf900425d33d2adfa632a4684cf7a63beece166c1ffedc4fdacb807c9413e8c73f298&token=1468822011&lang=zh_CN&scene=21&key=d9f8952995f1859ec52d8f5d9e6ab4720ffabd5403c103322ee7ec6f45279c0d6ff004df4d91e603b8da30fc862da32560064a1680e06e498f1478dedf8d24cd54abfe5bbf80610ac6a1ecfcadeceb1ce74fd27e061bc962a5e9d18c369786619a9ac7ad030b16a0f350638aed32ec61ad2c47b2df53b2fffac6419c8a55feb1&ascene=2&uin=MTQxMDM0OTkyNA==&devicetype=Windows+11+x64&version=6308011a&exportkey=n_ChQIAhIQLReSAiPPBq/rjeEsvhWLGhLpAQIE97dBBAEAAAAAAPboBnzhWE0AAAAOpnltbLcz9gKNyK89dVj0LB8MByB+LnarvTJ9k5LjHnaHSiRCVUH6zSSXMnbZ9AQCusp6IDK5hwtnugd9Du4BG2pqPuJHPIkVIcUMia320lXFN61yM/+2MKyl86soaJUlu0zu8x69eop1Fbdi4YBaoocZrDbr+Buq4hsy+Kf6ElIQw+6gPfQqllJ5R86pa0DoVOjdnD2bi7ZuxdMyvcOPEu3pDa5H/BgY1A+DcifqtVZlp+5LoJKYNhtlZg1zOS06RY15Ry0DdonN38efMsG2Req/&acctmode=0&pass_ticket=ywhUvrTZ0ZCaWLuvLdidNGnNwyS7T41V+KEL2N0td3RvwmPJ+ZREM3Zc0lit4wDxNhALtKqF2gPCKD6sLdagzA==&wx_header=1&fontgear=2">bin神系列文章深入理解linux内存</a></li>
+</ul>
+<p>CPU 是通过寻址来访问内存的，目前大部分 CPU 都是 64 位的，即寻址范围是：<code>0x0000 0000 0000 0000 ~ 0xFFFF FFFF FFFF FFFF</code>，即可以管理 16EB 的内存。但是，实际程序并不会直接通过 CPU 寻址访问到实际的物理内存，而是通过引入 <code>MMU</code>（Memory Management Unit 内存管理单元）与实际物理地址隔了一层虚拟内存的抽象。这样，程序申请以及访问的其实是<code>虚拟内存地址</code>，MMU 会将这个虚拟内存地址<code>映射</code>为实际的物理内存地址。同时，<code>为了减少内存碎片，以及增加内存分配效率</code>，在 MMU 的基础上 Linux 抽象了<code>内存分页（Paging）</code>的概念，将虚拟地址按固定大小分割成<code>页</code>（默认是 4K，如果平台支持更多更大的页大小 JVM 也是可以利用的，我们后面分析相关的 JVM 参数会看到），并在页被实际使用写入数据的时候，<code>映射同样大小的实际的物理内存</code>（页帧，Page Frame），或者是在物理内存不足的时候，将某些不常用的页<code>转移到其他存储设备比如磁盘上</code>。</p>
+<p>一般系统中会有多个进程使用内存，每个进程都有自己独立的虚拟内存空间，假设我们这里有三个进程，进程 A 访问的虚拟地址可以与进程 B 和进程 C 的虚拟地址相同，那么操作系统如何区分呢？即操作系统如何将这些虚拟地址转换为物理内存。这就需要页表了，页表也是每个进程独立的，操作系统会在给进程映射物理内存用来保存用户数据的时候，将物理内存保存到进程的页表里面。然后，进程访问虚拟内存空间的时候，通过页表找到物理内存：<br><img data-src="/images/jvm/memory/01.png" alt="img"></p>
+<p>页表如何将一个虚拟内存地址（我们需要注意一点，目前虚拟内存地址，用户空间与内核空间可以使用从 <code>0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF</code> 的地址，即 256TB），转化为物理内存的呢？下面我们举一个在 x86，64 位环境下四级页表的结构视图：<br><img data-src="/images/jvm/memory/02.png" alt="img"></p>
+<p>在这里，页表分为四个级别：PGD（Page Global Directory），PUD（Page Upper Directory），PMD（Page Middle Directory），PTE（Page Table Entry）。每个页表，里面的页表项，保存了指向下一个级别的页表的引用，除了最后一层的 PTE 里面的页表项保存的是指向用户数据内存的指针。如何将虚拟内存地址通过页表找到对应用户数据内存从而读取数据，过程是：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
+<ol>
+<li>取虚拟地址的 <code>39 ~ 47</code> 位（因为用户空间与内核空间可以使用从 0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF 的地址，即 47 位以下的地址）作为 offset，在<code>唯一</code>的 PGD 页面根据 offset 定位到 PGD 页表项 <code>pgd_t</code></li>
+<li>使用 <code>pgd_t</code> 定位到具体的 PUD 页面</li>
+<li>取虚拟地址的 <code>30 ~ 38</code> 位作为 offset，在对应的 PUD 页面根据 offset 定位到 PUD 页表项 <code>pud_t</code></li>
+<li>使用 <code>pud_t</code> 定位到具体的 PMD 页面</li>
+<li>取虚拟地址的 <code>21 ~ 29</code> 位作为 offset，在对应的 PMD 页面根据 offset 定位到 PMD 页表项 <code>pmd_t</code></li>
+<li>使用 <code>pmd_t</code> 定位到具体的 PTE 页面</li>
+<li>取虚拟地址的 <code>12 ~ 20</code> 位作为 offset，在对应的 PTE 页面根据 offset 定位到 PTE 页表项 <code>pte_t</code></li>
+<li>使用 <code>pte_t</code> 定位到具体的用户数据物理内存页面</li>
+<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset</li>
+</ol>
+<p>如果每次访问虚拟内存，都需要访问这个页表翻译成实际物理内存的话，性能太差。所以一般 CPU 里面都有一个 <code>TLB</code>（Translation Lookaside Buffer，翻译后备缓冲）存在，一般它属于 CPU 的 MMU 的一部分。<code>TLB 负责缓存虚拟内存与实际物理内存的映射关系</code>，一般 TLB 容量很小。每次访问虚拟内存，先查看 TLB 中是否有缓存，如果没有才会去页表查询。<br><img data-src="/images/jvm/memory/04.png" alt="img"><br>默认情况下，TLB 缓存的 key 为地址的 <code>12 ~ 47</code> 位，value 是实际的物理内存页面。这样前面从<code>第 1 到第 7 步</code>就可以被替换成访问 TLB 了：</p>
+<ol>
+<li>取虚拟地址的 <code>12 ~ 47</code> 位作为 key，访问 TLB，定位到具体的用户数据物理内存页面。</li>
+<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset。<br><img data-src="/images/jvm/memory/05.png" alt="img"></li>
+</ol>
+<p>TLB 整体可以容纳个数不多；页大小越大，TLB 能容纳的个数越少。但是整体看，TLB 能容纳的页大小还是增多的（比如 Nehalem 的 iTLB，页大小 4K 的时候，一共可以容纳 128 * 4 &#x3D; 512K 的内存，页大小 2M 的时候，一共可以容纳 2 * 7 &#x3D; 14M 的内存）</p>
+<p>JVM 中很多地方需要知道页大小，JVM 在初始化的时候，通过系统调用 <code>sysconf(_SC_PAGESIZE)</code> 读取出页大小，并保存下来以供后续使用。参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp</a></p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">//设置全局默认页大小，通过 Linux::page_size() 可以获取全局默认页大小</span></span><br><span class="line">Linux::<span class="built_in">set_page_size</span>(<span class="built_in">sysconf</span>(_SC_PAGESIZE));</span><br><span class="line"><span class="keyword">if</span> (Linux::<span class="built_in">page_size</span>() == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fatal</span>(<span class="string">&quot;os_linux.cpp: os::init: sysconf failed (%s)&quot;</span>,</span><br><span class="line">      os::<span class="built_in">strerror</span>(errno));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//将默认页大小加入可选的页大小列表，在涉及大页分配的时候有用</span></span><br><span class="line">_page_sizes.<span class="built_in">add</span>(Linux::<span class="built_in">page_size</span>());</span><br></pre></td></tr></table></figure>
+
+<h2 id="JVM-主要内存申请分配流程"><a href="#JVM-主要内存申请分配流程" class="headerlink" title="JVM 主要内存申请分配流程"></a>JVM 主要内存申请分配流程</h2><h3 id="每个子系统-Reserve-内存"><a href="#每个子系统-Reserve-内存" class="headerlink" title="每个子系统 Reserve 内存"></a>每个子系统 <code>Reserve</code> 内存</h3><p><strong>第一步，JVM 的每个子系统</strong>（例如 Java 堆，元空间，JIT 代码缓存，GC 等等等等），<strong>如果需要的话，在初始化的时候首先 <code>Reserve</code> 要分配区域的最大限制大小的内存</strong>（这个最大大小，需要按照<code>页大小对齐</code>（即是页大小的整数倍），默认页大小是前面提到的 <code>Linux::page_size()</code>），例如对于 Java 堆，就是最大堆大小（通过 <code>-Xmx</code> 或者 <code>-XX:MaxHeapSize</code>限制），还有对于代码缓存，也是最大代码缓存大小（通过 <code>-XX:ReservedCodeCacheSize</code> 限制）。Reserve 的目的是在虚拟内存空间划出一块内存专门给某个区域使用，这样做的好处是：</p>
+<ol>
+<li>隔离每个 JVM 子系统使用的内存的<code>虚拟空间</code>，这样在 JVM 代码有 bug 的时候（例如发生 Segment Fault 异常），通过报错中的<code>虚拟内存地址</code>可以快速定位到是哪个子系统出了问题。</li>
+<li>可以很方便的限制这个区域使用的最大内存大小。</li>
+<li>便于管理，<code>Reserve 不会触发操作系统分配映射实际物理内存</code>，这个区域可以在 Reserve 的区域内按需伸缩。</li>
+<li>便于一些 JIT 优化，例如我们故意将这个区域保留起来但是故意不将这个区域的虚拟内存映射物理内存，访问这块内存会造成 Segment Fault 异常。JVM 会预设 Segment Fault 异常的处理器，在处理器里面检查发生 Segment Fault 异常的内存地址属于哪个子系统的 Reserve 的区域，判断要做什么操作。后面我们会看到，null 检查抛出 <code>NullPointerException</code> 异常的优化，全局安全点，抛出 <code>StackOverflowError</code> 的实现，都和这个机制有关。</li>
+</ol>
+<p>在 Linux 的环境下，Reserve 通过  <code>mmap(2)</code> 系统调用实现，参数传入 <code>prot = PROT_NONE</code>，<code>PROT_NONE</code> 代表不会使用，即<code>不能做任何操作，包括读和写</code>。如果 JVM 使用这块内存，会发生 Segment Fault 异常。</p>
+<h3 id="每个子系统按照各自策略向操作系统申请映射物理内存"><a href="#每个子系统按照各自策略向操作系统申请映射物理内存" class="headerlink" title="每个子系统按照各自策略向操作系统申请映射物理内存"></a>每个子系统按照各自策略向操作系统申请映射物理内存</h3><p><strong>第二步，JVM 的每个子系统，按照各自的策略，通过 <code>Commit</code> 第一步 Reserve 的区域的<code>一部分扩展内存</code>（大小也一般页大小对齐的），从而<code>向操作系统申请映射物理内存</code>，通过 <code>Uncommit</code> 已经 Commit 的内存来释放物理内存给操作系统</strong></p>
+<p>Commit 内存之后，<code>并不是操作系统会立刻分配物理内存</code>，而是在向 <code>Commit 的内存里面写入数据的时候，操作系统才会实际映射内存</code>，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数。</p>
+<h3 id="JVM-commit-的内存与实际占用内存的差异"><a href="#JVM-commit-的内存与实际占用内存的差异" class="headerlink" title="JVM commit 的内存与实际占用内存的差异"></a>JVM commit 的内存与实际占用内存的差异</h3><p>前面一节我们知道了，JVM 中大块内存，基本都是先 <code>reserve</code> 一大块，之后 <code>commit</code> 其中需要的一小块，然后开始读写处理内存，在 Linux 环境下，底层基于 <code>mmap(2)</code> 实现。但是需要注意一点的是，commit 之后，内存并不是立刻被分配了物理内存，而是真正往内存中 <code>store</code> 东西的时候，才会真正映射物理内存，如果是 load 读取也是可能不映射物理内存的。</p>
+<p>这其实是可能你平常看到但是忽略的现象，如果你使用的是 SerialGC，ParallelGC 或者 CMS GC，老年代的内存在有对象晋升到老年代之前，可能是不会映射物理内存的，虽然这块内存已经被 commit 了。并且年轻代可能也是随着使用才会映射物理内存。如果你用的是 ZGC，G1GC，或者 ShenandoahGC，那么内存用的会更激进些（主要因为分区算法划分导致内存被写入），<code>这是你在换 GC 之后看到物理内存内存快速上涨的原因之一</code>。JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数，这个参数我们后面会详细分析以及历史版本存在的缺陷。还有的差异，主要来源于在 uncommit 之后，系统可能还没有来的及将这块物理内存真正回收。</p>
+<p>所以，JVM 认为自己 commit 的内存，与实际系统分配的物理内存，<code>可能是有差异的</code>，可能 JVM 认为自己 commit 的内存比系统分配的物理内存多，也可能少。这就是为啥 <code>Native Memory Tracking（JVM 认为自己 commit 的内存）与实际其他系统监控中体现的物理内存使用指标对不上的原因</code>。</p>
+<h2 id="大页分配-UseLargePages"><a href="#大页分配-UseLargePages" class="headerlink" title="大页分配 UseLargePages"></a>大页分配 UseLargePages</h2><p>前面提到了虚拟内存需要映射物理内存才能使用，这个映射关系被保存在内存中的<code>页表（Page Table）</code>。现代 CPU 架构中一般有 <code>TLB</code> （Translation Lookaside Buffer，翻译后备缓冲，也称为页表寄存器缓冲）存在，在里面保存了经常使用的页表映射项。TLB 的大小有限，一般 TLB 如果只能容纳小于 100 个页表映射项。 我们能让程序的虚拟内存对应的页表映射项都处于 TLB 中，那么能大大提升程序性能，这就要尽量减少页表映射项的个数：<code>页表项个数 = 程序所需内存大小 / 页大小</code>。我们要么缩小程序所需内存，要么增大页大小。我们一般会考虑<code>增加页大小</code>，这就大页分配的由来，JVM 对于堆内存分配也支持大页分配，用于优化大堆内存的分配。那么 Linux 环境中有哪些大页分配的方式呢？</p>
+<h3 id="Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs"><a href="#Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs" class="headerlink" title="Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)"></a>Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">相关的 Linux 内核文档</a></p>
+<p>这是出现的比较早的大页分配方式，其实就是在之前提到的页表映射上面做文章：</p>
+<p><strong>默认 4K 页大小</strong>：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
+<p><strong>PMD 直接映射实际物理页面，页面大小为 <code>4K * 2^9 = 2M</code></strong>：<br><img data-src="/images/jvm/memory/06.png" alt="img"></p>
+<p><strong>PUD 直接映射实际物理页面，页面大小为 <code>2M * 2^9 = 1G</code></strong>：<br><img data-src="/images/jvm/memory/07.png" alt="img"></p>
+<p>但是，要想使用这个特性，需要操作系统构建的时候开启 <code>CONFIG_HUGETLBFS</code> 以及 <code>CONFIG_HUGETLB_PAGE</code>。之后，大的页面通常是通过系统管理控制预先分配并放入池里面的。然后，可以通过 <code>mmap</code> 系统调用或者 <code>shmget,shmat</code> 这些 SysV 的共享内存系统调用使用大页分配方式从池中申请内存。</p>
+<p>这种大页分配的方式，需要系统预设开启大页，预分配大页之外，对于代码也是有一定侵入性的，在灵活性上面查一些。但是带来的好处就是，性能表现上更加可控。另一种灵活性很强的 Transparent Huge Pages (THP) 方式，总是可能在性能表现上有一些意想不到的情况。</p>
+<h3 id="Linux-大页分配方式-Transparent-Huge-Pages-THP"><a href="#Linux-大页分配方式-Transparent-Huge-Pages-THP" class="headerlink" title="Linux 大页分配方式 - Transparent Huge Pages (THP)"></a>Linux 大页分配方式 - Transparent Huge Pages (THP)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/transhuge.txt">相关的 Linux 内核文档</a></p>
+<p>THP 是一种使用大页的第二种方法，它支持页面大小的自动升级和降级，这样对于用户使用代码基本没有侵入性，非常灵活。但是，前面也提到过，这种系统自己去做页面大小的升级降级，并且系统一般考虑通用性，所以在某些情况下会出现意想不到的性能瓶颈。</p>
+<h3 id="JVM-大页分配相关参数与机制"><a href="#JVM-大页分配相关参数与机制" class="headerlink" title="JVM 大页分配相关参数与机制"></a>JVM 大页分配相关参数与机制</h3><p>相关的参数如下：</p>
+<ul>
+<li><code>UseLargePages</code>：明确指定是否开启大页分配，如果关闭，那么下面的参数就都不生效。<code>在 linux 下默认为 false</code>。</li>
+<li><code>UseHugeTLBFS</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>mmap</code> 系统调用分配内存。在 linux 下默认为 false。</li>
+<li><code>UseSHM</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>shmget,shmat</code> 系统调用分配内存。在 linux 下默认为 false。</li>
+<li><code>UseTransparentHugePages</code>：明确指定是否使用前面第二种大页分配方式 THP。在 linux 下默认为 false。</li>
+<li><code>LargePageSizeInBytes</code>：指定明确的大页的大小，仅适用于前面第一种大页分配方式 hugetlbfs，并且必须属于操作系统支持的页大小否则不生效。默认为 0，即不指定</li>
+</ul>
+<p>首先，需要对以上参数做一个简单的判断：如果没有指定 <code>UseLargePages</code>，那么使用对应系统的默认 <code>UseLargePages</code> 的值，在 linux 下是 false，那么就不会启用大页分配。如果启动参数明确指定 <code>UseLargePages</code> 不启用，那么也不会启用大页分配。如果读取 <code>/proc/meminfo</code> 获取默认大页大小读取不到或者为 0，则代表系统也不支大页分配，大页分配也不启用。</p>
+<p>那么如果大页分配启用的话，我们需要初始化并验证大页分配参数可行性，流程是：<br><img data-src="/images/jvm/memory/08.png" alt="img"></p>
+<p>首先，JVM 会读取根据当前所处的平台与系统环境读取支持的页的大小，当然，这个是针对前面第一种大页分配方式 <code>hugetlbfs</code> 的。在 Linux 环境下，JVM 会从 <code>/proc/meminfo</code> 读取默认的 <strong><code>Hugepagesize</code></strong>，从 <code>/sys/kernel/mm/hugepages</code> 目录下检索<strong>所有支持的大页大小</strong>，这块可以参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp%E3%80%82">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp。</a><br>有关这些文件或者目录的详细信息，请参考前面章节提到的 Linux 内核文档：<a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt</a></p>
+<p>如果操作系统开启了 hugetlbfs，<code>/sys/kernel/mm/hugepages</code> 目录下的结构类似于：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tree /sys/kernel/mm/hugepages</span><br><span class="line">/sys/kernel/mm/hugepages</span><br><span class="line">├── hugepages-1048576kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-2048kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-32768kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">└── hugepages-64kB</span><br><span class="line">    ├── free_hugepages</span><br><span class="line">    ├── nr_hugepages</span><br><span class="line">    ├── nr_hugepages_mempolicy</span><br><span class="line">    ├── nr_overcommit_hugepages</span><br><span class="line">    ├── resv_hugepages</span><br><span class="line">    └── surplus_hugepages</span><br></pre></td></tr></table></figure>
+
+<p>这个 <code>hugepages-1048576kB</code> 就代表支持大小为 <code>1GB</code> 的页，<code>hugepages-2048kB</code> 就代表支持大小为 2MB 的页。</p>
+<p>如果没有设置 <code>UseHugeTLBFS</code>，也没有设置 <code>UseSHM</code>，也没有设置 <code>UseTransparentHugePages</code>，那么其实就是走默认的，默认使用 <code>hugetlbfs</code> 方式，不使用 <code>THP</code> 方式，因为如前所述， THP 在某些场景下有意想不到的性能瓶颈表现，在大型应用中，稳定性优先于峰值性能。之后，默认优先尝试 <code>UseHugeTLBFS</code>（即使用 <code>mmap</code> 系统调用通过 hugetlbfs 方式大页分配），不行的话再尝试 <code>UseSHM</code>（即使用 <code>shmget</code> 系统调用通过 hugetlbfs 方式大页分配）。这里只是验证下这些大页内存的分配方式是否可用，只有可用后面真正分配内存的时候才会采用那种可用的大页内存分配方式。</p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM内存解析</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>内存</tag>
+        <tag>linux内存</tag>
       </tags>
   </entry>
   <entry>
@@ -3619,6 +3648,383 @@ sequenceDiagram
       <tags>
         <tag>数据库</tag>
         <tag>ES</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>rocksdb</title>
+    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
+    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
+<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
+<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>属性名</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>总体统计</td>
+<td>rocksdb.stats</td>
+<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
+</tr>
+<tr>
+<td>数据库大小</td>
+<td>rocksdb.total-sst-files-size</td>
+<td>所有 SST 文件的总大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-table-readers-mem</td>
+<td>估计表读取器使用的内存</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-live-data-size</td>
+<td>估计的活跃数据大小</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>rocksdb.cur-size-all-mem-tables</td>
+<td>所有 MemTable 的当前大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.block-cache-usage</td>
+<td>块缓存的使用量</td>
+</tr>
+<tr>
+<td>压缩</td>
+<td>rocksdb.background-errors</td>
+<td>后台工作（如压缩）中的错误数</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.num-running-compactions</td>
+<td>当前运行的压缩任务数</td>
+</tr>
+<tr>
+<td>写入</td>
+<td>rocksdb.num-immutable-mem-table</td>
+<td>不可变 MemTable 的数量</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.mem-table-flush-pending</td>
+<td>是否有待处理的 MemTable 刷新</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.is-write-stopped</td>
+<td>写入是否已停止</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.actual-delayed-write-rate</td>
+<td>实际的延迟写入速率</td>
+</tr>
+<tr>
+<td>读取</td>
+<td>rocksdb.estimate-num-keys</td>
+<td>估计的键数量</td>
+</tr>
+<tr>
+<td>文件</td>
+<td>rocksdb.num-files-at-level<N></td>
+<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.live-sst-files-size</td>
+<td>活跃 SST 文件的大小</td>
+</tr>
+</tbody></table>
+<p>注意：</p>
+<ol>
+<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
+<li>某些属性可能会影响性能，应谨慎使用。</li>
+<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
+<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
+</ol>
+<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
+<li>为单个 key 提供并发控制<ol>
+<li>事务开始时获取逻辑锁</li>
+<li>提交时检查冲突</li>
+<li>避免显式锁定，提高并发性</li>
+<li>减少死锁风险</li>
+<li>计数器更新</li>
+<li>用户状态修改</li>
+</ol>
+</li>
+<li>确保多个 key 的一致性更新<ol>
+<li>将多个 key 操作组合为单一事务</li>
+<li>全部成功或全部失败</li>
+<li>维护相关数据的一致性</li>
+<li>简化复杂操作的实现</li>
+<li>用户注册（创建账户 + 初始化设置）</li>
+<li>订单处理（更新库存 + 记录订单）</li>
+</ol>
+</li>
+</ul>
+<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
+<li>触发时机：事务提交时</li>
+<li>检测对象：活跃事务之间的写集</li>
+<li>检测方式：<ol>
+<li>每个事务的 put 操作都会记录在写集中</li>
+<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
+<li>结果：如果发现冲突，后提交的事务通常会失败</li>
+</ol>
+</li>
+</ol>
+<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
+<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
+<li>检测对象：所有活跃事务的锁和写意图</li>
+<li>检测方式：<ol>
+<li>检查目标键是否被任何活跃事务锁定</li>
+<li>检查是否有活跃事务对该键有写意图</li>
+<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
+</ol>
+</li>
+</ol>
+<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
+<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
+<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
+<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
+<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
+<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
+</ol>
+<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
+<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
+<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
+<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
+<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
+<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
+<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
+<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全局序列号</td>
+<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
+</tr>
+<tr>
+<td>事务开始</td>
+<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
+</tr>
+<tr>
+<td>读操作</td>
+<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
+</tr>
+<tr>
+<td>写操作</td>
+<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
+</tr>
+<tr>
+<td>事务提交</td>
+<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
+</tr>
+<tr>
+<td>回滚处理</td>
+<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
+</tr>
+<tr>
+<td>冲突检测</td>
+<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
+</tr>
+<tr>
+<td>OptimisticTransactionDB</td>
+<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
+</tr>
+<tr>
+<td>TransactionDB</td>
+<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
+</tr>
+<tr>
+<td>隔离级别影响</td>
+<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
+</tr>
+<tr>
+<td>注意事项</td>
+<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
+</tr>
+</tbody></table>
+<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
+<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
+<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
+<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>rocksdb</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>rocksdb</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-consumer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 反序列化 实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.deserializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 反序列化实现 Deserializer 接口</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>group.id</strong></td>
+<td align="left"></td>
+<td align="left">消费组 ID</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>enable.auto.commit</strong></td>
+<td align="left">true</td>
+<td align="left">是否开启自动提交默认为 true</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.commit.interval.ms</strong></td>
+<td align="left">5000</td>
+<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>auto.offset.reset</strong></td>
+<td align="left">latest</td>
+<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.records</strong></td>
+<td align="left">500</td>
+<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.poll.interval.ms</strong></td>
+<td align="left">5 * 60 * 1000</td>
+<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>heartbeat.interval.ms</strong></td>
+<td align="left">3 * 1000</td>
+<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>session.timeout.ms</strong></td>
+<td align="left">10 * 1000</td>
+<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">fetch.max.bytes</td>
+<td align="left">50 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">max.partition.fetch.bytes</td>
+<td align="left">1 * 1024 * 1024</td>
+<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">receive.buffer.bytes</td>
+<td align="left">64 * 1024</td>
+<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
+<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
+<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
+<li>发生再平衡的场景<ul>
+<li>消费者加入或离开</li>
+<li>消费者遇到暂时故障或网络中断</li>
+<li>消费者闲置时间过长</li>
+<li>扩大了主题分区</li>
+</ul>
+</li>
+<li>再平衡的副作用<ul>
+<li>延迟增加</li>
+<li>吞吐量降低</li>
+<li>资源使用量增加</li>
+<li>潜在的数据重复和丢失</li>
+<li>复杂性增加</li>
+</ul>
+</li>
+<li>减少再平衡的措施<ul>
+<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
+<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
+<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
+<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
+</ul>
+</li>
+<li>增量合作再平衡<ul>
+<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
+<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
+<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
+</ul>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
@@ -4805,383 +5211,6 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>rocksdb</title>
-    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
-    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
-<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
-<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
-<thead>
-<tr>
-<th>类别</th>
-<th>属性名</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>总体统计</td>
-<td>rocksdb.stats</td>
-<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
-</tr>
-<tr>
-<td>数据库大小</td>
-<td>rocksdb.total-sst-files-size</td>
-<td>所有 SST 文件的总大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-table-readers-mem</td>
-<td>估计表读取器使用的内存</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-live-data-size</td>
-<td>估计的活跃数据大小</td>
-</tr>
-<tr>
-<td>内存使用</td>
-<td>rocksdb.cur-size-all-mem-tables</td>
-<td>所有 MemTable 的当前大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.block-cache-usage</td>
-<td>块缓存的使用量</td>
-</tr>
-<tr>
-<td>压缩</td>
-<td>rocksdb.background-errors</td>
-<td>后台工作（如压缩）中的错误数</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.num-running-compactions</td>
-<td>当前运行的压缩任务数</td>
-</tr>
-<tr>
-<td>写入</td>
-<td>rocksdb.num-immutable-mem-table</td>
-<td>不可变 MemTable 的数量</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.mem-table-flush-pending</td>
-<td>是否有待处理的 MemTable 刷新</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.is-write-stopped</td>
-<td>写入是否已停止</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.actual-delayed-write-rate</td>
-<td>实际的延迟写入速率</td>
-</tr>
-<tr>
-<td>读取</td>
-<td>rocksdb.estimate-num-keys</td>
-<td>估计的键数量</td>
-</tr>
-<tr>
-<td>文件</td>
-<td>rocksdb.num-files-at-level<N></td>
-<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.live-sst-files-size</td>
-<td>活跃 SST 文件的大小</td>
-</tr>
-</tbody></table>
-<p>注意：</p>
-<ol>
-<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
-<li>某些属性可能会影响性能，应谨慎使用。</li>
-<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
-<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
-</ol>
-<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
-<li>为单个 key 提供并发控制<ol>
-<li>事务开始时获取逻辑锁</li>
-<li>提交时检查冲突</li>
-<li>避免显式锁定，提高并发性</li>
-<li>减少死锁风险</li>
-<li>计数器更新</li>
-<li>用户状态修改</li>
-</ol>
-</li>
-<li>确保多个 key 的一致性更新<ol>
-<li>将多个 key 操作组合为单一事务</li>
-<li>全部成功或全部失败</li>
-<li>维护相关数据的一致性</li>
-<li>简化复杂操作的实现</li>
-<li>用户注册（创建账户 + 初始化设置）</li>
-<li>订单处理（更新库存 + 记录订单）</li>
-</ol>
-</li>
-</ul>
-<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
-<li>触发时机：事务提交时</li>
-<li>检测对象：活跃事务之间的写集</li>
-<li>检测方式：<ol>
-<li>每个事务的 put 操作都会记录在写集中</li>
-<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
-<li>结果：如果发现冲突，后提交的事务通常会失败</li>
-</ol>
-</li>
-</ol>
-<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
-<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
-<li>检测对象：所有活跃事务的锁和写意图</li>
-<li>检测方式：<ol>
-<li>检查目标键是否被任何活跃事务锁定</li>
-<li>检查是否有活跃事务对该键有写意图</li>
-<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
-</ol>
-</li>
-</ol>
-<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
-<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
-<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
-<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
-<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
-<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
-</ol>
-<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
-<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
-<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
-<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
-<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
-<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
-<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
-<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>方面</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>全局序列号</td>
-<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
-</tr>
-<tr>
-<td>事务开始</td>
-<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
-</tr>
-<tr>
-<td>读操作</td>
-<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
-</tr>
-<tr>
-<td>写操作</td>
-<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
-</tr>
-<tr>
-<td>事务提交</td>
-<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
-</tr>
-<tr>
-<td>回滚处理</td>
-<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
-</tr>
-<tr>
-<td>冲突检测</td>
-<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
-</tr>
-<tr>
-<td>OptimisticTransactionDB</td>
-<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
-</tr>
-<tr>
-<td>TransactionDB</td>
-<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
-</tr>
-<tr>
-<td>隔离级别影响</td>
-<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
-</tr>
-<tr>
-<td>注意事项</td>
-<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
-</tr>
-</tbody></table>
-<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
-<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
-<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
-<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>rocksdb</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>rocksdb</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-consumer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/consumer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 反序列化 实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*KEY_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.deserializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 反序列化实现 Deserializer 接口</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*VALUE_DESERIALIZER_CLASS_CONFIG*, StringDeserializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>group.id</strong></td>
-<td align="left"></td>
-<td align="left">消费组 ID</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*GROUP_ID_CONFIG*, *groupId*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>enable.auto.commit</strong></td>
-<td align="left">true</td>
-<td align="left">是否开启自动提交默认为 true</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*ENABLE_AUTO_COMMIT_CONFIG*, false);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.commit.interval.ms</strong></td>
-<td align="left">5000</td>
-<td align="left">自动提交间隔时间，只有在 enable.auto.commit 设置为 true 时生效，默认是 5s! ! offset 提交时间点&#x3D;max（单次 poll 时间， auto.commit.interval.ms）</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_COMMIT_INTERVAL_MS_CONFIG*, 5000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>auto.offset.reset</strong></td>
-<td align="left">latest</td>
-<td align="left">从最早的消息开始消费 默认是 latest，此参数表示当前消费组在没有 offset 的情况下，从哪里开始消费这里的没有 offset 指的是消费组第一次消费或者_consumer_offsets 主题中没有当前消费组的 offset! ! 建议设置为 earliest，否则扩分区时，新增加的消费者可能丢失新分区产生的数据；设置为 earliest 时业务上需要做好幂等处理</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*AUTO_OFFSET_RESET_CONFIG*, &quot;earliest&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.records</strong></td>
-<td align="left">500</td>
-<td align="left">一次拉取请求中拉取的最大消息数量 默认是 500 条! ! 建议调整此参数，业务处理时间超过 max.poll.interval.ms 会导致 rebalance，所以这里的单次拉取的数据量需要考虑处理时间；max.poll.records &lt; max.poll.interval.ms &#x2F; 单条消息处理时间</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_RECORDS_CONFIG*, 500);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.poll.interval.ms</strong></td>
-<td align="left">5 * 60 * 1000</td>
-<td align="left">拉取消息线程最长空闲时间，默认是 5 分钟，若超过这个间隔还没有发起 poll 请求，消费者会认为消费者挂掉了，然后触发 rebalance因为 poll 方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量! ! 如果业务处理时间较长，一定要增加此配置，否则会导致 rebalance</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_POLL_INTERVAL_MS_CONFIG*, 5 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>heartbeat.interval.ms</strong></td>
-<td align="left">3 * 1000</td>
-<td align="left">配置消费者的最大心跳间隔时间，默认是 3s心跳间隔时间是指消费者发送心跳给 broker 的时间间隔必须比 session.timeout.ms 小，一般是 session.timeout.ms 的 1&#x2F;3</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*HEARTBEAT_INTERVAL_MS_CONFIG*, 3 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>session.timeout.ms</strong></td>
-<td align="left">10 * 1000</td>
-<td align="left">配置消费者与 broker 的会话超时时间，默认是 10s超过此时间 broker 没有收到消费者的心跳，那么 broker 会认为消费者挂掉了，然后触发 rebalance! ! 此参数不能配置过大！！</td>
-<td align="left"></td>
-</tr>
-<tr>
-<td align="left">fetch.max.bytes</td>
-<td align="left">50 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取的最大数据量，默认是 50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*FETCH_MAX_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_FETCH_MAX_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">max.partition.fetch.bytes</td>
-<td align="left">1 * 1024 * 1024</td>
-<td align="left">一次请求从 kafka 中拉取单个分区的最大数据量，默认是 1M</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*MAX_PARTITION_FETCH_BYTES_CONFIG*, ConsumerConfig.*DEFAULT_MAX_PARTITION_FETCH_BYTES*);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">指定多久之后关闭闲置的连接，默认是 9 分钟</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">receive.buffer.bytes</td>
-<td align="left">64 * 1024</td>
-<td align="left">设置 socket 接收消息缓冲区（SO_RCVBUF）的大小，默认是 64KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*RECEIVE_BUFFER_CONFIG*, 64 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">配置 consumer 等待请求响应的最大时间，默认是 30s</td>
-<td align="left"><code>*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());</span><br><span class="line">    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交，默认是自动提交，间隔是5s</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);</span></span><br><span class="line">    <span class="comment">// 调整为手动提交</span></span><br><span class="line">    properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">// 自动提交间隔时间，只有在enable.auto.commit设置为true时生效，默认是5s</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, <span class="number">5000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从最早的消息开始消费 默认是latest，此参数表示当前消费组在没有offset的情况下，从哪里开始消费</span></span><br><span class="line">    <span class="comment">// 这里的没有offset指的是消费组第一次消费或者_consumer_offsets主题中没有当前消费组的offset</span></span><br><span class="line">    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, <span class="string">&quot;earliest&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取的最大数据量，默认是50M，此参数不是绝对的最大值，如果一条消息的大小比此参数还大，那么一次请求也会拉取这条消息</span></span><br><span class="line">    properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, ConsumerConfig.DEFAULT_FETCH_MAX_BYTES);</span><br><span class="line">    <span class="comment">// 一次请求从kafka中拉取单个分区的最大数据量，默认是1M</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一次拉取请求中拉取的最大消息数量 默认是500条</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, <span class="number">500</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定多久之后关闭闲置的连接，默认是9分钟</span></span><br><span class="line">    properties.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置socket接收消息缓冲区(SO_RCVBUF)的大小，默认是64KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, <span class="number">64</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送消息缓冲区(SO_SNDBUF)的大小，默认是128KB，如果设置为-1，那么使用操作系统的默认值，如果Consumer与Kafka处于不同的数据中心，那么可以适当增大此值</span></span><br><span class="line">    properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置consumer等待请求响应的最大时间，默认是30s</span></span><br><span class="line">    properties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// todo-wl 配置消费者的事务隔离级别</span></span><br><span class="line">    <span class="comment">// properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, &quot;read_committed&quot;);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 配置消费者的最大心跳间隔时间，默认是3s</span></span><br><span class="line">    <span class="comment">// 心跳间隔时间是指消费者发送心跳给broker的时间间隔</span></span><br><span class="line">    <span class="comment">// 必须比session.timeout.ms小，一般是session.timeout.ms的1/3</span></span><br><span class="line">    properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, <span class="number">3</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// !! 配置消费者与broker的会话超时时间，默认是10s</span></span><br><span class="line">    <span class="comment">// 超过此时间broker没有收到消费者的心跳，那么broker会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, <span class="number">10</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// !! 拉取消息线程最长空闲时间，默认是5分钟，若超过这个间隔还没有发起poll请求，消费者会认为消费者挂掉了，然后触发rebalance</span></span><br><span class="line">    <span class="comment">// 因为poll方法还涉及业务处理，所以如果业务处理时间过长，那么需要适当增大此值，或者减少单次拉取的消息数量</span></span><br><span class="line">    properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, <span class="number">5</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="Kafka-rebalance"><a href="#Kafka-rebalance" class="headerlink" title="Kafka-rebalance"></a>Kafka-rebalance</h2><ul>
-<li><a href="https://redpanda.com/guides/kafka-performance/kafka-rebalancing">kafka-rebalancing</a></li>
-<li>发生再平衡的场景<ul>
-<li>消费者加入或离开</li>
-<li>消费者遇到暂时故障或网络中断</li>
-<li>消费者闲置时间过长</li>
-<li>扩大了主题分区</li>
-</ul>
-</li>
-<li>再平衡的副作用<ul>
-<li>延迟增加</li>
-<li>吞吐量降低</li>
-<li>资源使用量增加</li>
-<li>潜在的数据重复和丢失</li>
-<li>复杂性增加</li>
-</ul>
-</li>
-<li>减少再平衡的措施<ul>
-<li>增加会话超时时间 session.timeout.ms，此参数不能设置太高，不然导致消费者长时间不活动进而导致消息堆积；heartbeat.interval.ms 此参数</li>
-<li>​       需要小于 session.timeout.ms，一般是 1&#x2F;3</li>
-<li>减少每个主题的分区，每个主题的分区过多会增加重新平衡的频率</li>
-<li>增加轮训间隔时间，max.poll.interval.ms 配置规定了消费者被视为非活动并从组中移除前的最长空闲时间，增加此时间助于避免消费者组的频繁更改</li>
-</ul>
-</li>
-<li>增量合作再平衡<ul>
-<li>Kafka 2.4 中引入了增量合作再平衡协议，以最大程度地减少 Kafka 再平衡造成的中断。在传统的再平衡中，组中的所有消费者在重新平衡过程中停止使用数据，通常称为“停止世界效应”。这会导致数据处理延迟和中断。</li>
-<li>增量合作再平衡协议将再平衡拆分为更小的子任务，消费者在这些子任务完成后继续使用数据。因此，重新平衡发生得更快，对数据处理的中断更少。</li>
-<li>该协议还为再平衡过程提供了更精细的控制。例如，它允许使用者根据其当前负载和容量协商他们将使用的特定分区集。这可以防止单个使用者的过载，并确保以更平衡的方式分配分区。</li>
-</ul>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
