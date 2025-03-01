@@ -161,3 +161,43 @@ tree /sys/kernel/mm/hugepages
 这个 `hugepages-1048576kB` 就代表支持大小为 `1GB` 的页，`hugepages-2048kB` 就代表支持大小为 2MB 的页。
 
 如果没有设置 `UseHugeTLBFS`，也没有设置 `UseSHM`，也没有设置 `UseTransparentHugePages`，那么其实就是走默认的，默认使用 `hugetlbfs` 方式，不使用 `THP` 方式，因为如前所述， THP 在某些场景下有意想不到的性能瓶颈表现，在大型应用中，稳定性优先于峰值性能。之后，默认优先尝试 `UseHugeTLBFS`（即使用 `mmap` 系统调用通过 hugetlbfs 方式大页分配），不行的话再尝试 `UseSHM`（即使用 `shmget` 系统调用通过 hugetlbfs 方式大页分配）。这里只是验证下这些大页内存的分配方式是否可用，只有可用后面真正分配内存的时候才会采用那种可用的大页内存分配方式。
+
+## JVM内存申请与分配机制分析
+### 内存管理的多级层次
+**`Reserve`** (预留) → **`Commit`** (提交) → **`Physical Allocation`** (物理分配)
+
+1. Reserve阶段：
+   - JVM向操作系统预留一块连续的虚拟地址空间
+   - 此时仅分配地址空间，不分配物理内存或交换空间
+   - 对应参数如 -Xmx 设置的最大堆内存
+2. Commit阶段：
+   - JVM向操作系统提交请求，准备使用之前预留的部分虚拟空间
+   - 操作系统标记这部分空间为"已提交"，准备关联物理内存
+   - 对应初始堆大小，如 -Xms 设置的内存
+3. 物理分配阶段:
+   - 当JVM实际写入数据到已提交的内存时，操作系统才分配物理内存页
+   - 这符合现代操作系统的"按需分页"(demand paging)机制
+   - 因此，已提交内存不等于实际使用的物理内存
+
+### 内存监控与差异
+`NMT(Native Memory Tracking)`显示的提交内存与进程实际使用的物理内存确实存在差异。
+1. NMT观察到的内存：
+   - 显示已提交(committed)的内存量
+   - 包括已向操作系统申请但可能尚未使用的内存
+   - 命令: jcmd <pid> VM.native_memory
+2. 实际物理内存使用
+   - 通过 /proc/<pid>/smaps_rollup 中的 PSS(Proportional Set Size)查看
+   - PSS比VSS和RSS更准确地反映进程实际的物理内存使用
+   - PSS = 私有内存 + 按比例分摊的共享内存
+
+### 内存监控的最佳实践
+1. JVM层面
+   - NMT: jcmd <pid> VM.native_memory
+   - JConsole/VisualVM可视化监控
+2. OS层面
+   - /proc/<pid>/smaps_rollup中的PSS
+   - top/htop命令的RES/RSS列
+   - numastat -p <pid>查看NUMA内存分布
+3. 高级监控
+   - perf工具分析内存访问模式
+   - BPF/eBPF工具追踪内存分配
