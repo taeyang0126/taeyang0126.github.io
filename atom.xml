@@ -6,7 +6,7 @@
   <link href="https://taeyang0126.github.io/atom.xml" rel="self"/>
   
   <link href="https://taeyang0126.github.io/"/>
-  <updated>2025-03-01T02:01:52.000Z</updated>
+  <updated>2025-03-01T03:01:52.000Z</updated>
   <id>https://taeyang0126.github.io/</id>
   
   <author>
@@ -15,6 +15,46 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>JVM与JFR事件-Java Application/Statistics/Class Loading Statistics</title>
+    <link href="https://taeyang0126.github.io/2025/03/01/jfr/8.jvm-yu-jfr-shi-jian-class-loading-statistics/posts/undefined/"/>
+    <id>https://taeyang0126.github.io/2025/03/01/jfr/8.jvm-yu-jfr-shi-jian-class-loading-statistics/posts/undefined/</id>
+    <published>2025-03-01T03:01:52.000Z</published>
+    <updated>2025-03-01T03:01:52.000Z</updated>
+    
+    <content type="html"><![CDATA[<ul><li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本系列参考张哥JFR全系列</a></li></ul><h3 id="基础信息"><a href="#基础信息" class="headerlink" title="基础信息"></a>基础信息</h3><ul><li>Type(JVM,JDK内部唯一标识，用于jfr配置): <code>jdk.ClassLoadingStatistics</code></li><li>Label(Event Type，用于显示): Class Loading Statistics</li><li>Category(用于分类显示): Java Application，Statistics</li><li>事件从<code>Java11</code>引入</li><li>事件类型<ul><li><code>定时事件</code>: 代表定时采集，没有线程栈信息，因为执行线程都是 <code>JFR Periodic Tasks</code> 线程，采集这个线程栈没有意义</li><li><code>JVM内部事件</code></li></ul></li></ul><h3 id="jfc配置"><a href="#jfc配置" class="headerlink" title="jfc配置"></a>jfc配置</h3><ul><li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ClassLoadingStatistics&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;period&quot;</span>&gt;</span>1000 ms<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li><li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ClassLoadingStatistics&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;period&quot;</span>&gt;</span>1000 ms<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li></ul><h3 id="事件字段"><a href="#事件字段" class="headerlink" title="事件字段"></a>事件字段</h3><ul><li><code>Loaded Class Count</code>: 加载类的个数 _class_loaded_count + _shard_classes_loaded_count</li><li><code>UnLoaded Class Count</code>: 卸载类的个数 _class_unloaded_count + _shard_classes_unloaded_count</li><li>这两个字段都是类似于 <code>OpenTelemetry</code> 中的 <code>Gauge</code> 类型字段，瞬时值</li><li>由此可以推测出，当前 JVM 内存中有多少个类 &#x3D; <code>Loaded Class Count - UnLoaded Class Count</code></li></ul><h3 id="采集原理"><a href="#采集原理" class="headerlink" title="采集原理"></a>采集原理</h3><ul><li>每隔 1000ms（默认配置），生成 <code>jdk.ClassLoadingStatistics</code> 事件</li><li>即在 JVM 层面，读取 <code>ClassLoadingService</code> 中的统计数据:<ul><li>加载类的个数: _class_loaded_count + _shard_classes_loaded_count</li><li>卸载类的个数: _class_unloaded_count + _shard_classes_unloaded_count</li></ul></li></ul><h3 id="统计数据的更新时机"><a href="#统计数据的更新时机" class="headerlink" title="统计数据的更新时机"></a>统计数据的更新时机</h3><ul><li>_classes_loaded_count: 每次通过非 CDS 方式加载一个类的时候 +1</li><li>_shard_classes_loaded_count: 每次通过 CDS 方式加载一个类的时候 +1</li><li>_class_unloaded_count: 每次卸载一个非 CDS 类的时候 +1</li><li>_shard_classes_unloaded_count: 每次卸载一个 CDS 类的时候 +1</li></ul><h3 id="什么是-CDS（Class-Data-Sharing）"><a href="#什么是-CDS（Class-Data-Sharing）" class="headerlink" title="什么是 CDS（Class Data Sharing）"></a>什么是 CDS（Class Data Sharing）</h3><ul><li><a href="https://openjdk.org/jeps/310">CDS</a></li><li>Java 10 引入，允许多个 Java 应用程序共享相同的类数据，这样可以减少内存占用</li><li>在启动时，JVM 可以从共享的类数据存储中加载类元数据，而不是每次都从 JAR 文件或类文件中读取</li></ul><h3 id="jfr事件观察"><a href="#jfr事件观察" class="headerlink" title="jfr事件观察"></a>jfr事件观察</h3><blockquote><p>使用 <code>spring-petclinic</code> 项目测试</p></blockquote><ul><li><img data-src="/images/jfr/27.png" alt="img"></li><li>使用图表类型，将两个指标放在折线图中，同时将默认的柱状图隐藏</li></ul><h3 id="还有哪些地方能看到这个事件相同的指标数据？"><a href="#还有哪些地方能看到这个事件相同的指标数据？" class="headerlink" title="还有哪些地方能看到这个事件相同的指标数据？"></a>还有哪些地方能看到这个事件相同的指标数据？</h3><ul><li>_classes_loaded_count，_shard_classes_loaded_count，_classes_unloaded_count，_shard_classes_unloaded_count 这四个在 JVM内部<br>都是通过 <code>PerfDataManager</code> 实现</li><li>所有 <code>PerfDataManager</code> 的数据，JVM 通过下面的虚拟文件暴露出来了<ul><li>默认位置: 临时文件目录 <code>/hsperfdata_用户/进程号</code><br><img data-src="/images/jfr/28.png" alt="img"></li></ul></li><li>很多 JVM 监控工具，比如 Jvisualvm，JConsole 等等，都会访问这个虚拟文件拿实时指标</li><li>Jstat 类加载数据也是读取这个<br><img data-src="/images/jfr/29.png" alt="img"></li><li>Java Mbean 里面也是读取的这些指标<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ManagementFactory.getClassLoadingMXBean().getTotalLoadedClassCount(); <span class="comment">// 等同于事件中的 loadedClassCount</span></span><br><span class="line">ManagementFactory.getClassLoadingMXBean().getUnloadedClassCount(); <span class="comment">// 等同于事件中的 unloadedClassCount</span></span><br><span class="line">ManagementFactory.getClassLoadingMXBean().getLoadedClassCount(); <span class="comment">// 即 loadedClassCount - unloadedClassCount</span></span><br></pre></td></tr></table></figure></li></ul><h3 id="结论与建议"><a href="#结论与建议" class="headerlink" title="结论与建议"></a>结论与建议</h3><ul><li>该事件默认开启，1s采集一次，消耗很小很小，是读取一个现成的 JVM 内部指标，不是通过遍历某个数据结构计数实现。</li><li>使用下面的视图，可以发现类加载和类卸载急剧变化的时候<br><img data-src="/images/jfr/27.png" alt="img"></li><li>一般用来定位：<ol><li>异常大量类加载的问题: 一些反序列化框架，例如老版本 fastjson，利用ASM 定义类加速反序列化，但是由于缓存设计有问题，导致某些情况<br>反序列化会加载大量的类</li><li>大量类的反复加载与卸载的性能问题: 有大量这样的类: 同一个类，一会加载，一会卸载。一般发生在使用大量 lambda 表达式的时候。</li></ol></li><li>需要结合哪些东西一起定位:<ul><li>由于这个事件只能找到变化大的时间段</li><li>具体要定位是哪些类，可以:<ul><li>添加类加载和类卸载日志: <code>-Xlog:class+load,class+unload</code> 这两个，默认的 info 级别就够<br><img data-src="/images/jfr/30.png" alt="img"></li><li>结合其他类加载相关 JFR 事件一起</li></ul></li></ul></li></ul><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+    
+    
+    <summary type="html">&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&amp;vd_source=3950f615078c921132561647ae6a1ddd&quot;&gt;本系列参考张哥JFR全系列&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&quot;基础信息&quot;&gt;&lt;a href=&quot;#基础信息&quot; class=&quot;headerlink&quot; title=&quot;基础信息&quot;&gt;&lt;/a&gt;基础信息&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;Type(JVM,JDK内部唯一标识，用于jfr配置): &lt;code&gt;jdk.ClassLoadingStatistics&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Label(Event Type，用于显示): Class Loading Statistics&lt;/li&gt;
+&lt;li&gt;Category(用于分类显示): Java Application，Statistics&lt;/li&gt;
+&lt;li&gt;事件从&lt;code&gt;Java11&lt;/code&gt;引入&lt;/li&gt;
+&lt;li&gt;事件类型&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;定时事件&lt;/code&gt;: 代表定时采集，没有线程栈信息，因为执行线程都是 &lt;code&gt;JFR Periodic Tasks&lt;/code&gt; 线程，采集这个线程栈没有意义&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;JVM内部事件&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;</summary>
+    
+    
+    
+    <category term="JFR" scheme="https://taeyang0126.github.io/categories/JFR/"/>
+    
+    
+    <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
+    
+    <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
+    
+    <category term="类加载" scheme="https://taeyang0126.github.io/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD/"/>
+    
+  </entry>
   
   <entry>
     <title>JVM与JFR事件-Java Virtual Machine/GC/Detailed/Z Allocation Stall</title>
@@ -647,33 +687,6 @@
     <category term="安全" scheme="https://taeyang0126.github.io/tags/%E5%AE%89%E5%85%A8/"/>
     
     <category term="防刷" scheme="https://taeyang0126.github.io/tags/%E9%98%B2%E5%88%B7/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>Netty中的细节优化</title>
-    <link href="https://taeyang0126.github.io/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/"/>
-    <id>https://taeyang0126.github.io/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</id>
-    <published>2025-02-12T12:02:22.000Z</published>
-    <updated>2025-02-12T12:02:22.000Z</updated>
-    
-    <content type="html"><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul><li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li><li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li></ul><p><img data-src="/images/netty/01.png" alt="netty"></p><ul><li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li></ul><p><img data-src="/images/netty/02.png" alt="netty"></p><h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul><li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li></ul><p><img data-src="/images/netty/03.png" alt="netty"></p><ul><li>从 reactor 数量不是 2 的倍数时使用取模运算</li></ul><p><img data-src="/images/netty/04.png" alt="netty"></p><h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p><p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p><p><img data-src="/images/netty/05.png" alt="netty"></p><h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul><li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li></ul><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-    
-    
-    <summary type="html">&lt;h3 id=&quot;优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率&quot;&gt;&lt;a href=&quot;#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率&quot; class=&quot;headerlink&quot; title=&quot;优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率&quot;&gt;&lt;/a&gt;优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率&lt;/h3&gt;&lt;ul&gt;
-&lt;li&gt;优化代码 &lt;code&gt;io.netty.channel.nio.NioEventLoop#openSelector&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;原生的 jdk selector 实现是 &lt;code&gt;sun.nio.ch.SelectorImpl&lt;/code&gt; 其中 IO 就绪事件存放容器是&lt;code&gt;Set&lt;/code&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;&lt;img data-src=&quot;/images/netty/01.png&quot; alt=&quot;netty&quot;&gt;&lt;/p&gt;</summary>
-    
-    
-    
-    <category term="Netty" scheme="https://taeyang0126.github.io/categories/Netty/"/>
-    
-    
-    <category term="Netty" scheme="https://taeyang0126.github.io/tags/Netty/"/>
-    
-    <category term="源码解析" scheme="https://taeyang0126.github.io/tags/%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"/>
     
   </entry>
   

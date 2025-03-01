@@ -1125,6 +1125,98 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>JVM与JFR事件-Java Application/Statistics/Class Loading Statistics</title>
+    <url>/2025/03/01/jfr/8.jvm-yu-jfr-shi-jian-class-loading-statistics/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本系列参考张哥JFR全系列</a></li>
+</ul>
+<h3 id="基础信息"><a href="#基础信息" class="headerlink" title="基础信息"></a>基础信息</h3><ul>
+<li>Type(JVM,JDK内部唯一标识，用于jfr配置): <code>jdk.ClassLoadingStatistics</code></li>
+<li>Label(Event Type，用于显示): Class Loading Statistics</li>
+<li>Category(用于分类显示): Java Application，Statistics</li>
+<li>事件从<code>Java11</code>引入</li>
+<li>事件类型<ul>
+<li><code>定时事件</code>: 代表定时采集，没有线程栈信息，因为执行线程都是 <code>JFR Periodic Tasks</code> 线程，采集这个线程栈没有意义</li>
+<li><code>JVM内部事件</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="jfc配置"><a href="#jfc配置" class="headerlink" title="jfc配置"></a>jfc配置</h3><ul>
+<li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ClassLoadingStatistics&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;period&quot;</span>&gt;</span>1000 ms<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ClassLoadingStatistics&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;period&quot;</span>&gt;</span>1000 ms<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="事件字段"><a href="#事件字段" class="headerlink" title="事件字段"></a>事件字段</h3><ul>
+<li><code>Loaded Class Count</code>: 加载类的个数 _class_loaded_count + _shard_classes_loaded_count</li>
+<li><code>UnLoaded Class Count</code>: 卸载类的个数 _class_unloaded_count + _shard_classes_unloaded_count</li>
+<li>这两个字段都是类似于 <code>OpenTelemetry</code> 中的 <code>Gauge</code> 类型字段，瞬时值</li>
+<li>由此可以推测出，当前 JVM 内存中有多少个类 &#x3D; <code>Loaded Class Count - UnLoaded Class Count</code></li>
+</ul>
+<h3 id="采集原理"><a href="#采集原理" class="headerlink" title="采集原理"></a>采集原理</h3><ul>
+<li>每隔 1000ms（默认配置），生成 <code>jdk.ClassLoadingStatistics</code> 事件</li>
+<li>即在 JVM 层面，读取 <code>ClassLoadingService</code> 中的统计数据:<ul>
+<li>加载类的个数: _class_loaded_count + _shard_classes_loaded_count</li>
+<li>卸载类的个数: _class_unloaded_count + _shard_classes_unloaded_count</li>
+</ul>
+</li>
+</ul>
+<h3 id="统计数据的更新时机"><a href="#统计数据的更新时机" class="headerlink" title="统计数据的更新时机"></a>统计数据的更新时机</h3><ul>
+<li>_classes_loaded_count: 每次通过非 CDS 方式加载一个类的时候 +1</li>
+<li>_shard_classes_loaded_count: 每次通过 CDS 方式加载一个类的时候 +1</li>
+<li>_class_unloaded_count: 每次卸载一个非 CDS 类的时候 +1</li>
+<li>_shard_classes_unloaded_count: 每次卸载一个 CDS 类的时候 +1</li>
+</ul>
+<h3 id="什么是-CDS（Class-Data-Sharing）"><a href="#什么是-CDS（Class-Data-Sharing）" class="headerlink" title="什么是 CDS（Class Data Sharing）"></a>什么是 CDS（Class Data Sharing）</h3><ul>
+<li><a href="https://openjdk.org/jeps/310">CDS</a></li>
+<li>Java 10 引入，允许多个 Java 应用程序共享相同的类数据，这样可以减少内存占用</li>
+<li>在启动时，JVM 可以从共享的类数据存储中加载类元数据，而不是每次都从 JAR 文件或类文件中读取</li>
+</ul>
+<h3 id="jfr事件观察"><a href="#jfr事件观察" class="headerlink" title="jfr事件观察"></a>jfr事件观察</h3><blockquote>
+<p>使用 <code>spring-petclinic</code> 项目测试</p>
+</blockquote>
+<ul>
+<li><img data-src="/images/jfr/27.png" alt="img"></li>
+<li>使用图表类型，将两个指标放在折线图中，同时将默认的柱状图隐藏</li>
+</ul>
+<h3 id="还有哪些地方能看到这个事件相同的指标数据？"><a href="#还有哪些地方能看到这个事件相同的指标数据？" class="headerlink" title="还有哪些地方能看到这个事件相同的指标数据？"></a>还有哪些地方能看到这个事件相同的指标数据？</h3><ul>
+<li>_classes_loaded_count，_shard_classes_loaded_count，_classes_unloaded_count，_shard_classes_unloaded_count 这四个在 JVM内部<br>都是通过 <code>PerfDataManager</code> 实现</li>
+<li>所有 <code>PerfDataManager</code> 的数据，JVM 通过下面的虚拟文件暴露出来了<ul>
+<li>默认位置: 临时文件目录 <code>/hsperfdata_用户/进程号</code><br><img data-src="/images/jfr/28.png" alt="img"></li>
+</ul>
+</li>
+<li>很多 JVM 监控工具，比如 Jvisualvm，JConsole 等等，都会访问这个虚拟文件拿实时指标</li>
+<li>Jstat 类加载数据也是读取这个<br><img data-src="/images/jfr/29.png" alt="img"></li>
+<li>Java Mbean 里面也是读取的这些指标<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">ManagementFactory.getClassLoadingMXBean().getTotalLoadedClassCount(); <span class="comment">// 等同于事件中的 loadedClassCount</span></span><br><span class="line">ManagementFactory.getClassLoadingMXBean().getUnloadedClassCount(); <span class="comment">// 等同于事件中的 unloadedClassCount</span></span><br><span class="line">ManagementFactory.getClassLoadingMXBean().getLoadedClassCount(); <span class="comment">// 即 loadedClassCount - unloadedClassCount</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="结论与建议"><a href="#结论与建议" class="headerlink" title="结论与建议"></a>结论与建议</h3><ul>
+<li>该事件默认开启，1s采集一次，消耗很小很小，是读取一个现成的 JVM 内部指标，不是通过遍历某个数据结构计数实现。</li>
+<li>使用下面的视图，可以发现类加载和类卸载急剧变化的时候<br><img data-src="/images/jfr/27.png" alt="img"></li>
+<li>一般用来定位：<ol>
+<li>异常大量类加载的问题: 一些反序列化框架，例如老版本 fastjson，利用ASM 定义类加速反序列化，但是由于缓存设计有问题，导致某些情况<br>反序列化会加载大量的类</li>
+<li>大量类的反复加载与卸载的性能问题: 有大量这样的类: 同一个类，一会加载，一会卸载。一般发生在使用大量 lambda 表达式的时候。</li>
+</ol>
+</li>
+<li>需要结合哪些东西一起定位:<ul>
+<li>由于这个事件只能找到变化大的时间段</li>
+<li>具体要定位是哪些类，可以:<ul>
+<li>添加类加载和类卸载日志: <code>-Xlog:class+load,class+unload</code> 这两个，默认的 info 级别就够<br><img data-src="/images/jfr/30.png" alt="img"></li>
+<li>结合其他类加载相关 JFR 事件一起</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JFR</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>JFR</tag>
+        <tag>监控</tag>
+        <tag>类加载</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>JVM与JFR事件-Java Virtual Machine/GC/Detailed/Z Allocation Stall</title>
     <url>/2025/03/01/jfr/7.jvm-yu-jfr-shi-jian-z-allocation-stall/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -1302,183 +1394,6 @@ flowchart TD
         <tag>对象分配</tag>
         <tag>OOM</tag>
         <tag>Heap Dump</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>k8s监控</title>
-    <url>/2025/02/10/k8s/k8s-jian-kong/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://kubernetes.io/zh-cn/docs/home/">官方文档</a></li>
-</ul>
-<h3 id="metric-server"><a href="#metric-server" class="headerlink" title="metric-server"></a>metric-server</h3><p>从 Kubernetes v1.8 开始，资源使用情况的监控可以通过 <strong>Metrics</strong> <strong>API</strong> 的形式获取，例如容器 CPU 和内存使用率。这些度量可以由用户直接访问（例如，通过使用 kubectl top 命令）；<strong>Metrics-Server</strong> 是集群核心监控数据的聚合器。通俗地说，它存储了集群中各节点的监控数据，并且提供了 API 以供分析和使用。Metrics-Server 作为一个 Deployment 对象默认部署在 Kubernetes 集群中。不过准确地说，它是 Deployment，Service，ClusterRole，ClusterRoleBinding，APIService，RoleBinding 等资源对象的综合体。</p>
-<ul>
-<li>metric-server 提供的是实时的指标（实际是最近一次采集的数据，保存在内存中），并没有数据库来存储</li>
-<li>这些数据指标并非由 metric-server 本身采集，而是由每个节点上的 cadvisor 采集，metric-server 只是发请求给 cadvisor 并将 metric 格式的数据转换成 aggregate api</li>
-<li><a href="https://cloud.tencent.com/developer/article/2180278">K8s 监控之 Metrics-Server 指标获取链路分析</a></li>
-</ul>
-<h4 id="一、验证-metric-server-功能"><a href="#一、验证-metric-server-功能" class="headerlink" title="一、验证 metric-server 功能"></a>一、验证 metric-server 功能</h4><ol>
-<li><p>通过 raw api 获取 cadvisor 指标</p>
- <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl get --raw=/api/v1/nodes/&#123;nodename&#125;/proxy/metrics/cadvisor</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>通过 cAdvisor 的本地接口&#x2F;metrics&#x2F;cadvisor 获取数据</p>
- <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 这里的token查看👇🏻这章的内容 </span></span><br><span class="line">curl -k -H <span class="string">&quot;Authorization: Bearer <span class="variable">$TOKEN</span>&quot;</span> https://127.0.0.1:10250/metrics/cadvisor</span><br></pre></td></tr></table></figure></li>
-</ol>
-<h4 id="二、处理-cadvisor-权限问题"><a href="#二、处理-cadvisor-权限问题" class="headerlink" title="二、处理 cadvisor 权限问题"></a>二、处理 cadvisor 权限问题</h4><ol>
-<li><p>新建 ServiceAccount</p>
- <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ServiceAccount</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">monitor</span></span><br><span class="line"><span class="attr">namespace:</span> <span class="string">kube-system</span></span><br></pre></td></tr></table></figure>
-</li>
-<li><p>新建 ClusterRole，构造访问权限</p>
- <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">rbac.authorization.k8s.io/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ClusterRole</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">metrics-reader</span></span><br><span class="line"><span class="attr">rules:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">apiGroups:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;&#x27;</span></span><br><span class="line">    <span class="attr">resources:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes/stats</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes/metrics</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes/proxy</span></span><br><span class="line">    <span class="attr">verbs:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">get</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">list</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">watch</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">apiGroups:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">metrics.k8s.io</span></span><br><span class="line">    <span class="attr">resources:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">pods</span></span><br><span class="line">    <span class="attr">verbs:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">get</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">list</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">watch</span></span><br></pre></td></tr></table></figure>
-</li>
-<li><p>绑定账号和角色 ClusterRoleBinding</p>
- <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">rbac.authorization.k8s.io/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ClusterRoleBinding</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">monitor-clusterrolebinding-i26re</span></span><br><span class="line"><span class="attr">roleRef:</span></span><br><span class="line"><span class="attr">apiGroup:</span> <span class="string">rbac.authorization.k8s.io</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ClusterRole</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">metrics-reader</span></span><br><span class="line"><span class="attr">subjects:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">kind:</span> <span class="string">ServiceAccount</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">monitor</span></span><br><span class="line">    <span class="attr">namespace:</span> <span class="string">kube-system</span></span><br></pre></td></tr></table></figure>
-</li>
-<li><p>给 ServiceAccount 生成 token</p>
- <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;kind&quot;:</span> <span class="string">&quot;Secret&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;apiVersion&quot;:</span> <span class="string">&quot;v1&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;metadata&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;monitor-token&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;annotations&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;kubernetes.io/service-account.name&quot;:</span> <span class="string">&quot;monitor&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;kubernetes.io/service-account-token&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>查看创建的 token</p>
- <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="string">kubectl</span> <span class="string">get</span> <span class="string">secret</span> <span class="string">monitor-token</span> <span class="string">-n</span> <span class="string">kube-system</span> <span class="string">-o</span> <span class="string">jsonpath=&#x27;&#123;.data.token&#125;&#x27;</span> <span class="string">|</span> <span class="string">base64</span> <span class="string">--decode</span></span><br></pre></td></tr></table></figure></li>
-</ol>
-<h4 id="三、配置-prometheus"><a href="#三、配置-prometheus" class="headerlink" title="三、配置 prometheus"></a>三、配置 prometheus</h4><ol>
-<li><p>具体配置</p>
- <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="comment"># cadvisor</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&#x27;kubernetes-cadvisor&#x27;</span></span><br><span class="line"><span class="attr">scheme:</span> <span class="string">https</span></span><br><span class="line"><span class="attr">tls_config:</span></span><br><span class="line">    <span class="attr">insecure_skip_verify:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">authorization:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">Bearer</span></span><br><span class="line">    <span class="attr">credentials:</span> <span class="string">token</span> <span class="comment"># 替换为ServiceAccount生成的token</span></span><br><span class="line"><span class="attr">kubernetes_sd_configs:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">api_server:</span> <span class="string">https://192.168.8.10:6443</span>  <span class="comment"># 替换为 Kubernetes API 服务器地址</span></span><br><span class="line">    <span class="attr">role:</span> <span class="string">node</span></span><br><span class="line">    <span class="attr">tls_config:</span></span><br><span class="line">    <span class="attr">insecure_skip_verify:</span> <span class="literal">true</span></span><br><span class="line">    <span class="attr">authorization:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">Bearer</span></span><br><span class="line">    <span class="attr">credentials:</span> <span class="string">token</span> <span class="comment"># 替换为ServiceAccount生成的token</span></span><br><span class="line"><span class="attr">relabel_configs:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">action:</span> <span class="string">labelmap</span></span><br><span class="line">    <span class="attr">regex:</span> <span class="string">__meta_kubernetes_node_label_(.+)</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">source_labels:</span> [<span class="string">__meta_kubernetes_node_address_InternalIP</span>] <span class="comment"># 这里实际是通过服务发现查询到其他的k8s集群结点</span></span><br><span class="line">    <span class="attr">target_label:</span> <span class="string">__address__</span></span><br><span class="line">    <span class="attr">replacement:</span> <span class="string">$&#123;1&#125;:10250</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">source_labels:</span> [<span class="string">__meta_kubernetes_node_name</span>]</span><br><span class="line">    <span class="attr">regex:</span> <span class="string">(.+)</span></span><br><span class="line">    <span class="attr">target_label:</span> <span class="string">__metrics_path__</span></span><br><span class="line">    <span class="attr">replacement:</span> <span class="string">/metrics/cadvisor</span></span><br></pre></td></tr></table></figure>
-</li>
-<li><p>查看配置是否成功</p>
-</li>
-</ol>
-<p><img data-src="/images/k8s/01.png" alt="img"></p>
-<h4 id="四、配置-grafana"><a href="#四、配置-grafana" class="headerlink" title="四、配置 grafana"></a>四、配置 grafana</h4><blockquote>
-<p>这里配置一个简单的 cpu、内存 <code>deployment</code> 图表</p>
-</blockquote>
-<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="attr">&quot;annotations&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;list&quot;:</span> [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;builtIn&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;grafana&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;-- Grafana --&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;enable&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;iconColor&quot;:</span> <span class="string">&quot;rgba(0, 211, 255, 1)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;Annotations &amp; Alerts&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;dashboard&quot;</span></span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;editable&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">  <span class="attr">&quot;fiscalYearStartMonth&quot;:</span> <span class="number">0</span>,</span><br><span class="line">  <span class="attr">&quot;graphTooltip&quot;:</span> <span class="number">0</span>,</span><br><span class="line">  <span class="attr">&quot;id&quot;:</span> <span class="number">10</span>,</span><br><span class="line">  <span class="attr">&quot;links&quot;:</span> [],</span><br><span class="line">  <span class="attr">&quot;panels&quot;:</span> [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;default&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;fieldConfig&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;defaults&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;color&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;palette-classic&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;custom&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;axisBorderShow&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisCenteredZero&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisColorMode&quot;:</span> <span class="string">&quot;text&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisLabel&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisPlacement&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisSoftMax&quot;:</span> <span class="number">10</span>,</span><br><span class="line">            <span class="attr">&quot;axisSoftMin&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barAlignment&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barWidthFactor&quot;:</span> <span class="number">0.6</span>,</span><br><span class="line">            <span class="attr">&quot;drawStyle&quot;:</span> <span class="string">&quot;line&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;fillOpacity&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;gradientMode&quot;:</span> <span class="string">&quot;none&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;hideFrom&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;viz&quot;:</span> <span class="literal">false</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;insertNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;lineInterpolation&quot;:</span> <span class="string">&quot;smooth&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;lineWidth&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;pointSize&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;scaleDistribution&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;linear&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;showPoints&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;spanNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;stacking&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;group&quot;:</span> <span class="string">&quot;A&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;thresholdsStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;off&quot;</span></span><br><span class="line">            &#125;</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;mappings&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;max&quot;:</span> <span class="number">10</span>,</span><br><span class="line">          <span class="attr">&quot;min&quot;:</span> <span class="number">0</span>,</span><br><span class="line">          <span class="attr">&quot;thresholds&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;absolute&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;steps&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;green&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="literal">null</span></span><br><span class="line">              &#125;,</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;red&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="number">80</span></span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;unit&quot;:</span> <span class="string">&quot;percent&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;overrides&quot;:</span> [</span><br><span class="line">          &#123;</span><br><span class="line">            <span class="attr">&quot;__systemRef&quot;:</span> <span class="string">&quot;hideSeriesFrom&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;matcher&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;id&quot;:</span> <span class="string">&quot;byNames&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">                <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;exclude&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;names&quot;:</span> [</span><br><span class="line">                  <span class="string">&quot;nginx-77c6dcdbff-rjrpk&quot;</span></span><br><span class="line">                ],</span><br><span class="line">                <span class="attr">&quot;prefix&quot;:</span> <span class="string">&quot;All except:&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;readOnly&quot;:</span> <span class="literal">true</span></span><br><span class="line">              &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;properties&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;id&quot;:</span> <span class="string">&quot;custom.hideFrom&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> &#123;</span><br><span class="line">                  <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">                  <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">                  <span class="attr">&quot;viz&quot;:</span> <span class="literal">true</span></span><br><span class="line">                &#125;</span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;</span><br><span class="line">        ]</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;gridPos&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;h&quot;:</span> <span class="number">8</span>,</span><br><span class="line">        <span class="attr">&quot;w&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;x&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;y&quot;:</span> <span class="number">0</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;id&quot;:</span> <span class="number">1</span>,</span><br><span class="line">      <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;legend&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;calcs&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;displayMode&quot;:</span> <span class="string">&quot;table&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;placement&quot;:</span> <span class="string">&quot;right&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;showLegend&quot;:</span> <span class="literal">true</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;tooltip&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;single&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;sort&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;targets&quot;:</span> [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum(rate(container_cpu_usage_seconds_total&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;[5m])) by (pod)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;__auto&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;A&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      ],</span><br><span class="line">      <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Nginx CPU Usage&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;timeseries&quot;</span></span><br><span class="line">    &#125;,</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;default&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;description&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;fieldConfig&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;defaults&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;color&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;palette-classic&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;custom&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;axisBorderShow&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisCenteredZero&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisColorMode&quot;:</span> <span class="string">&quot;text&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisLabel&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisPlacement&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;barAlignment&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barWidthFactor&quot;:</span> <span class="number">0.6</span>,</span><br><span class="line">            <span class="attr">&quot;drawStyle&quot;:</span> <span class="string">&quot;line&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;fillOpacity&quot;:</span> <span class="number">13</span>,</span><br><span class="line">            <span class="attr">&quot;gradientMode&quot;:</span> <span class="string">&quot;none&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;hideFrom&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;viz&quot;:</span> <span class="literal">false</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;insertNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;lineInterpolation&quot;:</span> <span class="string">&quot;smooth&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;lineStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;fill&quot;:</span> <span class="string">&quot;solid&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;lineWidth&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;pointSize&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;scaleDistribution&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;linear&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;showPoints&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;spanNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;stacking&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;group&quot;:</span> <span class="string">&quot;A&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;thresholdsStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;off&quot;</span></span><br><span class="line">            &#125;</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;mappings&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;thresholds&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;absolute&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;steps&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;green&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="literal">null</span></span><br><span class="line">              &#125;,</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;red&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="number">80</span></span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;unit&quot;:</span> <span class="string">&quot;MB&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;overrides&quot;:</span> []</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;gridPos&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;h&quot;:</span> <span class="number">8</span>,</span><br><span class="line">        <span class="attr">&quot;w&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;x&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;y&quot;:</span> <span class="number">0</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;id&quot;:</span> <span class="number">2</span>,</span><br><span class="line">      <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;legend&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;calcs&quot;:</span> [</span><br><span class="line">            <span class="string">&quot;max&quot;</span>,</span><br><span class="line">            <span class="string">&quot;mean&quot;</span></span><br><span class="line">          ],</span><br><span class="line">          <span class="attr">&quot;displayMode&quot;:</span> <span class="string">&quot;table&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;placement&quot;:</span> <span class="string">&quot;right&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;showLegend&quot;:</span> <span class="literal">true</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;tooltip&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;multi&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;sort&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;targets&quot;:</span> [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;exemplar&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_rss&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - RSS&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;A&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_usage_bytes&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Usage&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;B&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_working_set_bytes&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Working Set&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;C&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_cache&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Cache&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;D&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  kube_pod_container_resource_requests&#123;resource=\&quot;memory\&quot;,namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Requests&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;E&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  kube_pod_container_resource_limits&#123;resource=\&quot;memory\&quot;,namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Limits&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;F&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      ],</span><br><span class="line">      <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Nginx Pods - Memory Metrics&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;timeseries&quot;</span></span><br><span class="line">    &#125;</span><br><span class="line">  ],</span><br><span class="line">  <span class="attr">&quot;schemaVersion&quot;:</span> <span class="number">39</span>,</span><br><span class="line">  <span class="attr">&quot;tags&quot;:</span> [],</span><br><span class="line">  <span class="attr">&quot;templating&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;list&quot;:</span> [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;cadvisor&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;cadvisor&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(namespace)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;namespace&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;namespace&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(namespace)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;allValue&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;nginx&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;nginx&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;&#125;,container)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;deployment&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;deployment&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;&#125;,container)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;All&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;$__all&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;, container=\&quot;$deployment\&quot;&#125;,pod)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;pod&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;pod&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;, container=\&quot;$deployment\&quot;&#125;,pod)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;time&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;from&quot;:</span> <span class="string">&quot;now-5m&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;to&quot;:</span> <span class="string">&quot;now&quot;</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;timepicker&quot;:</span> &#123;&#125;,</span><br><span class="line">  <span class="attr">&quot;timezone&quot;:</span> <span class="string">&quot;browser&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Deployment&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;cdz7nqi6hjvnkf&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;version&quot;:</span> <span class="number">20</span>,</span><br><span class="line">  <span class="attr">&quot;weekStart&quot;:</span> <span class="string">&quot;&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>k8s</category>
-      </categories>
-      <tags>
-        <tag>监控</tag>
-        <tag>k8s</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>容器内存</title>
-    <url>/2025/02/10/k8s/rong-qi-nei-cun/posts/undefined/</url>
-    <content><![CDATA[<h3 id="WorkingSet-与PageCache-监控"><a href="#WorkingSet-与PageCache-监控" class="headerlink" title="WorkingSet 与PageCache 监控"></a><a href="https://www.cnblogs.com/alisystemsoftware/p/18196395">WorkingSet 与PageCache 监控</a></h3><h3 id="K8s监控的内存指标"><a href="#K8s监控的内存指标" class="headerlink" title="K8s监控的内存指标"></a>K8s监控的内存指标</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">    memoryStats = &amp;statsapi.MemoryStats&#123;</span><br><span class="line">        Time:            metav1.NewTime(cstat.Timestamp),</span><br><span class="line">        UsageBytes:      &amp;cstat.Memory.Usage,</span><br><span class="line">        WorkingSetBytes: &amp;cstat.Memory.WorkingSet,</span><br><span class="line">        RSSBytes:        &amp;cstat.Memory.RSS,</span><br><span class="line">        PageFaults:      &amp;pageFaults,</span><br><span class="line">        MajorPageFaults: &amp;majorPageFaults,</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// availableBytes = memory limit (if known) - workingset</span></span><br><span class="line">    <span class="keyword">if</span> !isMemoryUnlimited(info.Spec.Memory.Limit) &#123;</span><br><span class="line">        availableBytes := info.Spec.Memory.Limit - cstat.Memory.WorkingSet</span><br><span class="line">        memoryStats.AvailableBytes = &amp;availableBytes</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">type MemoryStats struct &#123;</span><br><span class="line"><span class="comment">// Current memory usage, this includes all memory regardless of when it was</span></span><br><span class="line"><span class="comment">// accessed.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Usage uint64 `json:<span class="string">&quot;usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Maximum memory usage recorded.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">MaxUsage uint64 `json:<span class="string">&quot;max_usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Number of bytes of page cache memory.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Cache uint64 `json:<span class="string">&quot;cache&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of anonymous and swap cache memory (includes transparent</span></span><br><span class="line"><span class="comment">// hugepages).</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">RSS uint64 `json:<span class="string">&quot;rss&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of swap currently used by the processes in this cgroup</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Swap uint64 `json:<span class="string">&quot;swap&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of memory used for mapped files (includes tmpfs/shmem)</span></span><br><span class="line">MappedFile uint64 `json:<span class="string">&quot;mapped_file&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of working set memory, this includes recently accessed memory,</span></span><br><span class="line"><span class="comment">// dirty memory, and kernel memory. Working set is &lt;= &quot;usage&quot;.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">WorkingSet uint64 `json:<span class="string">&quot;working_set&quot;</span>`</span><br></pre></td></tr></table></figure>
-
-<h4 id="OOM的判断"><a href="#OOM的判断" class="headerlink" title="OOM的判断"></a>OOM的判断</h4><blockquote>
-<p>availableBytes &#x3D; memory limit (if known) - workingset</p>
-</blockquote>
-<p>working_set这个指标是否逼近MemoryLimit的值，可以有助于我们判断容器是否在未来发生OOM。</p>
-<h4 id="指标"><a href="#指标" class="headerlink" title="指标"></a>指标</h4><table>
-<thead>
-<tr>
-<th>指标名称</th>
-<th>定义</th>
-<th>特点</th>
-<th>用途</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>内存使用量 (Usage)</td>
-<td>容器当前使用的总内存量</td>
-<td>包括应用程序内存、缓存等</td>
-<td>反映总体内存占用</td>
-</tr>
-<tr>
-<td>工作集 (Working Set)</td>
-<td>容器活跃使用的内存集合</td>
-<td>≈ Usage - Cache</td>
-<td>反映应用实际需要的内存</td>
-</tr>
-<tr>
-<td>RSS (Resident Set Size)</td>
-<td>进程实际占用的物理内存</td>
-<td>不包括已换出的内存</td>
-<td>反映实际物理内存使用</td>
-</tr>
-<tr>
-<td>缓存 (Cache)</td>
-<td>主要是页面缓存</td>
-<td>可被回收的内存</td>
-<td>提高文件I&#x2F;O性能</td>
-</tr>
-<tr>
-<td>内存限制 (Memory Limit)</td>
-<td>容器的内存使用上限</td>
-<td>硬性限制</td>
-<td>资源控制和OOM判定</td>
-</tr>
-<tr>
-<td>内存请求 (Memory Request)</td>
-<td>容器请求的最小内存量</td>
-<td>软性限制</td>
-<td>调度决策和资源分配</td>
-</tr>
-<tr>
-<td>可分配内存 (Allocatable)</td>
-<td>节点上可供Pod使用的内存</td>
-<td>总内存 - 系统预留 - Kube预留</td>
-<td>资源规划和调度</td>
-</tr>
-<tr>
-<td>OOM风险指标</td>
-<td>Memory Limit - Working Set</td>
-<td>值越小风险越高</td>
-<td>评估OOM风险</td>
-</tr>
-<tr>
-<td>内存利用率</td>
-<td>Usage &#x2F; Limit 或 Working Set &#x2F; Limit</td>
-<td>百分比表示</td>
-<td>评估内存使用效率</td>
-</tr>
-<tr>
-<td>匿名内存</td>
-<td>不与文件关联的内存</td>
-<td>如堆和栈</td>
-<td>反映核心内存使用</td>
-</tr>
-<tr>
-<td>活跃文件内存</td>
-<td>最近访问的文件缓存</td>
-<td>不易被回收</td>
-<td>评估热数据占用</td>
-</tr>
-<tr>
-<td>非活跃文件内存</td>
-<td>长时间未访问的文件缓存</td>
-<td>易被回收</td>
-<td>评估可回收内存</td>
-</tr>
-<tr>
-<td>共享内存</td>
-<td>多个进程共享的内存</td>
-<td>可能在RSS中重复计算</td>
-<td>评估内存共享情况</td>
-</tr>
-<tr>
-<td>Swap使用量 (如启用)</td>
-<td>使用的交换空间大小</td>
-<td>通常在容器中禁用</td>
-<td>性能评估（如启用）</td>
-</tr>
-</tbody></table>
-<ul>
-<li>Usage ≈ Working Set + Cache</li>
-<li>Working Set ≈ RSS + 一些可能被换出的匿名页面</li>
-<li>OOM风险 ∝ 1 &#x2F; (Memory Limit - Working Set)</li>
-</ul>
-<p>k8s底层的容器运行时，完全使用了linux内核OOMKiller的score机制，当容器的物理内存达到设置的memory limit时，score对应的权重，决定了容器被Kill的优先级。</p>
-<p>强烈建议在生产环境，把 <strong>memory limit</strong> 和 <strong>memory request</strong> 设置成<strong>相同的值</strong>，其实有一个重要原因，就是两者相同时，默认的score adj是-997，被Kill的优先级相对低。</p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>k8s</category>
-      </categories>
-      <tags>
-        <tag>监控</tag>
-        <tag>k8s</tag>
-        <tag>容器</tag>
-        <tag>内存</tag>
       </tags>
   </entry>
   <entry>
@@ -1749,6 +1664,183 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>k8s监控</title>
+    <url>/2025/02/10/k8s/k8s-jian-kong/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://kubernetes.io/zh-cn/docs/home/">官方文档</a></li>
+</ul>
+<h3 id="metric-server"><a href="#metric-server" class="headerlink" title="metric-server"></a>metric-server</h3><p>从 Kubernetes v1.8 开始，资源使用情况的监控可以通过 <strong>Metrics</strong> <strong>API</strong> 的形式获取，例如容器 CPU 和内存使用率。这些度量可以由用户直接访问（例如，通过使用 kubectl top 命令）；<strong>Metrics-Server</strong> 是集群核心监控数据的聚合器。通俗地说，它存储了集群中各节点的监控数据，并且提供了 API 以供分析和使用。Metrics-Server 作为一个 Deployment 对象默认部署在 Kubernetes 集群中。不过准确地说，它是 Deployment，Service，ClusterRole，ClusterRoleBinding，APIService，RoleBinding 等资源对象的综合体。</p>
+<ul>
+<li>metric-server 提供的是实时的指标（实际是最近一次采集的数据，保存在内存中），并没有数据库来存储</li>
+<li>这些数据指标并非由 metric-server 本身采集，而是由每个节点上的 cadvisor 采集，metric-server 只是发请求给 cadvisor 并将 metric 格式的数据转换成 aggregate api</li>
+<li><a href="https://cloud.tencent.com/developer/article/2180278">K8s 监控之 Metrics-Server 指标获取链路分析</a></li>
+</ul>
+<h4 id="一、验证-metric-server-功能"><a href="#一、验证-metric-server-功能" class="headerlink" title="一、验证 metric-server 功能"></a>一、验证 metric-server 功能</h4><ol>
+<li><p>通过 raw api 获取 cadvisor 指标</p>
+ <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl get --raw=/api/v1/nodes/&#123;nodename&#125;/proxy/metrics/cadvisor</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>通过 cAdvisor 的本地接口&#x2F;metrics&#x2F;cadvisor 获取数据</p>
+ <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 这里的token查看👇🏻这章的内容 </span></span><br><span class="line">curl -k -H <span class="string">&quot;Authorization: Bearer <span class="variable">$TOKEN</span>&quot;</span> https://127.0.0.1:10250/metrics/cadvisor</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h4 id="二、处理-cadvisor-权限问题"><a href="#二、处理-cadvisor-权限问题" class="headerlink" title="二、处理 cadvisor 权限问题"></a>二、处理 cadvisor 权限问题</h4><ol>
+<li><p>新建 ServiceAccount</p>
+ <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ServiceAccount</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">monitor</span></span><br><span class="line"><span class="attr">namespace:</span> <span class="string">kube-system</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>新建 ClusterRole，构造访问权限</p>
+ <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">rbac.authorization.k8s.io/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ClusterRole</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">metrics-reader</span></span><br><span class="line"><span class="attr">rules:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">apiGroups:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;&#x27;</span></span><br><span class="line">    <span class="attr">resources:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes/stats</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes/metrics</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes/proxy</span></span><br><span class="line">    <span class="attr">verbs:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">get</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">list</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">watch</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">apiGroups:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">metrics.k8s.io</span></span><br><span class="line">    <span class="attr">resources:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">nodes</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">pods</span></span><br><span class="line">    <span class="attr">verbs:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">get</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">list</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">watch</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>绑定账号和角色 ClusterRoleBinding</p>
+ <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">rbac.authorization.k8s.io/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ClusterRoleBinding</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">monitor-clusterrolebinding-i26re</span></span><br><span class="line"><span class="attr">roleRef:</span></span><br><span class="line"><span class="attr">apiGroup:</span> <span class="string">rbac.authorization.k8s.io</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ClusterRole</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">metrics-reader</span></span><br><span class="line"><span class="attr">subjects:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">kind:</span> <span class="string">ServiceAccount</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">monitor</span></span><br><span class="line">    <span class="attr">namespace:</span> <span class="string">kube-system</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>给 ServiceAccount 生成 token</p>
+ <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;kind&quot;:</span> <span class="string">&quot;Secret&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;apiVersion&quot;:</span> <span class="string">&quot;v1&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;metadata&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;monitor-token&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;annotations&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;kubernetes.io/service-account.name&quot;:</span> <span class="string">&quot;monitor&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;kubernetes.io/service-account-token&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查看创建的 token</p>
+ <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="string">kubectl</span> <span class="string">get</span> <span class="string">secret</span> <span class="string">monitor-token</span> <span class="string">-n</span> <span class="string">kube-system</span> <span class="string">-o</span> <span class="string">jsonpath=&#x27;&#123;.data.token&#125;&#x27;</span> <span class="string">|</span> <span class="string">base64</span> <span class="string">--decode</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<h4 id="三、配置-prometheus"><a href="#三、配置-prometheus" class="headerlink" title="三、配置 prometheus"></a>三、配置 prometheus</h4><ol>
+<li><p>具体配置</p>
+ <figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="comment"># cadvisor</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&#x27;kubernetes-cadvisor&#x27;</span></span><br><span class="line"><span class="attr">scheme:</span> <span class="string">https</span></span><br><span class="line"><span class="attr">tls_config:</span></span><br><span class="line">    <span class="attr">insecure_skip_verify:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">authorization:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">Bearer</span></span><br><span class="line">    <span class="attr">credentials:</span> <span class="string">token</span> <span class="comment"># 替换为ServiceAccount生成的token</span></span><br><span class="line"><span class="attr">kubernetes_sd_configs:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">api_server:</span> <span class="string">https://192.168.8.10:6443</span>  <span class="comment"># 替换为 Kubernetes API 服务器地址</span></span><br><span class="line">    <span class="attr">role:</span> <span class="string">node</span></span><br><span class="line">    <span class="attr">tls_config:</span></span><br><span class="line">    <span class="attr">insecure_skip_verify:</span> <span class="literal">true</span></span><br><span class="line">    <span class="attr">authorization:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">Bearer</span></span><br><span class="line">    <span class="attr">credentials:</span> <span class="string">token</span> <span class="comment"># 替换为ServiceAccount生成的token</span></span><br><span class="line"><span class="attr">relabel_configs:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">action:</span> <span class="string">labelmap</span></span><br><span class="line">    <span class="attr">regex:</span> <span class="string">__meta_kubernetes_node_label_(.+)</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">source_labels:</span> [<span class="string">__meta_kubernetes_node_address_InternalIP</span>] <span class="comment"># 这里实际是通过服务发现查询到其他的k8s集群结点</span></span><br><span class="line">    <span class="attr">target_label:</span> <span class="string">__address__</span></span><br><span class="line">    <span class="attr">replacement:</span> <span class="string">$&#123;1&#125;:10250</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">source_labels:</span> [<span class="string">__meta_kubernetes_node_name</span>]</span><br><span class="line">    <span class="attr">regex:</span> <span class="string">(.+)</span></span><br><span class="line">    <span class="attr">target_label:</span> <span class="string">__metrics_path__</span></span><br><span class="line">    <span class="attr">replacement:</span> <span class="string">/metrics/cadvisor</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查看配置是否成功</p>
+</li>
+</ol>
+<p><img data-src="/images/k8s/01.png" alt="img"></p>
+<h4 id="四、配置-grafana"><a href="#四、配置-grafana" class="headerlink" title="四、配置 grafana"></a>四、配置 grafana</h4><blockquote>
+<p>这里配置一个简单的 cpu、内存 <code>deployment</code> 图表</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="attr">&quot;annotations&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;list&quot;:</span> [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;builtIn&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;grafana&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;-- Grafana --&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;enable&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;iconColor&quot;:</span> <span class="string">&quot;rgba(0, 211, 255, 1)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;Annotations &amp; Alerts&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;dashboard&quot;</span></span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;editable&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">  <span class="attr">&quot;fiscalYearStartMonth&quot;:</span> <span class="number">0</span>,</span><br><span class="line">  <span class="attr">&quot;graphTooltip&quot;:</span> <span class="number">0</span>,</span><br><span class="line">  <span class="attr">&quot;id&quot;:</span> <span class="number">10</span>,</span><br><span class="line">  <span class="attr">&quot;links&quot;:</span> [],</span><br><span class="line">  <span class="attr">&quot;panels&quot;:</span> [</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;default&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;fieldConfig&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;defaults&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;color&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;palette-classic&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;custom&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;axisBorderShow&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisCenteredZero&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisColorMode&quot;:</span> <span class="string">&quot;text&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisLabel&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisPlacement&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisSoftMax&quot;:</span> <span class="number">10</span>,</span><br><span class="line">            <span class="attr">&quot;axisSoftMin&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barAlignment&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barWidthFactor&quot;:</span> <span class="number">0.6</span>,</span><br><span class="line">            <span class="attr">&quot;drawStyle&quot;:</span> <span class="string">&quot;line&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;fillOpacity&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;gradientMode&quot;:</span> <span class="string">&quot;none&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;hideFrom&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;viz&quot;:</span> <span class="literal">false</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;insertNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;lineInterpolation&quot;:</span> <span class="string">&quot;smooth&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;lineWidth&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;pointSize&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;scaleDistribution&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;linear&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;showPoints&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;spanNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;stacking&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;group&quot;:</span> <span class="string">&quot;A&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;thresholdsStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;off&quot;</span></span><br><span class="line">            &#125;</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;mappings&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;max&quot;:</span> <span class="number">10</span>,</span><br><span class="line">          <span class="attr">&quot;min&quot;:</span> <span class="number">0</span>,</span><br><span class="line">          <span class="attr">&quot;thresholds&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;absolute&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;steps&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;green&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="literal">null</span></span><br><span class="line">              &#125;,</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;red&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="number">80</span></span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;unit&quot;:</span> <span class="string">&quot;percent&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;overrides&quot;:</span> [</span><br><span class="line">          &#123;</span><br><span class="line">            <span class="attr">&quot;__systemRef&quot;:</span> <span class="string">&quot;hideSeriesFrom&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;matcher&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;id&quot;:</span> <span class="string">&quot;byNames&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">                <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;exclude&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;names&quot;:</span> [</span><br><span class="line">                  <span class="string">&quot;nginx-77c6dcdbff-rjrpk&quot;</span></span><br><span class="line">                ],</span><br><span class="line">                <span class="attr">&quot;prefix&quot;:</span> <span class="string">&quot;All except:&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;readOnly&quot;:</span> <span class="literal">true</span></span><br><span class="line">              &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;properties&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;id&quot;:</span> <span class="string">&quot;custom.hideFrom&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> &#123;</span><br><span class="line">                  <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">                  <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">                  <span class="attr">&quot;viz&quot;:</span> <span class="literal">true</span></span><br><span class="line">                &#125;</span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;</span><br><span class="line">        ]</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;gridPos&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;h&quot;:</span> <span class="number">8</span>,</span><br><span class="line">        <span class="attr">&quot;w&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;x&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;y&quot;:</span> <span class="number">0</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;id&quot;:</span> <span class="number">1</span>,</span><br><span class="line">      <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;legend&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;calcs&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;displayMode&quot;:</span> <span class="string">&quot;table&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;placement&quot;:</span> <span class="string">&quot;right&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;showLegend&quot;:</span> <span class="literal">true</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;tooltip&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;single&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;sort&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;targets&quot;:</span> [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum(rate(container_cpu_usage_seconds_total&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;[5m])) by (pod)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;__auto&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;A&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      ],</span><br><span class="line">      <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Nginx CPU Usage&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;timeseries&quot;</span></span><br><span class="line">    &#125;,</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;default&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;description&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;fieldConfig&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;defaults&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;color&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;palette-classic&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;custom&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;axisBorderShow&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisCenteredZero&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;axisColorMode&quot;:</span> <span class="string">&quot;text&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisLabel&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;axisPlacement&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;barAlignment&quot;:</span> <span class="number">0</span>,</span><br><span class="line">            <span class="attr">&quot;barWidthFactor&quot;:</span> <span class="number">0.6</span>,</span><br><span class="line">            <span class="attr">&quot;drawStyle&quot;:</span> <span class="string">&quot;line&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;fillOpacity&quot;:</span> <span class="number">13</span>,</span><br><span class="line">            <span class="attr">&quot;gradientMode&quot;:</span> <span class="string">&quot;none&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;hideFrom&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;legend&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;tooltip&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">              <span class="attr">&quot;viz&quot;:</span> <span class="literal">false</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;insertNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;lineInterpolation&quot;:</span> <span class="string">&quot;smooth&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;lineStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;fill&quot;:</span> <span class="string">&quot;solid&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;lineWidth&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;pointSize&quot;:</span> <span class="number">1</span>,</span><br><span class="line">            <span class="attr">&quot;scaleDistribution&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;linear&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;showPoints&quot;:</span> <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;spanNulls&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">            <span class="attr">&quot;stacking&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;group&quot;:</span> <span class="string">&quot;A&quot;</span>,</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="attr">&quot;thresholdsStyle&quot;:</span> &#123;</span><br><span class="line">              <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;off&quot;</span></span><br><span class="line">            &#125;</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;mappings&quot;:</span> [],</span><br><span class="line">          <span class="attr">&quot;thresholds&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;absolute&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;steps&quot;:</span> [</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;green&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="literal">null</span></span><br><span class="line">              &#125;,</span><br><span class="line">              &#123;</span><br><span class="line">                <span class="attr">&quot;color&quot;:</span> <span class="string">&quot;red&quot;</span>,</span><br><span class="line">                <span class="attr">&quot;value&quot;:</span> <span class="number">80</span></span><br><span class="line">              &#125;</span><br><span class="line">            ]</span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;unit&quot;:</span> <span class="string">&quot;MB&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;overrides&quot;:</span> []</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;gridPos&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;h&quot;:</span> <span class="number">8</span>,</span><br><span class="line">        <span class="attr">&quot;w&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;x&quot;:</span> <span class="number">12</span>,</span><br><span class="line">        <span class="attr">&quot;y&quot;:</span> <span class="number">0</span></span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;id&quot;:</span> <span class="number">2</span>,</span><br><span class="line">      <span class="attr">&quot;options&quot;:</span> &#123;</span><br><span class="line">        <span class="attr">&quot;legend&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;calcs&quot;:</span> [</span><br><span class="line">            <span class="string">&quot;max&quot;</span>,</span><br><span class="line">            <span class="string">&quot;mean&quot;</span></span><br><span class="line">          ],</span><br><span class="line">          <span class="attr">&quot;displayMode&quot;:</span> <span class="string">&quot;table&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;placement&quot;:</span> <span class="string">&quot;right&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;showLegend&quot;:</span> <span class="literal">true</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;tooltip&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;mode&quot;:</span> <span class="string">&quot;multi&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;sort&quot;:</span> <span class="string">&quot;none&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      <span class="attr">&quot;targets&quot;:</span> [</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;exemplar&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_rss&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - RSS&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;A&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_usage_bytes&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Usage&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;B&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_working_set_bytes&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Working Set&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;C&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  container_memory_cache&#123;namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Cache&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;D&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  kube_pod_container_resource_requests&#123;resource=\&quot;memory\&quot;,namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Requests&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;E&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">            <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">            <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">          &#125;,</span><br><span class="line">          <span class="attr">&quot;editorMode&quot;:</span> <span class="string">&quot;code&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;expr&quot;:</span> <span class="string">&quot;sum by (pod) (\n  kube_pod_container_resource_limits&#123;resource=\&quot;memory\&quot;,namespace=\&quot;$namespace\&quot;,container=~\&quot;$deployment\&quot;,pod=~\&quot;$pod\&quot;&#125;\n) / 1024 / 1024&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;hide&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;instant&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;legendFormat&quot;:</span> <span class="string">&quot;<span class="template-variable">&#123;&#123;pod&#125;&#125;</span> - Limits&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;range&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;F&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">      ],</span><br><span class="line">      <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Nginx Pods - Memory Metrics&quot;</span>,</span><br><span class="line">      <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;timeseries&quot;</span></span><br><span class="line">    &#125;</span><br><span class="line">  ],</span><br><span class="line">  <span class="attr">&quot;schemaVersion&quot;:</span> <span class="number">39</span>,</span><br><span class="line">  <span class="attr">&quot;tags&quot;:</span> [],</span><br><span class="line">  <span class="attr">&quot;templating&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;list&quot;:</span> [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;cadvisor&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;cadvisor&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(namespace)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;namespace&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;namespace&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(namespace)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;allValue&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;nginx&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;nginx&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;&#125;,container)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;deployment&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;deployment&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;&#125;,container)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">&quot;current&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;selected&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">          <span class="attr">&quot;text&quot;:</span> <span class="string">&quot;All&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;value&quot;:</span> <span class="string">&quot;$__all&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;datasource&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;prometheus&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;ddz6drhemat4wf&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;definition&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;, container=\&quot;$deployment\&quot;&#125;,pod)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;hide&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;includeAll&quot;:</span> <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">&quot;label&quot;:</span> <span class="string">&quot;pod&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;multi&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;name&quot;:</span> <span class="string">&quot;pod&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;options&quot;:</span> [],</span><br><span class="line">        <span class="attr">&quot;query&quot;:</span> &#123;</span><br><span class="line">          <span class="attr">&quot;qryType&quot;:</span> <span class="number">1</span>,</span><br><span class="line">          <span class="attr">&quot;query&quot;:</span> <span class="string">&quot;label_values(&#123;namespace=\&quot;$namespace\&quot;, container=\&quot;$deployment\&quot;&#125;,pod)&quot;</span>,</span><br><span class="line">          <span class="attr">&quot;refId&quot;:</span> <span class="string">&quot;PrometheusVariableQueryEditor-VariableQuery&quot;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="attr">&quot;refresh&quot;:</span> <span class="number">1</span>,</span><br><span class="line">        <span class="attr">&quot;regex&quot;:</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;skipUrlSync&quot;:</span> <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">&quot;sort&quot;:</span> <span class="number">0</span>,</span><br><span class="line">        <span class="attr">&quot;type&quot;:</span> <span class="string">&quot;query&quot;</span></span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;time&quot;:</span> &#123;</span><br><span class="line">    <span class="attr">&quot;from&quot;:</span> <span class="string">&quot;now-5m&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;to&quot;:</span> <span class="string">&quot;now&quot;</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">&quot;timepicker&quot;:</span> &#123;&#125;,</span><br><span class="line">  <span class="attr">&quot;timezone&quot;:</span> <span class="string">&quot;browser&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;title&quot;:</span> <span class="string">&quot;Deployment&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;uid&quot;:</span> <span class="string">&quot;cdz7nqi6hjvnkf&quot;</span>,</span><br><span class="line">  <span class="attr">&quot;version&quot;:</span> <span class="number">20</span>,</span><br><span class="line">  <span class="attr">&quot;weekStart&quot;:</span> <span class="string">&quot;&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>k8s</category>
+      </categories>
+      <tags>
+        <tag>监控</tag>
+        <tag>k8s</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>容器内存</title>
+    <url>/2025/02/10/k8s/rong-qi-nei-cun/posts/undefined/</url>
+    <content><![CDATA[<h3 id="WorkingSet-与PageCache-监控"><a href="#WorkingSet-与PageCache-监控" class="headerlink" title="WorkingSet 与PageCache 监控"></a><a href="https://www.cnblogs.com/alisystemsoftware/p/18196395">WorkingSet 与PageCache 监控</a></h3><h3 id="K8s监控的内存指标"><a href="#K8s监控的内存指标" class="headerlink" title="K8s监控的内存指标"></a>K8s监控的内存指标</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">    memoryStats = &amp;statsapi.MemoryStats&#123;</span><br><span class="line">        Time:            metav1.NewTime(cstat.Timestamp),</span><br><span class="line">        UsageBytes:      &amp;cstat.Memory.Usage,</span><br><span class="line">        WorkingSetBytes: &amp;cstat.Memory.WorkingSet,</span><br><span class="line">        RSSBytes:        &amp;cstat.Memory.RSS,</span><br><span class="line">        PageFaults:      &amp;pageFaults,</span><br><span class="line">        MajorPageFaults: &amp;majorPageFaults,</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// availableBytes = memory limit (if known) - workingset</span></span><br><span class="line">    <span class="keyword">if</span> !isMemoryUnlimited(info.Spec.Memory.Limit) &#123;</span><br><span class="line">        availableBytes := info.Spec.Memory.Limit - cstat.Memory.WorkingSet</span><br><span class="line">        memoryStats.AvailableBytes = &amp;availableBytes</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">type MemoryStats struct &#123;</span><br><span class="line"><span class="comment">// Current memory usage, this includes all memory regardless of when it was</span></span><br><span class="line"><span class="comment">// accessed.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Usage uint64 `json:<span class="string">&quot;usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Maximum memory usage recorded.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">MaxUsage uint64 `json:<span class="string">&quot;max_usage&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// Number of bytes of page cache memory.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Cache uint64 `json:<span class="string">&quot;cache&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of anonymous and swap cache memory (includes transparent</span></span><br><span class="line"><span class="comment">// hugepages).</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">RSS uint64 `json:<span class="string">&quot;rss&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of swap currently used by the processes in this cgroup</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">Swap uint64 `json:<span class="string">&quot;swap&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of memory used for mapped files (includes tmpfs/shmem)</span></span><br><span class="line">MappedFile uint64 `json:<span class="string">&quot;mapped_file&quot;</span>`</span><br><span class="line"> </span><br><span class="line"><span class="comment">// The amount of working set memory, this includes recently accessed memory,</span></span><br><span class="line"><span class="comment">// dirty memory, and kernel memory. Working set is &lt;= &quot;usage&quot;.</span></span><br><span class="line"><span class="comment">// Units: Bytes.</span></span><br><span class="line">WorkingSet uint64 `json:<span class="string">&quot;working_set&quot;</span>`</span><br></pre></td></tr></table></figure>
+
+<h4 id="OOM的判断"><a href="#OOM的判断" class="headerlink" title="OOM的判断"></a>OOM的判断</h4><blockquote>
+<p>availableBytes &#x3D; memory limit (if known) - workingset</p>
+</blockquote>
+<p>working_set这个指标是否逼近MemoryLimit的值，可以有助于我们判断容器是否在未来发生OOM。</p>
+<h4 id="指标"><a href="#指标" class="headerlink" title="指标"></a>指标</h4><table>
+<thead>
+<tr>
+<th>指标名称</th>
+<th>定义</th>
+<th>特点</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内存使用量 (Usage)</td>
+<td>容器当前使用的总内存量</td>
+<td>包括应用程序内存、缓存等</td>
+<td>反映总体内存占用</td>
+</tr>
+<tr>
+<td>工作集 (Working Set)</td>
+<td>容器活跃使用的内存集合</td>
+<td>≈ Usage - Cache</td>
+<td>反映应用实际需要的内存</td>
+</tr>
+<tr>
+<td>RSS (Resident Set Size)</td>
+<td>进程实际占用的物理内存</td>
+<td>不包括已换出的内存</td>
+<td>反映实际物理内存使用</td>
+</tr>
+<tr>
+<td>缓存 (Cache)</td>
+<td>主要是页面缓存</td>
+<td>可被回收的内存</td>
+<td>提高文件I&#x2F;O性能</td>
+</tr>
+<tr>
+<td>内存限制 (Memory Limit)</td>
+<td>容器的内存使用上限</td>
+<td>硬性限制</td>
+<td>资源控制和OOM判定</td>
+</tr>
+<tr>
+<td>内存请求 (Memory Request)</td>
+<td>容器请求的最小内存量</td>
+<td>软性限制</td>
+<td>调度决策和资源分配</td>
+</tr>
+<tr>
+<td>可分配内存 (Allocatable)</td>
+<td>节点上可供Pod使用的内存</td>
+<td>总内存 - 系统预留 - Kube预留</td>
+<td>资源规划和调度</td>
+</tr>
+<tr>
+<td>OOM风险指标</td>
+<td>Memory Limit - Working Set</td>
+<td>值越小风险越高</td>
+<td>评估OOM风险</td>
+</tr>
+<tr>
+<td>内存利用率</td>
+<td>Usage &#x2F; Limit 或 Working Set &#x2F; Limit</td>
+<td>百分比表示</td>
+<td>评估内存使用效率</td>
+</tr>
+<tr>
+<td>匿名内存</td>
+<td>不与文件关联的内存</td>
+<td>如堆和栈</td>
+<td>反映核心内存使用</td>
+</tr>
+<tr>
+<td>活跃文件内存</td>
+<td>最近访问的文件缓存</td>
+<td>不易被回收</td>
+<td>评估热数据占用</td>
+</tr>
+<tr>
+<td>非活跃文件内存</td>
+<td>长时间未访问的文件缓存</td>
+<td>易被回收</td>
+<td>评估可回收内存</td>
+</tr>
+<tr>
+<td>共享内存</td>
+<td>多个进程共享的内存</td>
+<td>可能在RSS中重复计算</td>
+<td>评估内存共享情况</td>
+</tr>
+<tr>
+<td>Swap使用量 (如启用)</td>
+<td>使用的交换空间大小</td>
+<td>通常在容器中禁用</td>
+<td>性能评估（如启用）</td>
+</tr>
+</tbody></table>
+<ul>
+<li>Usage ≈ Working Set + Cache</li>
+<li>Working Set ≈ RSS + 一些可能被换出的匿名页面</li>
+<li>OOM风险 ∝ 1 &#x2F; (Memory Limit - Working Set)</li>
+</ul>
+<p>k8s底层的容器运行时，完全使用了linux内核OOMKiller的score机制，当容器的物理内存达到设置的memory limit时，score对应的权重，决定了容器被Kill的优先级。</p>
+<p>强烈建议在生产环境，把 <strong>memory limit</strong> 和 <strong>memory request</strong> 设置成<strong>相同的值</strong>，其实有一个重要原因，就是两者相同时，默认的score adj是-997，被Kill的优先级相对低。</p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>k8s</category>
+      </categories>
+      <tags>
+        <tag>监控</tag>
+        <tag>内存</tag>
+        <tag>k8s</tag>
+        <tag>容器</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>loom-springboot</title>
     <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
     <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
@@ -1808,55 +1900,6 @@ flowchart TD
         <tag>虚拟线程</tag>
         <tag>java</tag>
         <tag>spring boot</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>loom</title>
-    <url>/2025/02/19/loom/loom/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
-<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
-<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
-<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
-<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
-</ul>
-<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
-<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
-</blockquote>
-<ul>
-<li>Java 代码调用本地代码 (JNI)</li>
-<li>synchronized 块或方法</li>
-</ul>
-<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
-<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
-</ul>
-<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
-<li>Synchronization<ul>
-<li>synchronized最终会解决，但是JNI不会处理</li>
-<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
-</ul>
-</li>
-<li>I&#x2F;O<ul>
-<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
-<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
-<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
-<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
-</ul>
-</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
       </tags>
   </entry>
   <entry>
@@ -1969,6 +2012,55 @@ flowchart TD
       <tags>
         <tag>Netty</tag>
         <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>loom</title>
+    <url>/2025/02/19/loom/loom/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
+<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
+<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
+<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
+<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
+</ul>
+<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
+<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
+</blockquote>
+<ul>
+<li>Java 代码调用本地代码 (JNI)</li>
+<li>synchronized 块或方法</li>
+</ul>
+<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
+<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
+</ul>
+<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
+<li>Synchronization<ul>
+<li>synchronized最终会解决，但是JNI不会处理</li>
+<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
+</ul>
+</li>
+<li>I&#x2F;O<ul>
+<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
+<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
+<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
+<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
+</ul>
+</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
       </tags>
   </entry>
   <entry>
@@ -2164,6 +2256,41 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>Netty中的细节优化</title>
+    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
+    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
+<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
+<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
+</ul>
+<p><img data-src="/images/netty/01.png" alt="netty"></p>
+<ul>
+<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
+</ul>
+<p><img data-src="/images/netty/02.png" alt="netty"></p>
+<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
+<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
+</ul>
+<p><img data-src="/images/netty/03.png" alt="netty"></p>
+<ul>
+<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
+</ul>
+<p><img data-src="/images/netty/04.png" alt="netty"></p>
+<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
+<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
+<p><img data-src="/images/netty/05.png" alt="netty"></p>
+<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
+<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>4-Netty对象池</title>
     <url>/2025/02/12/netty/4.netty-dui-xiang-chi/posts/undefined/</url>
     <content><![CDATA[<h2 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h2><ul>
@@ -2238,41 +2365,6 @@ flowchart TD
       </tags>
   </entry>
   <entry>
-    <title>Netty中的细节优化</title>
-    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
-    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
-<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
-<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
-</ul>
-<p><img data-src="/images/netty/01.png" alt="netty"></p>
-<ul>
-<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
-</ul>
-<p><img data-src="/images/netty/02.png" alt="netty"></p>
-<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
-<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
-</ul>
-<p><img data-src="/images/netty/03.png" alt="netty"></p>
-<ul>
-<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
-</ul>
-<p><img data-src="/images/netty/04.png" alt="netty"></p>
-<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
-<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
-<p><img data-src="/images/netty/05.png" alt="netty"></p>
-<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
-<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>panama</title>
     <url>/2025/02/19/panama/panama/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2318,44 +2410,6 @@ flowchart TD
         <tag>java</tag>
         <tag>panama</tag>
         <tag>ffi</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>protobuf</title>
-    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
-    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
-<li>所有字段都有默认值，比如string默认为空串</li>
-<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
-<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
-<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
-<li>对于较小范围的数字，用 int32 而不是 int64</li>
-<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
-<li>对于负数多的场景用 sint32&#x2F;sint64</li>
-<li>字段更新规则！！<ol>
-<li>添加新字段</li>
-<li>删除字段(但保留字段号)</li>
-<li>重命名字段(字段号不变)</li>
-<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
-</ol>
-</li>
-<li>字段不能做的更新规则！！<ol>
-<li>改变已有字段的类型</li>
-<li>复用已删除的字段号</li>
-<li>改变已有字段的编号</li>
-</ol>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>protobuf</category>
-      </categories>
-      <tags>
-        <tag>protobuf</tag>
-        <tag>序列化</tag>
       </tags>
   </entry>
   <entry>
@@ -2594,6 +2648,44 @@ flowchart TD
       <tags>
         <tag>BitMap</tag>
         <tag>数据库</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>protobuf</title>
+    <url>/2025/02/19/protobuf/protobuf/posts/undefined/</url>
+    <content><![CDATA[<h4 id="1-执行命令编译"><a href="#1-执行命令编译" class="headerlink" title="1. 执行命令编译"></a>1. 执行命令编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">protoc --java_out=./src/main/java ./proto3/User.proto</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-通过maven插件"><a href="#2-通过maven插件" class="headerlink" title="2. 通过maven插件"></a>2. 通过maven插件</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">extensions</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--判断系统--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">extension</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>kr.motd.maven<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>os-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.7.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">extension</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        Protobuf Maven 插件</span></span><br><span class="line"><span class="comment">        作用：</span></span><br><span class="line"><span class="comment">             - 自动下载和使用 protoc 编译器</span></span><br><span class="line"><span class="comment">             - 编译 .proto 文件生成 Java 代码</span></span><br><span class="line"><span class="comment">             - 集成到 Maven 生命周期</span></span><br><span class="line"><span class="comment">     --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.xolstice.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.6.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">extensions</span>&gt;</span>true<span class="tag">&lt;/<span class="name">extensions</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- protoc 编译器配置 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protocArtifact</span>&gt;</span>com.google.protobuf:protoc:$&#123;protobuf.version&#125;:exe:$&#123;os.detected.classifier&#125;<span class="tag">&lt;/<span class="name">protocArtifact</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- proto 文件源目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">protoSourceRoot</span>&gt;</span>$&#123;project.basedir&#125;/src/main/proto<span class="tag">&lt;/<span class="name">protoSourceRoot</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 生成的 Java 代码输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">outputDirectory</span>&gt;</span>$&#123;project.build.directory&#125;/generated-sources/protobuf/java<span class="tag">&lt;/<span class="name">outputDirectory</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 是否清空输出目录 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">clearOutputDirectory</span>&gt;</span>true<span class="tag">&lt;/<span class="name">clearOutputDirectory</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">executions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">execution</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">phase</span>&gt;</span>generate-sources<span class="tag">&lt;/<span class="name">phase</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;<span class="name">goals</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">goal</span>&gt;</span>compile<span class="tag">&lt;/<span class="name">goal</span>&gt;</span></span><br><span class="line">          <span class="tag">&lt;/<span class="name">goals</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">execution</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">executions</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="3-proto3"><a href="#3-proto3" class="headerlink" title="3. proto3"></a>3. proto3</h4><ul>
+<li>所有字段都有默认值，比如string默认为空串</li>
+<li>因为有默认值，所以所有的字段都是不为null的，需要判断是否为空，hasXXX()、getCount() &gt; 0 等等进行判断</li>
+<li>使用 1-15 的字段号给最常用的字段  （频繁访问的字段放在前面，cpu缓存命中率更高）</li>
+<li>不常用字段使用 16+ 的字段号  （不常访问的字段放在后面）</li>
+<li>对于较小范围的数字，用 int32 而不是 int64</li>
+<li>固定长度的数字用 fixed32&#x2F;fixed64</li>
+<li>对于负数多的场景用 sint32&#x2F;sint64</li>
+<li>字段更新规则！！<ol>
+<li>添加新字段</li>
+<li>删除字段(但保留字段号)</li>
+<li>重命名字段(字段号不变)</li>
+<li>添加repeated字段   reserved 2, 15, 9 to 11;       &#x2F;&#x2F; 保留字段号  reserved “foo”, “bar”;         &#x2F;&#x2F; 保留字段名</li>
+</ol>
+</li>
+<li>字段不能做的更新规则！！<ol>
+<li>改变已有字段的类型</li>
+<li>复用已删除的字段号</li>
+<li>改变已有字段的编号</li>
+</ol>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>protobuf</category>
+      </categories>
+      <tags>
+        <tag>protobuf</tag>
+        <tag>序列化</tag>
       </tags>
   </entry>
   <entry>
@@ -3471,224 +3563,6 @@ sequenceDiagram
       <tags>
         <tag>数据库</tag>
         <tag>ES</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>rocksdb</title>
-    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
-    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
-<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
-<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
-<thead>
-<tr>
-<th>类别</th>
-<th>属性名</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>总体统计</td>
-<td>rocksdb.stats</td>
-<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
-</tr>
-<tr>
-<td>数据库大小</td>
-<td>rocksdb.total-sst-files-size</td>
-<td>所有 SST 文件的总大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-table-readers-mem</td>
-<td>估计表读取器使用的内存</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.estimate-live-data-size</td>
-<td>估计的活跃数据大小</td>
-</tr>
-<tr>
-<td>内存使用</td>
-<td>rocksdb.cur-size-all-mem-tables</td>
-<td>所有 MemTable 的当前大小</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.block-cache-usage</td>
-<td>块缓存的使用量</td>
-</tr>
-<tr>
-<td>压缩</td>
-<td>rocksdb.background-errors</td>
-<td>后台工作（如压缩）中的错误数</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.num-running-compactions</td>
-<td>当前运行的压缩任务数</td>
-</tr>
-<tr>
-<td>写入</td>
-<td>rocksdb.num-immutable-mem-table</td>
-<td>不可变 MemTable 的数量</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.mem-table-flush-pending</td>
-<td>是否有待处理的 MemTable 刷新</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.is-write-stopped</td>
-<td>写入是否已停止</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.actual-delayed-write-rate</td>
-<td>实际的延迟写入速率</td>
-</tr>
-<tr>
-<td>读取</td>
-<td>rocksdb.estimate-num-keys</td>
-<td>估计的键数量</td>
-</tr>
-<tr>
-<td>文件</td>
-<td>rocksdb.num-files-at-level<N></td>
-<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
-</tr>
-<tr>
-<td></td>
-<td>rocksdb.live-sst-files-size</td>
-<td>活跃 SST 文件的大小</td>
-</tr>
-</tbody></table>
-<p>注意：</p>
-<ol>
-<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
-<li>某些属性可能会影响性能，应谨慎使用。</li>
-<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
-<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
-</ol>
-<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
-<li>为单个 key 提供并发控制<ol>
-<li>事务开始时获取逻辑锁</li>
-<li>提交时检查冲突</li>
-<li>避免显式锁定，提高并发性</li>
-<li>减少死锁风险</li>
-<li>计数器更新</li>
-<li>用户状态修改</li>
-</ol>
-</li>
-<li>确保多个 key 的一致性更新<ol>
-<li>将多个 key 操作组合为单一事务</li>
-<li>全部成功或全部失败</li>
-<li>维护相关数据的一致性</li>
-<li>简化复杂操作的实现</li>
-<li>用户注册（创建账户 + 初始化设置）</li>
-<li>订单处理（更新库存 + 记录订单）</li>
-</ol>
-</li>
-</ul>
-<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
-<li>触发时机：事务提交时</li>
-<li>检测对象：活跃事务之间的写集</li>
-<li>检测方式：<ol>
-<li>每个事务的 put 操作都会记录在写集中</li>
-<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
-<li>结果：如果发现冲突，后提交的事务通常会失败</li>
-</ol>
-</li>
-</ol>
-<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
-<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
-<li>检测对象：所有活跃事务的锁和写意图</li>
-<li>检测方式：<ol>
-<li>检查目标键是否被任何活跃事务锁定</li>
-<li>检查是否有活跃事务对该键有写意图</li>
-<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
-</ol>
-</li>
-</ol>
-<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
-<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
-<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
-<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
-<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
-<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
-</ol>
-<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
-<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
-<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
-<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
-<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
-<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
-<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
-<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>方面</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>全局序列号</td>
-<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
-</tr>
-<tr>
-<td>事务开始</td>
-<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
-</tr>
-<tr>
-<td>读操作</td>
-<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
-</tr>
-<tr>
-<td>写操作</td>
-<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
-</tr>
-<tr>
-<td>事务提交</td>
-<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
-</tr>
-<tr>
-<td>回滚处理</td>
-<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
-</tr>
-<tr>
-<td>冲突检测</td>
-<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
-</tr>
-<tr>
-<td>OptimisticTransactionDB</td>
-<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
-</tr>
-<tr>
-<td>TransactionDB</td>
-<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
-</tr>
-<tr>
-<td>隔离级别影响</td>
-<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
-</tr>
-<tr>
-<td>注意事项</td>
-<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
-</tr>
-</tbody></table>
-<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
-<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
-<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
-<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>rocksdb</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>rocksdb</tag>
       </tags>
   </entry>
   <entry>
@@ -4875,6 +4749,224 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>rocksdb</title>
+    <url>/2025/02/19/shu-ju-ku/rocksdb/rocksdb/posts/undefined/</url>
+    <content><![CDATA[<h4 id="数据写入流程"><a href="#数据写入流程" class="headerlink" title="数据写入流程"></a>数据写入流程</h4><p><img data-src="/images/db/rocksdb/image1.png" alt="image1.png"></p>
+<h4 id="数据读取流程"><a href="#数据读取流程" class="headerlink" title="数据读取流程"></a>数据读取流程</h4><p><img data-src="/images/db/rocksdb/image2.png" alt="image2.png"></p>
+<h4 id="db-相关属性"><a href="#db-相关属性" class="headerlink" title="db 相关属性"></a>db 相关属性</h4><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>属性名</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>总体统计</td>
+<td>rocksdb.stats</td>
+<td>提供详细的数据库统计信息，包括压缩、读写操作、块缓存等数据</td>
+</tr>
+<tr>
+<td>数据库大小</td>
+<td>rocksdb.total-sst-files-size</td>
+<td>所有 SST 文件的总大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-table-readers-mem</td>
+<td>估计表读取器使用的内存</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.estimate-live-data-size</td>
+<td>估计的活跃数据大小</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>rocksdb.cur-size-all-mem-tables</td>
+<td>所有 MemTable 的当前大小</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.block-cache-usage</td>
+<td>块缓存的使用量</td>
+</tr>
+<tr>
+<td>压缩</td>
+<td>rocksdb.background-errors</td>
+<td>后台工作（如压缩）中的错误数</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.num-running-compactions</td>
+<td>当前运行的压缩任务数</td>
+</tr>
+<tr>
+<td>写入</td>
+<td>rocksdb.num-immutable-mem-table</td>
+<td>不可变 MemTable 的数量</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.mem-table-flush-pending</td>
+<td>是否有待处理的 MemTable 刷新</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.is-write-stopped</td>
+<td>写入是否已停止</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.actual-delayed-write-rate</td>
+<td>实际的延迟写入速率</td>
+</tr>
+<tr>
+<td>读取</td>
+<td>rocksdb.estimate-num-keys</td>
+<td>估计的键数量</td>
+</tr>
+<tr>
+<td>文件</td>
+<td>rocksdb.num-files-at-level<N></td>
+<td>第 N 层的文件数量（如 rocksdb.num-files-at-level0）</td>
+</tr>
+<tr>
+<td></td>
+<td>rocksdb.live-sst-files-size</td>
+<td>活跃 SST 文件的大小</td>
+</tr>
+</tbody></table>
+<p>注意：</p>
+<ol>
+<li>使用方法示例：<code>String value = db.getProperty(&quot;rocksdb.stats&quot;);</code></li>
+<li>某些属性可能会影响性能，应谨慎使用。</li>
+<li>属性值可能会频繁变化，建议定期获取以监控趋势。</li>
+<li>在生产环境中使用时，可能需要限制获取这些属性的频率。</li>
+</ol>
+<h4 id="事务操作使用场景"><a href="#事务操作使用场景" class="headerlink" title="事务操作使用场景"></a>事务操作使用场景</h4><ul>
+<li>为单个 key 提供并发控制<ol>
+<li>事务开始时获取逻辑锁</li>
+<li>提交时检查冲突</li>
+<li>避免显式锁定，提高并发性</li>
+<li>减少死锁风险</li>
+<li>计数器更新</li>
+<li>用户状态修改</li>
+</ol>
+</li>
+<li>确保多个 key 的一致性更新<ol>
+<li>将多个 key 操作组合为单一事务</li>
+<li>全部成功或全部失败</li>
+<li>维护相关数据的一致性</li>
+<li>简化复杂操作的实现</li>
+<li>用户注册（创建账户 + 初始化设置）</li>
+<li>订单处理（更新库存 + 记录订单）</li>
+</ol>
+</li>
+</ul>
+<h4 id="RocksDB-默认冲突检测机制"><a href="#RocksDB-默认冲突检测机制" class="headerlink" title="RocksDB 默认冲突检测机制"></a>RocksDB 默认冲突检测机制</h4><h5 id="事务间冲突检测"><a href="#事务间冲突检测" class="headerlink" title="事务间冲突检测"></a>事务间冲突检测</h5><ol>
+<li>触发时机：事务提交时</li>
+<li>检测对象：活跃事务之间的写集</li>
+<li>检测方式：<ol>
+<li>每个事务的 put 操作都会记录在写集中</li>
+<li>提交时检查本事务的写集是否与其他活跃事务的写集冲突</li>
+<li>结果：如果发现冲突，后提交的事务通常会失败</li>
+</ol>
+</li>
+</ol>
+<h5 id="非事务性写入检测"><a href="#非事务性写入检测" class="headerlink" title="非事务性写入检测"></a>非事务性写入检测</h5><ol>
+<li>触发时机：执行非事务性写入时（如 txnDb.put()）</li>
+<li>检测对象：所有活跃事务的锁和写意图</li>
+<li>检测方式：<ol>
+<li>检查目标键是否被任何活跃事务锁定</li>
+<li>检查是否有活跃事务对该键有写意图</li>
+<li>结果：如果存在冲突，非事务性写入会失败并抛出异常</li>
+</ol>
+</li>
+</ol>
+<h5 id="关键机制"><a href="#关键机制" class="headerlink" title="关键机制"></a>关键机制</h5><ol>
+<li>写意图（Write Intents）：事务执行写操作时登记，用于冲突检测</li>
+<li>锁定机制：事务的 put 操作会为相应的键设置锁</li>
+<li>快照隔离：事务开始时获取数据快照，影响可见的数据版本</li>
+<li>乐观并发控制（默认）：大多数冲突检测在提交时进行</li>
+<li>悲观锁定（可配置）：启用后，冲突检测在写操作执行时就会进行</li>
+</ol>
+<h4 id="RocksDB-读取策略"><a href="#RocksDB-读取策略" class="headerlink" title="RocksDB 读取策略"></a>RocksDB 读取策略</h4><h5 id="读已提交-默认"><a href="#读已提交-默认" class="headerlink" title="读已提交(默认)"></a>读已提交(默认)</h5><p>内部事务对于外部事务提交的立马可见</p>
+<h5 id="快照读"><a href="#快照读" class="headerlink" title="快照读"></a>快照读</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">readOptions.setSnapshot(snapshot);</span><br></pre></td></tr></table></figure>
+<p>快照读类比于读已提交，对于外部事务只能看到当前快照创建时提交的数据，对于当前事务，所有写入都是可见的</p>
+<h4 id="RocksDB-事务版本号管理"><a href="#RocksDB-事务版本号管理" class="headerlink" title="RocksDB 事务版本号管理"></a>RocksDB 事务版本号管理</h4><ul>
+<li>对于冲突检测来说，使用事务开始时的快照序列号作为基准，比较操作键的当前序列号与快照序列号</li>
+<li>对于提交来说，获取新的全局序列号作为起始点，将事务内部的临时序列号映射到连续的全局序列号，最终序列号 &#x3D; 新全局序列号 + 临时序列号偏移</li>
+<li>所以会出现某个事务过程中，外部事务修改了键，内部事务再使用getForUpdate就会报错，因为比较实用的是快照的序列号</li>
+<li>getForUpdate还有个好处就是能检测外部非事务性操作，因为本质上使用的是序列号比较，所以能检测，但是默认的写写冲突是无法检测的，因为默认是读已提交，rocksdb认为这是合理的，内部事务会覆盖外部事物的值</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>方面</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全局序列号</td>
+<td>- 全局递增的序列号作为版本标识<br>- 每次非事务写入或事务提交时分配</td>
+</tr>
+<tr>
+<td>事务开始</td>
+<td>- 创建数据库快照<br>- 记录当前最大序列号作为事务”基线”</td>
+</tr>
+<tr>
+<td>读操作</td>
+<td>- 使用事务开始时的快照序列号<br>- 只读取序列号≤快照序列号的数据</td>
+</tr>
+<tr>
+<td>写操作</td>
+<td>- 不立即分配全局序列号<br>- 事务内部使用临时本地序列号</td>
+</tr>
+<tr>
+<td>事务提交</td>
+<td>- 获取新的全局序列号<br>- 将事务内写操作映射到连续的全局序列号<br>- 用新序列号更新数据库</td>
+</tr>
+<tr>
+<td>回滚处理</td>
+<td>- 丢弃事务内的所有本地序列号<br>- 不影响全局序列号</td>
+</tr>
+<tr>
+<td>冲突检测</td>
+<td>- 读写冲突：比较快照序列号与当前数据序列号<br>- 写写冲突：提交时检查数据是否被其他事务修改</td>
+</tr>
+<tr>
+<td>OptimisticTransactionDB</td>
+<td>- 延迟冲突检测到提交阶段<br>- 提交时比较数据当前序列号与事务开始序列号</td>
+</tr>
+<tr>
+<td>TransactionDB</td>
+<td>- 可能在操作过程中进行冲突检测<br>- 使用锁机制预防冲突</td>
+</tr>
+<tr>
+<td>隔离级别影响</td>
+<td>- 读已提交：每次读操作使用最新快照<br>- 可重复读：整个事务使用开始时的快照<br>- 快照隔离：类似可重复读，但有额外写冲突检测</td>
+</tr>
+<tr>
+<td>注意事项</td>
+<td>- 版本号管理是实现 MVCC 的基础<br>- 有助于理解和处理事务冲突和并发问题</td>
+</tr>
+</tbody></table>
+<h4 id="getForUpdate总结"><a href="#getForUpdate总结" class="headerlink" title="getForUpdate总结"></a>getForUpdate总结</h4><ol>
+<li>用来解决读写冲突，这里的冲突可以是事务与其他事务之间，也可以是事务与非事务操作之间</li>
+<li>我认为是使用序列号进行检测的，当前快照的序列号与键的序列号之间的比较判断是否冲突</li>
+<li>对于OptimisticTransactionDB和TransactionDB检测的时机不一样，前者属于乐观型的，在commit才会检测，后者会立即检测</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>rocksdb</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+        <tag>rocksdb</tag>
       </tags>
   </entry>
   <entry>
