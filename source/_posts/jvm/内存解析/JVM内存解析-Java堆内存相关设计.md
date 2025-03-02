@@ -295,3 +295,14 @@ Java 是一个面向对象的语言，JVM 中执行最多的就是访问这些�
 从上一节能看出来，`HeapBaseMinAddress` 在不设置时默认是 `2GB`（大部分环境下）:
 1. 自己指定了 Java 堆开始的地址，并且与 32GB 地址相交 `-XX:HeapBaseMinAddress=2G`
 2. 最大堆内存 + Java 堆起始位置大于 32GB `-Xmx31G`
+
+### 各模式选择条件总结
+
+--- 
+
+| 模式 | 堆基址条件 | 最大堆限制                                   | 选择逻辑 |
+|------|------------|-----------------------------------------|----------|
+| 32-bit | 堆空间完全在4GB范围内 | < 4GB - HeapBaseMinAddress              | 适用于堆需求较小的应用 |
+| Zero-based | 任意堆基址 | HeapBaseMinAddress + Xmx > 4GB 且 < 32GB | 当堆总大小超过4GB但小于32GB时使用 |
+| Non-zero based | ~2GB | <32GB                                   | 平衡系统内存布局需求的通用模式 |
+| Non-zero disjoint | `>=32GB` (如64GB) | <32GB                                   | 适用于特定的内存布局需求 |
