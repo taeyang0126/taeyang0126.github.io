@@ -6,8 +6,10 @@ tags: [JVM, 内存, 堆内存]
 categories: [JVM内存解析]
 ---
 
-> 本文参考张哥 -> 全网最硬核 JVM 内存解析 - 4.Java 堆内存大小的确认
-- [JVM 堆内存大小设计](https://juejin.cn/post/7225874698906615864)
+> 本文参考张哥 -> 全网最硬核 JVM 内存解析
+- [Java 堆内存大小的确认](https://juejin.cn/post/7225874698906615864)
+- [压缩对象指针相关机制](https://juejin.cn/post/7225874698906714168)
+- [其他 Java 堆内存相关的特殊机制](https://juejin.cn/post/7225879698952470588)
 
 ### 通用初始化与扩展流程
 
@@ -232,3 +234,64 @@ Java 是一个面向对象的语言，JVM 中执行最多的就是访问这些�
 2. `Zero based` 压缩指针模式：最大堆内存 + Java 堆起始位置不大于 32GB（并且 Java 堆起始位置不能太小），`64 位地址 = （压缩对象指针 << 对象对齐偏移）`
 3. `Non-zero disjoint` 压缩指针模式：`最大堆内存不大于 32GB`，由于要保证 Java 堆起始位置不能太小，最大堆内存 + Java 堆起始位置大于 32GB，`64 位地址 = 基址 |（压缩对象指针 << 对象对齐偏移）`
 4. `Non-zero based` 压缩指针模式：用户通过 `HeapBaseMinAddress` 自己指定了 Java 堆开始的地址，并且与 32GB 地址相交，并最大堆内存 + Java 堆起始位置大于 32GB，但是`最大堆内存没有超过 32GB`，`64 位地址 = 基址 + （压缩对象指针 << 对象对齐偏移）`
+
+### 为何预留第 0 页，压缩对象指针 null 判断擦除的实现
+
+---
+
+前面我们知道，JVM 中的压缩对象指针有四种模式。对于地址非从 0 开始的那两种，即 `Non-zero disjoint` 和 `Non-zero based` 这两种，堆的实际地址并不是从 `HeapBaseMinAddress` 开始，而是有一页预留下来，被称为第 0 页，这一页不映射实际内存，如果访问这一页内部的地址，会有 Segment Fault 异常。那么为什么要预留这一页呢？主要是为了 null 判断优化，实现 null 判断擦除。
+
+要预留第 0 页，不映射内存，实际就是为了让对于基址进行访问可以触发 `Segment Fault`，JVM 会捕捉这个信号，查看触发这个信号的内存地址是否属于第一页，如果属于那么 JVM 就知道了这个是对象为 null 导致的。不过从前面看，我们其实只是为了不映射基址对应的地址，那为啥要保留一整页呢？这个是处于内存对齐与寻址访问速度的考量，里面映射物理内存都是以页为单位操作的，所以内存需要按页对齐。
+
+### 结合压缩对象指针与前面提到的堆内存限制的初始化的关系
+
+---
+
+前面我们说明了不手动指定三个指标的情况下，这三个指标 (MinHeapSize,MaxHeapSize,InitialHeapSize) 是如何计算的，但是没有涉及压缩对象指针。如果压缩对象指针开启，那么堆内存限制的初始化之后，会根据参数确定压缩对象指针是否开启：
+
+1. 首先，确定 Java 堆的起始位置：
+   1. 第一步，在不同操作系统不同 CPU 环境下，`HeapBaseMinAddress` 的默认值不同，大部分环境下是 `2GB`
+   2. 将 `DefaultHeapBaseMinAddress` 设置为 `HeapBaseMinAddress` 的默认值，即 `2GB`
+   3. 如果用户在启动参数中指定了 `HeapBaseMinAddress`，如果 `HeapBaseMinAddress` 小于 `DefaultHeapBaseMinAddress`，将 `HeapBaseMinAddress` 设置为 `DefaultHeapBaseMinAddress`
+2. 计算压缩对象指针堆的最大堆大小:
+   1. 读取对象对齐大小 `ObjectAlignmentInBytes` 参数的值，默认为 8
+   2. 对 `ObjectAlignmentInBytes` 取 2 的对数，记为 `LogMinObjAlignmentInBytes`
+   3. 将 32 位左移 `LogMinObjAlignmentInBytes` 得到 `OopEncodingHeapMax` 即不考虑预留区的最大堆大小
+   4. 如果需要预留区，即 `Non-Zero Based Disjoint` 以及 `Non-Zero Based` 这两种模式下，需要刨除掉预留区即第 0 页的大小，即 `OopEncodingHeapMax` - 第 0 页的大小
+3. 读取当前 JVM 配置的最大堆大小
+4. 如果 JVM 配置的最大堆小于压缩对象指针堆的最大堆大小，并且没有通过 JVM 启动参数明确关闭压缩对象指针，则开启压缩对象指针。否则，关闭压缩对象指针
+5. 如果压缩对象指针关闭，根据前面分析过的是否压缩类指针强依赖压缩对象指针，如果是，关闭压缩类指针
+
+### 各种压缩指针模式的开启
+
+---
+
+#### 32-bit 压缩指针模式
+> 最大堆内存 + Java 堆起始位置不大于 4GB（并且 Java 堆起始位置不能太小），`64 位地址 = 压缩对象指针`
+
+从上一节能看出来，`HeapBaseMinAddress` 在不设置时默认是 `2GB`（大部分环境下）:
+1. `maxHeapSize` < `4GB` - `HeapBaseMinAddress` 
+2. eg: -Xmx32M
+3. `Java 堆会从界限减去最大堆大小的位置开始 reserve`，也就是在 `-Xmx32M` 下，堆的起始位置是 `0x0000 0000 fe00 0000` （0x0000 0000 fe00 0000 + 32M = 4GB）
+
+#### Zero based 压缩指针模式
+> 最大堆内存 + Java 堆起始位置不大于 32GB（并且 Java 堆起始位置不能太小），64 位地址 = （压缩对象指针 << 对象对齐偏移）
+
+从上一节能看出来，`HeapBaseMinAddress` 在不设置时默认是 `2GB`（大部分环境下）:
+1. `maxHeapSize` > `4GB` - `HeapBaseMinAddress` 
+2. `maxHeapSize` < `32GB` - `HeapBaseMinAddress` 
+3. eg: -Xmx2050M
+
+#### Non-zero disjoint 压缩指针模式
+> 最大堆内存不大于 32GB，由于要保证 Java 堆起始位置不能太小，最大堆内存 + Java 堆起始位置大于 32GB，64 位地址 = 基址 |（压缩对象指针 << 对象对齐偏移）
+
+从上一节能看出来，`HeapBaseMinAddress` 在不设置时默认是 `2GB`（大部分环境下）:
+1. java 堆起始位置与32GB完全不相交的地址(0x0000001000000000(64GB))，32GB地址=0x0000000800000000
+2. -Xmx31G
+
+#### Non-zero based 压缩指针模式
+> 用户通过 HeapBaseMinAddress 自己指定了 Java 堆开始的地址，并且与 32GB 地址相交，并最大堆内存 + Java 堆起始位置大于 32GB，但是最大堆内存没有超过 32GB，64 位地址 = 基址 + （压缩对象指针 << 对象对齐偏移）
+
+从上一节能看出来，`HeapBaseMinAddress` 在不设置时默认是 `2GB`（大部分环境下）:
+1. 自己指定了 Java 堆开始的地址，并且与 32GB 地址相交 `-XX:HeapBaseMinAddress=2G`
+2. 最大堆内存 + Java 堆起始位置大于 32GB `-Xmx31G`
