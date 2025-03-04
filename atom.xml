@@ -6,7 +6,7 @@
   <link href="https://taeyang0126.github.io/atom.xml" rel="self"/>
   
   <link href="https://taeyang0126.github.io/"/>
-  <updated>2025-03-01T09:46:30.000Z</updated>
+  <updated>2025-03-04T14:01:52.000Z</updated>
   <id>https://taeyang0126.github.io/</id>
   
   <author>
@@ -15,6 +15,46 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>JVM与JFR事件-Java Application/Statistics/Thread Allocation Statistics</title>
+    <link href="https://taeyang0126.github.io/2025/03/04/jfr/9.jvm-yu-jfr-shi-jian-thread-allocation-statistics/posts/undefined/"/>
+    <id>https://taeyang0126.github.io/2025/03/04/jfr/9.jvm-yu-jfr-shi-jian-thread-allocation-statistics/posts/undefined/</id>
+    <published>2025-03-04T14:01:52.000Z</published>
+    <updated>2025-03-04T14:01:52.000Z</updated>
+    
+    <content type="html"><![CDATA[<ul><li><a href="https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&vd_source=3950f615078c921132561647ae6a1ddd">本系列参考张哥JFR全系列</a></li></ul><h3 id="基础信息"><a href="#基础信息" class="headerlink" title="基础信息"></a>基础信息</h3><ul><li>Type(JVM,JDK内部唯一标识，用于jfr配置): <code>jdk.ThreadAllocationStatistics</code></li><li>Label(Event Type，用于显示): Thread Allocation Statistics</li><li>Category(用于分类显示): Java Application，Statistics</li><li>事件从<code>Java11</code>引入</li><li>事件类型<ul><li><code>定时事件</code>: 代表定时采集，没有线程栈信息，因为执行线程都是 <code>JFR Periodic Tasks</code> 线程，采集这个线程栈没有意义</li><li><code>JVM内部事件</code></li></ul></li></ul><h3 id="jfc配置"><a href="#jfc配置" class="headerlink" title="jfc配置"></a>jfc配置</h3><ul><li>default.jfc 配置<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ThreadAllocationStatistics&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;period&quot;</span>&gt;</span>everyChunk<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li><li>Profiling.jfc 配置<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">event</span> <span class="attr">name</span>=<span class="string">&quot;jdk.ThreadAllocationStatistics&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;enabled&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">setting</span> <span class="attr">name</span>=<span class="string">&quot;period&quot;</span>&gt;</span>everyChunk<span class="tag">&lt;/<span class="name">setting</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">event</span>&gt;</span></span><br></pre></td></tr></table></figure></li><li>period 为 everyChunk，beginChunk，endChunk 分别是什么意思？</li><li><code>Chunk</code> 可以简单理解为本地文件满了之后换一个新的文件，每个文件就是一个 <code>Chunk</code>。可以通过 <code>-XX:FlightRecorderOptions=maxchunksize=128m</code> 设置是 <code>12M</code></li><li><code>beginChunk</code>: 在每个 Chunk 开始的时候执行</li><li><code>endChunk</code>: 在每个 Chunk 满了的时候执行</li><li>下一个 Chunk 的 beginChunk 与上一个 Chunk 的 endChunk 时间基本相同</li><li><code>everyChunk</code> 代表 beginChunk + endChunk（都会执行）</li><li><code>everyChunk</code> 利于单独拿出来 tmp 目录的一个 jfr 文件的时候，有开始和结束的值</li></ul><h3 id="采集原理"><a href="#采集原理" class="headerlink" title="采集原理"></a>采集原理</h3><ul><li>在每个 Chunk 开始和结束的时候，生成 <code>jdk.ThreadAllocationStatistics</code> 事件</li><li>即采集每个线程内部的分配对象大小统计数据 <code>_allocated_bytes</code> (这是每个线程私有的)</li></ul><h3 id="统计数据的更新时机"><a href="#统计数据的更新时机" class="headerlink" title="统计数据的更新时机"></a>统计数据的更新时机</h3><ul><li>如果启动了 <code>TLAB</code>（默认就是启用的）:<ul><li>在 TLAB 满了（其实是不足以分配对象，剩余空间小于最大浪费限制的时候），或者 GC 的时候 TLAB 回退堆的时候</li><li>将 TLAB 中占用的空间大小，加到 <code>_allocated_bytes</code></li><li>每次读取的时候，读取 <code>_allocated_bytes</code> 加上当前 TLAB 已使用空间大小</li></ul></li><li>如果没有启动 TLAB(应该不会有应用这么干)，每次分配的时候会将对象大小加到这个字段</li></ul><h3 id="事件字段"><a href="#事件字段" class="headerlink" title="事件字段"></a>事件字段</h3><ul><li><code>Thread</code>: 统计的线程名称（这个无法统计虚拟线程的，只能统计平台线程）</li><li><code>allocated</code>: 这个线程当前累计分配了多大的对象（这个字段类似于 OpenTelemetry 中的 Gauge 类型字段，瞬时值）</li></ul><h3 id="测试代码"><a href="#测试代码" class="headerlink" title="测试代码"></a>测试代码</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TestThreadAllocationStatistics</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, IOException &#123;</span><br><span class="line">        <span class="comment">// 初始化jfr记录</span></span><br><span class="line">        <span class="type">Recording</span> <span class="variable">recording</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Recording</span>();</span><br><span class="line">        <span class="comment">// 启用 ThreadAllocationStatistics 事件，每秒采集一次</span></span><br><span class="line">        recording.enable(<span class="string">&quot;jdk.ThreadAllocationStatistics&quot;</span>).with(<span class="string">&quot;period&quot;</span>, <span class="string">&quot;1s&quot;</span>);</span><br><span class="line">        <span class="comment">// JFR 记录启动</span></span><br><span class="line">        recording.start();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 虚拟线程/平台线程</span></span><br><span class="line">        Thread.Builder.<span class="type">OfVirtual</span> <span class="variable">ofVirtual</span> <span class="operator">=</span> Thread.ofVirtual().name(<span class="string">&quot;test-virtual-&quot;</span>, <span class="number">0</span>);</span><br><span class="line">        Thread.Builder.<span class="type">OfPlatform</span> <span class="variable">ofPlatform</span> <span class="operator">=</span> Thread.ofPlatform().name(<span class="string">&quot;test-platform-&quot;</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 各启动5个线程</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">5</span>; i++) &#123;</span><br><span class="line">            <span class="type">Runnable</span> <span class="variable">runnable</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">                <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">                    <span class="comment">// 分配一个随机大小的数组</span></span><br><span class="line">                    Object[] array = <span class="keyword">new</span> <span class="title class_">Object</span>[ThreadLocalRandom.current().nextInt(<span class="number">8</span>, <span class="number">1024</span> * <span class="number">1024</span>)];</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        Thread.sleep(<span class="number">100</span>);</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">                        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;;</span><br><span class="line">            ofVirtual.start(runnable);</span><br><span class="line">            ofPlatform.start(runnable);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        TimeUnit.SECONDS.sleep(<span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 将 jfr 记录到一个文件</span></span><br><span class="line">        <span class="type">Path</span> <span class="variable">path</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">File</span>(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;.&quot;</span>).getAbsolutePath(),</span><br><span class="line">                <span class="string">&quot;recording-&quot;</span> + recording.getId()</span><br><span class="line">                        + <span class="string">&quot;-pid&quot;</span></span><br><span class="line">                        + ProcessHandle.current().pid()</span><br><span class="line">                        + <span class="string">&quot;.jfr&quot;</span></span><br><span class="line">        ).toPath();</span><br><span class="line">        recording.dump(path);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 结束程序</span></span><br><span class="line">        System.exit(<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><ul><li>根据线程进行分组 -&gt; 按照 Allocated 倒序<br><img data-src="/images/jfr/31.png" alt="img"></li><li>查看图表，在柱状图显示 allocated 总计，因为之前按照 Thread 分组，这里可以看到某个 thread 的 allocated 变化<br><img data-src="/images/jfr/32.png" alt="img"><br><img data-src="/images/jfr/33.png" alt="img"></li></ul><h3 id="其他方式查看-allocated"><a href="#其他方式查看-allocated" class="headerlink" title="其他方式查看 allocated"></a>其他方式查看 allocated</h3><ul><li>jstack -e <pid></li><li>jcmd <pid> Thread.print -e</li><li>以上两个效果一样，-e 代表输出线程额外信息，额外信息中包含 allocated&#x3D;…</li><li>代码中查看<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 获取所有活跃线程总共分配的内存字节数</span></span><br><span class="line">((com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean()).getTotalThreadAllocatedBytes();</span><br><span class="line"><span class="comment">// 获取当前调用线程分配的内存字节数</span></span><br><span class="line">((com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean()).getCurrentThreadAllocatedBytes();</span><br><span class="line"><span class="comment">// 获取线程ID为1的线程分配的内存字节数</span></span><br><span class="line">((com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean()).getThreadAllocatedBytes(<span class="number">1</span>);</span><br><span class="line"><span class="comment">// 获取线程ID为1、2、3的多个线程分配的内存字节数</span></span><br><span class="line">((com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean()).getThreadAllocatedBytes(<span class="keyword">new</span> <span class="title class_">long</span>[]&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>&#125;);</span><br></pre></td></tr></table></figure></li></ul><h3 id="结论与建议"><a href="#结论与建议" class="headerlink" title="结论与建议"></a>结论与建议</h3><ul><li>该事件默认开启，不需要进行调整</li></ul><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+    
+    
+    <summary type="html">&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://www.bilibili.com/video/BV1CBKLe9ECN?spm_id_from=333.788.videopod.sections&amp;vd_source=3950f615078c921132561647ae6a1ddd&quot;&gt;本系列参考张哥JFR全系列&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&quot;基础信息&quot;&gt;&lt;a href=&quot;#基础信息&quot; class=&quot;headerlink&quot; title=&quot;基础信息&quot;&gt;&lt;/a&gt;基础信息&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;Type(JVM,JDK内部唯一标识，用于jfr配置): &lt;code&gt;jdk.ThreadAllocationStatistics&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Label(Event Type，用于显示): Thread Allocation Statistics&lt;/li&gt;
+&lt;li&gt;Category(用于分类显示): Java Application，Statistics&lt;/li&gt;
+&lt;li&gt;事件从&lt;code&gt;Java11&lt;/code&gt;引入&lt;/li&gt;
+&lt;li&gt;事件类型&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;定时事件&lt;/code&gt;: 代表定时采集，没有线程栈信息，因为执行线程都是 &lt;code&gt;JFR Periodic Tasks&lt;/code&gt; 线程，采集这个线程栈没有意义&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;JVM内部事件&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;</summary>
+    
+    
+    
+    <category term="JFR" scheme="https://taeyang0126.github.io/categories/JFR/"/>
+    
+    
+    <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
+    
+    <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
+    
+    <category term="线程分配" scheme="https://taeyang0126.github.io/tags/%E7%BA%BF%E7%A8%8B%E5%88%86%E9%85%8D/"/>
+    
+  </entry>
   
   <entry>
     <title>JVM内存解析 - 3.Java堆内存相关设计</title>
@@ -112,9 +152,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
-    
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
     
     <category term="类加载" scheme="https://taeyang0126.github.io/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD/"/>
     
@@ -159,9 +199,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
-    
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
     
     <category term="对象分配" scheme="https://taeyang0126.github.io/tags/%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D/"/>
     
@@ -207,9 +247,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
-    
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
     
     <category term="对象分配" scheme="https://taeyang0126.github.io/tags/%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D/"/>
     
@@ -310,9 +350,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
-    
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
     
     <category term="对象分配" scheme="https://taeyang0126.github.io/tags/%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D/"/>
     
@@ -370,9 +410,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
-    
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
     
     <category term="对象分配" scheme="https://taeyang0126.github.io/tags/%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D/"/>
     
@@ -418,9 +458,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
-    
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
     
     <category term="对象分配" scheme="https://taeyang0126.github.io/tags/%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D/"/>
     
@@ -451,9 +491,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
-    
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
     
     <category term="对象分配" scheme="https://taeyang0126.github.io/tags/%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D/"/>
     
@@ -512,9 +552,9 @@
     
     <category term="JVM" scheme="https://taeyang0126.github.io/tags/JVM/"/>
     
-    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
-    
     <category term="JFR" scheme="https://taeyang0126.github.io/tags/JFR/"/>
+    
+    <category term="监控" scheme="https://taeyang0126.github.io/tags/%E7%9B%91%E6%8E%A7/"/>
     
   </entry>
   
@@ -658,45 +698,6 @@
     <category term="java" scheme="https://taeyang0126.github.io/tags/java/"/>
     
     <category term="spring boot" scheme="https://taeyang0126.github.io/tags/spring-boot/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>loom</title>
-    <link href="https://taeyang0126.github.io/2025/02/19/loom/loom/posts/undefined/"/>
-    <id>https://taeyang0126.github.io/2025/02/19/loom/loom/posts/undefined/</id>
-    <published>2025-02-19T12:51:22.000Z</published>
-    <updated>2025-02-19T12:51:22.000Z</updated>
-    
-    <content type="html"><![CDATA[<ul><li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li><li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li><li><a href="https://openjdk.org/jeps/480">结构化并发</a></li><li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li><li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li><li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li><li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li><li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li><li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li><li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li></ul><h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote><p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p></blockquote><ul><li>Java 代码调用本地代码 (JNI)</li><li>synchronized 块或方法</li></ul><h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul><li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li></ul><h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol><li>Synchronization<ul><li>synchronized最终会解决，但是JNI不会处理</li><li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li></ul></li><li>I&#x2F;O<ul><li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li><li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li><li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li><li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li></ul></li></ol><script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-    
-    
-    <summary type="html">&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;https://wiki.openjdk.org/display/loom&quot;&gt;openjdk loom&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://openjdk.org/jeps/444&quot;&gt;虚拟线程&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://openjdk.org/jeps/480&quot;&gt;结构化并发&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://inside.java/2021/05/10/networking-io-with-virtual-threads/&quot;&gt;虚拟线程网络IO实现原理&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html&quot;&gt;Project Loom: Java虚拟机的纤程和计算续体&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html&quot;&gt;State of Loom: part 1&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html&quot;&gt;State of Loom: part 2&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://zhuanlan.zhihu.com/p/685013298&quot;&gt;虚拟线程不推荐上生产的思考&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://zhuanlan.zhihu.com/p/686222059&quot;&gt;Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://openjdk.org/jeps/481&quot;&gt;Scoped Values&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h3 id=&quot;pin&quot;&gt;&lt;a href=&quot;#pin&quot; class=&quot;headerlink&quot; title=&quot;pin&quot;&gt;&lt;/a&gt;pin&lt;/h3&gt;&lt;blockquote&gt;
-&lt;p&gt;We say that a virtual thread is &lt;code&gt;pinned&lt;/code&gt; to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.&lt;/p&gt;
-&lt;/blockquote&gt;</summary>
-    
-    
-    
-    <category term="loom" scheme="https://taeyang0126.github.io/categories/loom/"/>
-    
-    
-    <category term="loom" scheme="https://taeyang0126.github.io/tags/loom/"/>
-    
-    <category term="虚拟线程" scheme="https://taeyang0126.github.io/tags/%E8%99%9A%E6%8B%9F%E7%BA%BF%E7%A8%8B/"/>
-    
-    <category term="java" scheme="https://taeyang0126.github.io/tags/java/"/>
     
   </entry>
   
