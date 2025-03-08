@@ -208,29 +208,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Feign 更换 Client</title>
-    <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
-    <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
-<li>feignClient 实现类依旧是 LoadBalancerFeignClient</li>
-<li>LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClient</span> <span class="keyword">implements</span> <span class="title class_">Client</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> WebClient webClient;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VertxFeignClient</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Vertx</span> <span class="variable">vertx</span> <span class="operator">=</span> Vertx.vertx();</span><br><span class="line">        <span class="type">WebClientOptions</span> <span class="variable">webClientOptions</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">WebClientOptions</span>()</span><br><span class="line">                .setMaxPoolSize(<span class="number">100</span>)</span><br><span class="line">                .setMaxWaitQueueSize(<span class="number">10000</span>);</span><br><span class="line">        <span class="built_in">this</span>.webClient = WebClient.create(vertx, webClientOptions);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Response <span class="title function_">execute</span><span class="params">(Request request, Request.Options options)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> request.url();</span><br><span class="line">        <span class="type">var</span> <span class="variable">bodys</span> <span class="operator">=</span> request.requestBody().asBytes();</span><br><span class="line">        Map&lt;String, Collection&lt;String&gt;&gt; headers = request.headers();</span><br><span class="line">        io.vertx.core.http.<span class="type">HttpMethod</span> <span class="variable">vertxMethod</span> <span class="operator">=</span> io.vertx.core.http.HttpMethod.valueOf(request.httpMethod().name());</span><br><span class="line"></span><br><span class="line">        <span class="type">HeadersMultiMap</span> <span class="variable">entries</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeadersMultiMap</span>();</span><br><span class="line">        headers.forEach(entries::add);</span><br><span class="line"></span><br><span class="line">        CompletableFuture&lt;Response&gt; completableFuture = <span class="keyword">new</span> <span class="title class_">CompletableFuture</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        webClient.requestAbs(vertxMethod, url)</span><br><span class="line">                .putHeaders(entries)</span><br><span class="line">                .sendBuffer(bodys == <span class="literal">null</span> ? Buffer.buffer() : Buffer.buffer(bodys))</span><br><span class="line">                .timeout(options.readTimeoutMillis(), TimeUnit.MILLISECONDS)</span><br><span class="line">                .onSuccess(t -&gt; &#123;</span><br><span class="line">                    log.info(<span class="string">&quot;url[&#123;&#125;] 响应 -&gt; &#123;&#125;&quot;</span>, url, t.bodyAsString());</span><br><span class="line">                    <span class="type">MultiMap</span> <span class="variable">responseHeaders</span> <span class="operator">=</span> t.headers();</span><br><span class="line">                    Map&lt;String, Collection&lt;String&gt;&gt; map = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">                    responseHeaders.forEach((k, v) -&gt; map.put(k, Collections.singleton(v)));</span><br><span class="line">                    completableFuture.complete(Response.builder()</span><br><span class="line">                            .status(t.statusCode())</span><br><span class="line">                            .reason(t.statusMessage())</span><br><span class="line">                            .headers(map)</span><br><span class="line">                            .body(t.bodyAsBuffer().getBytes())</span><br><span class="line">                            .request(request)</span><br><span class="line">                            .build());</span><br><span class="line">                &#125;).onFailure(completableFuture::completeExceptionally);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> completableFuture.get();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>配置类装配 FeignClient bean</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>feign</category>
-      </categories>
-      <tags>
-        <tag>feign</tag>
-        <tag>rpc</tag>
-        <tag>微服务</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>dockerfile</title>
     <url>/2025/02/10/docker/dockerfile/posts/undefined/</url>
     <content><![CDATA[<h3 id="Dockerignore"><a href="#Dockerignore" class="headerlink" title="Dockerignore"></a>Dockerignore</h3><blockquote>
@@ -260,6 +237,29 @@
         <tag>docker</tag>
         <tag>dockerfile</tag>
         <tag>基础镜像</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Feign 更换 Client</title>
+    <url>/2025/02/09/feign/feign-geng-huan-client/posts/undefined/</url>
+    <content><![CDATA[<h2 id="基于-loadBalancer-更换-FeignClient-为-vertx-web-实现"><a href="#基于-loadBalancer-更换-FeignClient-为-vertx-web-实现" class="headerlink" title="基于 loadBalancer 更换 FeignClient 为 vertx-web 实现"></a>基于 loadBalancer 更换 FeignClient 为 vertx-web 实现</h2><ul>
+<li>feignClient 实现类依旧是 LoadBalancerFeignClient</li>
+<li>LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClient</span> <span class="keyword">implements</span> <span class="title class_">Client</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> WebClient webClient;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VertxFeignClient</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Vertx</span> <span class="variable">vertx</span> <span class="operator">=</span> Vertx.vertx();</span><br><span class="line">        <span class="type">WebClientOptions</span> <span class="variable">webClientOptions</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">WebClientOptions</span>()</span><br><span class="line">                .setMaxPoolSize(<span class="number">100</span>)</span><br><span class="line">                .setMaxWaitQueueSize(<span class="number">10000</span>);</span><br><span class="line">        <span class="built_in">this</span>.webClient = WebClient.create(vertx, webClientOptions);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Response <span class="title function_">execute</span><span class="params">(Request request, Request.Options options)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> request.url();</span><br><span class="line">        <span class="type">var</span> <span class="variable">bodys</span> <span class="operator">=</span> request.requestBody().asBytes();</span><br><span class="line">        Map&lt;String, Collection&lt;String&gt;&gt; headers = request.headers();</span><br><span class="line">        io.vertx.core.http.<span class="type">HttpMethod</span> <span class="variable">vertxMethod</span> <span class="operator">=</span> io.vertx.core.http.HttpMethod.valueOf(request.httpMethod().name());</span><br><span class="line"></span><br><span class="line">        <span class="type">HeadersMultiMap</span> <span class="variable">entries</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeadersMultiMap</span>();</span><br><span class="line">        headers.forEach(entries::add);</span><br><span class="line"></span><br><span class="line">        CompletableFuture&lt;Response&gt; completableFuture = <span class="keyword">new</span> <span class="title class_">CompletableFuture</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        webClient.requestAbs(vertxMethod, url)</span><br><span class="line">                .putHeaders(entries)</span><br><span class="line">                .sendBuffer(bodys == <span class="literal">null</span> ? Buffer.buffer() : Buffer.buffer(bodys))</span><br><span class="line">                .timeout(options.readTimeoutMillis(), TimeUnit.MILLISECONDS)</span><br><span class="line">                .onSuccess(t -&gt; &#123;</span><br><span class="line">                    log.info(<span class="string">&quot;url[&#123;&#125;] 响应 -&gt; &#123;&#125;&quot;</span>, url, t.bodyAsString());</span><br><span class="line">                    <span class="type">MultiMap</span> <span class="variable">responseHeaders</span> <span class="operator">=</span> t.headers();</span><br><span class="line">                    Map&lt;String, Collection&lt;String&gt;&gt; map = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">                    responseHeaders.forEach((k, v) -&gt; map.put(k, Collections.singleton(v)));</span><br><span class="line">                    completableFuture.complete(Response.builder()</span><br><span class="line">                            .status(t.statusCode())</span><br><span class="line">                            .reason(t.statusMessage())</span><br><span class="line">                            .headers(map)</span><br><span class="line">                            .body(t.bodyAsBuffer().getBytes())</span><br><span class="line">                            .request(request)</span><br><span class="line">                            .build());</span><br><span class="line">                &#125;).onFailure(completableFuture::completeExceptionally);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> completableFuture.get();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>配置类装配 FeignClient bean</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VertxFeignClientConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="meta">@Primary</span></span><br><span class="line">    <span class="keyword">public</span> Client <span class="title function_">feignClient</span><span class="params">(CachingSpringLoadBalancerFactory cachingFactory,</span></span><br><span class="line"><span class="params">                              SpringClientFactory clientFactory)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">LoadBalancerFeignClient</span>(<span class="keyword">new</span> <span class="title class_">VertxFeignClient</span>(), cachingFactory, clientFactory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>feign</category>
+      </categories>
+      <tags>
+        <tag>feign</tag>
+        <tag>rpc</tag>
+        <tag>微服务</tag>
       </tags>
   </entry>
   <entry>
@@ -412,7 +412,10 @@
   <entry>
     <title>JMH基准测试</title>
     <url>/2025/03/08/java/jmh-ji-zhun-ce-shi/posts/undefined/</url>
-    <content><![CDATA[<h2 id="什么是基准测试？"><a href="#什么是基准测试？" class="headerlink" title="什么是基准测试？"></a>什么是基准测试？</h2><hr>
+    <content><![CDATA[<ul>
+<li><a href="https://github.com/taeyang0126/JVMForge">github代码</a></li>
+</ul>
+<h2 id="什么是基准测试？"><a href="#什么是基准测试？" class="headerlink" title="什么是基准测试？"></a>什么是基准测试？</h2><hr>
 <p>基准测试是测量和评估软件性能的过程。</p>
 <ul>
 <li>比较不同算法的性能</li>
@@ -1876,117 +1879,6 @@ flowchart TD
       </tags>
   </entry>
   <entry>
-    <title>loom-springboot</title>
-    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
-    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
-<li>jdk 22.0.1-graal</li>
-<li>maven 3.6.3</li>
-<li>内置容器 tomcat，最大线程数量 256</li>
-<li>Xms200M Xmx300M</li>
-<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
-<li>M1 max 64g</li>
-<li>SpringBoot 3.3.0</li>
-</ul>
-<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
-</ul>
-<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
-<ul>
-<li>内存、线程占用情况</li>
-</ul>
-<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
-<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
-</ul>
-<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
-<ul>
-<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
-</ul>
-<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
-<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
-<li>版本9.0.60</li>
-<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
-<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
-<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
-</ul>
-<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
-<li>版本10.1.24</li>
-<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
-<li>此版本下如何启用虚拟线程?<ol>
-<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol start="2">
-<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
-<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
-</ol>
-</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
-        <tag>spring boot</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>loom</title>
-    <url>/2025/02/19/loom/loom/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
-<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
-<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
-<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
-<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
-<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
-</ul>
-<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
-<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
-</blockquote>
-<ul>
-<li>Java 代码调用本地代码 (JNI)</li>
-<li>synchronized 块或方法</li>
-</ul>
-<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
-<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
-</ul>
-<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
-<li>Synchronization<ul>
-<li>synchronized最终会解决，但是JNI不会处理</li>
-<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
-</ul>
-</li>
-<li>I&#x2F;O<ul>
-<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
-<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
-<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
-<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
-</ul>
-</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>loom</category>
-      </categories>
-      <tags>
-        <tag>loom</tag>
-        <tag>虚拟线程</tag>
-        <tag>java</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>k8s监控</title>
     <url>/2025/02/10/k8s/k8s-jian-kong/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2161,6 +2053,117 @@ flowchart TD
         <tag>内存</tag>
         <tag>k8s</tag>
         <tag>容器</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>loom-springboot</title>
+    <url>/2025/02/19/loom/loom-springboot/posts/undefined/</url>
+    <content><![CDATA[<h4 id="Spring-Boot-使用-project-loom"><a href="#Spring-Boot-使用-project-loom" class="headerlink" title="Spring Boot 使用 project loom"></a>Spring Boot 使用 project loom</h4><h5 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h5><ul>
+<li>jdk 22.0.1-graal</li>
+<li>maven 3.6.3</li>
+<li>内置容器 tomcat，最大线程数量 256</li>
+<li>Xms200M Xmx300M</li>
+<li>压测条件: 1000线程 循环100次 Ramp-up&#x3D;10s</li>
+<li>M1 max 64g</li>
+<li>SpringBoot 3.3.0</li>
+</ul>
+<h5 id="普通线程，同步请求"><a href="#普通线程，同步请求" class="headerlink" title="普通线程，同步请求"></a>普通线程，同步请求</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/hello&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量253&#x2F;s，与配置最大线程 256 基本一致</li>
+</ul>
+<p><img data-src="/images/loom/img4.png" alt="img.png"></p>
+<ul>
+<li>内存、线程占用情况</li>
+</ul>
+<p><img data-src="/images/loom/img3.png" alt="普通线程.png"></p>
+<h5 id="虚拟线程，异步servlet"><a href="#虚拟线程，异步servlet" class="headerlink" title="虚拟线程，异步servlet"></a>虚拟线程，异步servlet</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@GetMapping(&quot;/loom&quot;)</span></span><br><span class="line"><span class="keyword">public</span> DeferredResult&lt;String&gt; <span class="title function_">helloLoom</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 返回异步 -&gt; springmvc会处理为异步servlet，提升吞吐量</span></span><br><span class="line">    DeferredResult&lt;String&gt; res = <span class="keyword">new</span> <span class="title class_">DeferredResult</span>&lt;&gt;();</span><br><span class="line">    Thread.startVirtualThread(() -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        res.setResult(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>压测吞吐量879&#x2F;s，大概是普通线程的3~4倍</li>
+</ul>
+<p><img data-src="/images/loom/img6.png" alt="&#x2F;images&#x2F;loom"></p>
+<ul>
+<li>内存、线程占用情况，可以发现虚拟线程的内存比普通线程占用要大<br>这个很好理解，因为开启的虚拟线程多了，虚拟线程也是对象，自然占用的内存会大一些</li>
+</ul>
+<p><img data-src="/images/loom/img5.png" alt="img.png"></p>
+<h5 id="旧版本tomcat不支持异步线程"><a href="#旧版本tomcat不支持异步线程" class="headerlink" title="旧版本tomcat不支持异步线程"></a>旧版本tomcat不支持异步线程</h5><ul>
+<li>版本9.0.60</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法是用 <code>synchronized</code><br>包裹住的，导致虚拟线程无法卸载，这个版本下即使替换了tomcat线程池为虚拟线程池，也会造成阻塞<br><img data-src="/images/loom/img.png" alt="img.png"></li>
+<li>之所以在这里需要使用锁是因为对于一个socket来说，需要保证并发安全，因为这里是在业务线程池executor执行的，会有多个线程访问同一个socket，这里的锁就是锁住每个连接，防止单个连接多个请求并发(题外话: netty高明之处就在于事件监听+事件处理都是用一个eventLoop，就不存在并发问题，如果使用者使用了异步线程池，也只需要在涉及channel的操作放到eventLoop中执行大概率不会有什么并发问题)</li>
+<li>如果在此版本下想要支持虚拟线程，可以使用上面的方式，将同步servlet转换为异步servlet，再使用虚拟线程包裹一层</li>
+</ul>
+<h5 id="新版本tomcat支持异步线程"><a href="#新版本tomcat支持异步线程" class="headerlink" title="新版本tomcat支持异步线程"></a>新版本tomcat支持异步线程</h5><ul>
+<li>版本10.1.24</li>
+<li>org.apache.tomcat.util.net.SocketProcessorBase.run 方法调整为用 <code>ReentrantLock</code> 进行加锁，这样虚拟线程可以正常卸载<br><img data-src="/images/loom/img2.png" alt="img.png"></li>
+<li>此版本下如何启用虚拟线程?<ol>
+<li>自定义 <code>WebServerFactoryCustomizer</code> 修改tomcat执行线程池</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadExecutorWebServerFactoryCustomizer</span> <span class="keyword">implements</span> <span class="title class_">WebServerFactoryCustomizer</span>&lt;ConfigurableTomcatWebServerFactory&gt;, Ordered &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">customize</span><span class="params">(ConfigurableTomcatWebServerFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executorService</span> <span class="operator">=</span> Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(<span class="string">&quot;tomcat-virtual-&quot;</span>, <span class="number">0</span>).factory());</span><br><span class="line">        factory.addProtocolHandlerCustomizers(</span><br><span class="line">                (protocolHandler) -&gt; protocolHandler.setExecutor(executorService));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getOrder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Ordered.LOWEST_PRECEDENCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>使用框架自带的 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code></li>
+<li>测试发现二者性能相差不大，可自行选择，不过 <code>TomcatVirtualThreadsWebServerFactoryCustomizer</code> 底层使用了反射，性能可能略有损耗，更推荐第一种自定义的</li>
+</ol>
+</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+        <tag>spring boot</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>loom</title>
+    <url>/2025/02/19/loom/loom/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://wiki.openjdk.org/display/loom">openjdk loom</a></li>
+<li><a href="https://openjdk.org/jeps/444">虚拟线程</a></li>
+<li><a href="https://openjdk.org/jeps/480">结构化并发</a></li>
+<li><a href="https://inside.java/2021/05/10/networking-io-with-virtual-threads/">虚拟线程网络IO实现原理</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/Loom-Proposal.html">Project Loom: Java虚拟机的纤程和计算续体</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part1.html">State of Loom: part 1</a></li>
+<li><a href="https://cr.openjdk.org/~rpressler/loom/loom/sol1_part2.html">State of Loom: part 2</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/685013298">虚拟线程不推荐上生产的思考</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/686222059">Java 虚拟线程截止 2024-3-10 在 OpenJDK 还没有解决消息的问题</a></li>
+<li><a href="https://openjdk.org/jeps/481">Scoped Values</a></li>
+</ul>
+<h3 id="pin"><a href="#pin" class="headerlink" title="pin"></a>pin</h3><blockquote>
+<p>We say that a virtual thread is <code>pinned</code> to its carrier if it is mounted but is in a state in which it cannot be unmounted. If a virtual thread blocks while pinned, it blocks its carrier. This behavior is still correct, but it holds on to a worker thread for the duration that the virtual thread is blocked, making it unavailable for other virtual threads.</p>
+</blockquote>
+<ul>
+<li>Java 代码调用本地代码 (JNI)</li>
+<li>synchronized 块或方法</li>
+</ul>
+<h4 id="减少pin发生"><a href="#减少pin发生" class="headerlink" title="减少pin发生"></a>减少pin发生</h4><ul>
+<li>synchronized 保护的普通 I&#x2F;O 操作，请用 <code>ReentrantLock</code> 替换监视器，（如果可以的话，使用性能更高的 <code>StampedLock</code> 效果会更好）。</li>
+</ul>
+<h4 id="目前进度"><a href="#目前进度" class="headerlink" title="目前进度"></a>目前进度</h4><ol>
+<li>Synchronization<ul>
+<li>synchronized最终会解决，但是JNI不会处理</li>
+<li>java.util.concurrent 中部分已经调整，比如LockSupport.park &#x2F; unpark 但是还有大部分的工作</li>
+</ul>
+</li>
+<li>I&#x2F;O<ul>
+<li>java.nio.channels 和 ServerSocketChannel 和 DatagramChannel 类改造为支持虚拟线程。当它们的同步操作（如 read 和 write ）在虚拟线程上执行时，在底层仅使用非阻塞 I&#x2F;O。</li>
+<li>getHostName 、 getCanonicalHostName 和 getByName 方法的 DNS 查找仍然委托给操作系统,而操作系统仅提供一个阻塞操作系统线程的 API。正在探索替代方案。</li>
+<li>Http(s)URLConnection 和 TLS&#x2F;SSL 的实现已更改为依赖 j.u.c 锁并避免pin</li>
+<li>文件 I&#x2F;O 存在问题。内部,JDK 对文件使用缓冲 I&#x2F;O,即使读取操作会阻塞,也始终报告可用字节数。在 Linux 上,我们计划使用 io_uring 进行异步文件 I&#x2F;O,同时我们正在使用 ForkJoinPool.ManagedBlocker 机制,通过向工作池添加更多 OS 线程来平滑阻塞文件 I&#x2F;O 操作。</li>
+</ul>
+</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
       </tags>
   </entry>
   <entry>
@@ -2749,25 +2752,6 @@ flowchart TD
       </tags>
   </entry>
   <entry>
-    <title>画图工具</title>
-    <url>/2025/02/22/gong-ju/hua-tu-gong-ju/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="https://mermaid-live.nodejs.cn/">mermaid在线画图</a></li>
-<li><a href="https://www.min2k.com/tools/mermaid/">中文mermaid在线画图</a></li>
-<li><a href="https://mermaid.nodejs.cn/intro/">mermaid中文网</a></li>
-<li><a href="https://excalidraw.com/">手绘风格画图</a></li>
-<li><a href="https://fskpf.github.io/">svg图片转手绘风格</a></li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>工具</category>
-      </categories>
-      <tags>
-        <tag>工具</tag>
-        <tag>画图</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>接口安全</title>
     <url>/2025/02/12/an-quan/jie-kou-an-quan/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2833,6 +2817,90 @@ flowchart TD
       <tags>
         <tag>安全</tag>
         <tag>防刷</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>画图工具</title>
+    <url>/2025/02/22/gong-ju/hua-tu-gong-ju/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="https://mermaid-live.nodejs.cn/">mermaid在线画图</a></li>
+<li><a href="https://www.min2k.com/tools/mermaid/">中文mermaid在线画图</a></li>
+<li><a href="https://mermaid.nodejs.cn/intro/">mermaid中文网</a></li>
+<li><a href="https://excalidraw.com/">手绘风格画图</a></li>
+<li><a href="https://fskpf.github.io/">svg图片转手绘风格</a></li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>工具</category>
+      </categories>
+      <tags>
+        <tag>工具</tag>
+        <tag>画图</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>BitMap</title>
+    <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
+    <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
+<p>Roaring Bitmaps 是一种高效的压缩位图数据结构，它在保持快速操作性能的同时，显著减少了内存使用。这种数据结构特别适用于表示和操作大型稀疏数据集</p>
+</blockquote>
+<p>基本结构： </p>
+<ul>
+<li>Roaring Bitmap 将 32 位整数空间分割成 2^16 &#x3D; 65536 个块。</li>
+<li>每个块负责管理 2^16 个连续的整数。</li>
+</ul>
+<p>数据表示方法： </p>
+<ul>
+<li>对于稀疏的块（包含少量元素），使用简单的整数数组。<ul>
+<li>用于存储稀疏数据（少量元素）</li>
+<li>直接存储 16 位整数值</li>
+<li>当元素数量小于 4,096 时使用</li>
+</ul>
+</li>
+<li>对于稠密的块（包含大量元素），使用传统的位图。<ul>
+<li>用于存储稠密数据（大量元素）</li>
+<li>使用传统的位图表示，即 8,192 字节（65,536 位）</li>
+<li>当元素数量大于等于 4,096 时使用</li>
+</ul>
+</li>
+<li>对于连续的长整数序列，使用范围编码。<ul>
+<li>用于存储连续的整数序列</li>
+<li>存储开始和结束值的对</li>
+<li>在特定情况下可以更节省空间</li>
+</ul>
+</li>
+</ul>
+<p>自适应性： </p>
+<ul>
+<li>Roaring Bitmap 会根据数据的分布自动选择最合适的容器类型，并在需要时动态转换容器类型。</li>
+<li>这种自适应性使得 Roaring 在各种数据分布下都能保持高效。</li>
+</ul>
+<p>索引结构:</p>
+<ul>
+<li>使用一个高层索引（通常是一个数组）来快速定位到特定的容器。这个索引存储 16 位的高位值和指向相应容器的指针</li>
+</ul>
+<p>操作效率： </p>
+<ul>
+<li>支持快速的交集、并集、差集等集合操作。</li>
+<li>这些操作可以直接在压缩的表示上执行，无需完全解压。</li>
+</ul>
+<p>内存效率： </p>
+<ul>
+<li>相比传统位图，Roaring 通常可以显著减少内存使用。</li>
+<li>特别是对于稀疏数据集，节省的空间可能高达数百倍。</li>
+</ul>
+<p>使用场景： </p>
+<ul>
+<li>广泛应用于搜索引擎、数据库系统和大数据处理框架。</li>
+<li>特别适合需要高效处理大量整数集合的应用。</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>BitMap</category>
+      </categories>
+      <tags>
+        <tag>BitMap</tag>
+        <tag>数据库</tag>
       </tags>
   </entry>
   <entry>
@@ -2968,71 +3036,6 @@ sequenceDiagram
         <tag>linux</tag>
         <tag>网络</tag>
         <tag>socket</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>BitMap</title>
-    <url>/2025/02/10/shu-ju-ku/bitmap/posts/undefined/</url>
-    <content><![CDATA[<h3 id="Roaring-Bitmap"><a href="#Roaring-Bitmap" class="headerlink" title="Roaring Bitmap"></a>Roaring Bitmap</h3><blockquote>
-<p>Roaring Bitmaps 是一种高效的压缩位图数据结构，它在保持快速操作性能的同时，显著减少了内存使用。这种数据结构特别适用于表示和操作大型稀疏数据集</p>
-</blockquote>
-<p>基本结构： </p>
-<ul>
-<li>Roaring Bitmap 将 32 位整数空间分割成 2^16 &#x3D; 65536 个块。</li>
-<li>每个块负责管理 2^16 个连续的整数。</li>
-</ul>
-<p>数据表示方法： </p>
-<ul>
-<li>对于稀疏的块（包含少量元素），使用简单的整数数组。<ul>
-<li>用于存储稀疏数据（少量元素）</li>
-<li>直接存储 16 位整数值</li>
-<li>当元素数量小于 4,096 时使用</li>
-</ul>
-</li>
-<li>对于稠密的块（包含大量元素），使用传统的位图。<ul>
-<li>用于存储稠密数据（大量元素）</li>
-<li>使用传统的位图表示，即 8,192 字节（65,536 位）</li>
-<li>当元素数量大于等于 4,096 时使用</li>
-</ul>
-</li>
-<li>对于连续的长整数序列，使用范围编码。<ul>
-<li>用于存储连续的整数序列</li>
-<li>存储开始和结束值的对</li>
-<li>在特定情况下可以更节省空间</li>
-</ul>
-</li>
-</ul>
-<p>自适应性： </p>
-<ul>
-<li>Roaring Bitmap 会根据数据的分布自动选择最合适的容器类型，并在需要时动态转换容器类型。</li>
-<li>这种自适应性使得 Roaring 在各种数据分布下都能保持高效。</li>
-</ul>
-<p>索引结构:</p>
-<ul>
-<li>使用一个高层索引（通常是一个数组）来快速定位到特定的容器。这个索引存储 16 位的高位值和指向相应容器的指针</li>
-</ul>
-<p>操作效率： </p>
-<ul>
-<li>支持快速的交集、并集、差集等集合操作。</li>
-<li>这些操作可以直接在压缩的表示上执行，无需完全解压。</li>
-</ul>
-<p>内存效率： </p>
-<ul>
-<li>相比传统位图，Roaring 通常可以显著减少内存使用。</li>
-<li>特别是对于稀疏数据集，节省的空间可能高达数百倍。</li>
-</ul>
-<p>使用场景： </p>
-<ul>
-<li>广泛应用于搜索引擎、数据库系统和大数据处理框架。</li>
-<li>特别适合需要高效处理大量整数集合的应用。</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>BitMap</category>
-      </categories>
-      <tags>
-        <tag>BitMap</tag>
-        <tag>数据库</tag>
       </tags>
   </entry>
   <entry>
@@ -3691,6 +3694,145 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>JVM内存解析 - 2.JVM 内存申请与使用流程</title>
+    <url>/2025/03/01/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-jvm-nei-cun-shen-qing-yu-shi-yong/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 2.JVM 内存申请与使用流程</p>
+</blockquote>
+<ul>
+<li><a href="https://juejin.cn/post/7225875600644407357">JVM 内存申请与使用流程</a></li>
+</ul>
+<h2 id="Linux-下内存管理模型简述"><a href="#Linux-下内存管理模型简述" class="headerlink" title="Linux 下内存管理模型简述"></a>Linux 下内存管理模型简述</h2><ul>
+<li><a href="https://mp.weixin.qq.com/s?__biz=Mzg2MzU3Mjc3Ng==&mid=2247486732&idx=1&sn=435d5e834e9751036c96384f6965b328&chksm=ce77cb4bf900425d33d2adfa632a4684cf7a63beece166c1ffedc4fdacb807c9413e8c73f298&token=1468822011&lang=zh_CN&scene=21&key=d9f8952995f1859ec52d8f5d9e6ab4720ffabd5403c103322ee7ec6f45279c0d6ff004df4d91e603b8da30fc862da32560064a1680e06e498f1478dedf8d24cd54abfe5bbf80610ac6a1ecfcadeceb1ce74fd27e061bc962a5e9d18c369786619a9ac7ad030b16a0f350638aed32ec61ad2c47b2df53b2fffac6419c8a55feb1&ascene=2&uin=MTQxMDM0OTkyNA==&devicetype=Windows+11+x64&version=6308011a&exportkey=n_ChQIAhIQLReSAiPPBq/rjeEsvhWLGhLpAQIE97dBBAEAAAAAAPboBnzhWE0AAAAOpnltbLcz9gKNyK89dVj0LB8MByB+LnarvTJ9k5LjHnaHSiRCVUH6zSSXMnbZ9AQCusp6IDK5hwtnugd9Du4BG2pqPuJHPIkVIcUMia320lXFN61yM/+2MKyl86soaJUlu0zu8x69eop1Fbdi4YBaoocZrDbr+Buq4hsy+Kf6ElIQw+6gPfQqllJ5R86pa0DoVOjdnD2bi7ZuxdMyvcOPEu3pDa5H/BgY1A+DcifqtVZlp+5LoJKYNhtlZg1zOS06RY15Ry0DdonN38efMsG2Req/&acctmode=0&pass_ticket=ywhUvrTZ0ZCaWLuvLdidNGnNwyS7T41V+KEL2N0td3RvwmPJ+ZREM3Zc0lit4wDxNhALtKqF2gPCKD6sLdagzA==&wx_header=1&fontgear=2">bin神系列文章深入理解linux内存</a></li>
+</ul>
+<p>CPU 是通过寻址来访问内存的，目前大部分 CPU 都是 64 位的，即寻址范围是：<code>0x0000 0000 0000 0000 ~ 0xFFFF FFFF FFFF FFFF</code>，即可以管理 16EB 的内存。但是，实际程序并不会直接通过 CPU 寻址访问到实际的物理内存，而是通过引入 <code>MMU</code>（Memory Management Unit 内存管理单元）与实际物理地址隔了一层虚拟内存的抽象。这样，程序申请以及访问的其实是<code>虚拟内存地址</code>，MMU 会将这个虚拟内存地址<code>映射</code>为实际的物理内存地址。同时，<code>为了减少内存碎片，以及增加内存分配效率</code>，在 MMU 的基础上 Linux 抽象了<code>内存分页（Paging）</code>的概念，将虚拟地址按固定大小分割成<code>页</code>（默认是 4K，如果平台支持更多更大的页大小 JVM 也是可以利用的，我们后面分析相关的 JVM 参数会看到），并在页被实际使用写入数据的时候，<code>映射同样大小的实际的物理内存</code>（页帧，Page Frame），或者是在物理内存不足的时候，将某些不常用的页<code>转移到其他存储设备比如磁盘上</code>。</p>
+<p>一般系统中会有多个进程使用内存，每个进程都有自己独立的虚拟内存空间，假设我们这里有三个进程，进程 A 访问的虚拟地址可以与进程 B 和进程 C 的虚拟地址相同，那么操作系统如何区分呢？即操作系统如何将这些虚拟地址转换为物理内存。这就需要页表了，页表也是每个进程独立的，操作系统会在给进程映射物理内存用来保存用户数据的时候，将物理内存保存到进程的页表里面。然后，进程访问虚拟内存空间的时候，通过页表找到物理内存：<br><img data-src="/images/jvm/memory/01.png" alt="img"></p>
+<p>页表如何将一个虚拟内存地址（我们需要注意一点，目前虚拟内存地址，用户空间与内核空间可以使用从 <code>0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF</code> 的地址，即 256TB），转化为物理内存的呢？下面我们举一个在 x86，64 位环境下四级页表的结构视图：<br><img data-src="/images/jvm/memory/02.png" alt="img"></p>
+<p>在这里，页表分为四个级别：PGD（Page Global Directory），PUD（Page Upper Directory），PMD（Page Middle Directory），PTE（Page Table Entry）。每个页表，里面的页表项，保存了指向下一个级别的页表的引用，除了最后一层的 PTE 里面的页表项保存的是指向用户数据内存的指针。如何将虚拟内存地址通过页表找到对应用户数据内存从而读取数据，过程是：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
+<ol>
+<li>取虚拟地址的 <code>39 ~ 47</code> 位（因为用户空间与内核空间可以使用从 0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF 的地址，即 47 位以下的地址）作为 offset，在<code>唯一</code>的 PGD 页面根据 offset 定位到 PGD 页表项 <code>pgd_t</code></li>
+<li>使用 <code>pgd_t</code> 定位到具体的 PUD 页面</li>
+<li>取虚拟地址的 <code>30 ~ 38</code> 位作为 offset，在对应的 PUD 页面根据 offset 定位到 PUD 页表项 <code>pud_t</code></li>
+<li>使用 <code>pud_t</code> 定位到具体的 PMD 页面</li>
+<li>取虚拟地址的 <code>21 ~ 29</code> 位作为 offset，在对应的 PMD 页面根据 offset 定位到 PMD 页表项 <code>pmd_t</code></li>
+<li>使用 <code>pmd_t</code> 定位到具体的 PTE 页面</li>
+<li>取虚拟地址的 <code>12 ~ 20</code> 位作为 offset，在对应的 PTE 页面根据 offset 定位到 PTE 页表项 <code>pte_t</code></li>
+<li>使用 <code>pte_t</code> 定位到具体的用户数据物理内存页面</li>
+<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset</li>
+</ol>
+<p>如果每次访问虚拟内存，都需要访问这个页表翻译成实际物理内存的话，性能太差。所以一般 CPU 里面都有一个 <code>TLB</code>（Translation Lookaside Buffer，翻译后备缓冲）存在，一般它属于 CPU 的 MMU 的一部分。<code>TLB 负责缓存虚拟内存与实际物理内存的映射关系</code>，一般 TLB 容量很小。每次访问虚拟内存，先查看 TLB 中是否有缓存，如果没有才会去页表查询。<br><img data-src="/images/jvm/memory/04.png" alt="img"><br>默认情况下，TLB 缓存的 key 为地址的 <code>12 ~ 47</code> 位，value 是实际的物理内存页面。这样前面从<code>第 1 到第 7 步</code>就可以被替换成访问 TLB 了：</p>
+<ol>
+<li>取虚拟地址的 <code>12 ~ 47</code> 位作为 key，访问 TLB，定位到具体的用户数据物理内存页面。</li>
+<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset。<br><img data-src="/images/jvm/memory/05.png" alt="img"></li>
+</ol>
+<p>TLB 整体可以容纳个数不多；页大小越大，TLB 能容纳的个数越少。但是整体看，TLB 能容纳的页大小还是增多的（比如 Nehalem 的 iTLB，页大小 4K 的时候，一共可以容纳 128 * 4 &#x3D; 512K 的内存，页大小 2M 的时候，一共可以容纳 2 * 7 &#x3D; 14M 的内存）</p>
+<p>JVM 中很多地方需要知道页大小，JVM 在初始化的时候，通过系统调用 <code>sysconf(_SC_PAGESIZE)</code> 读取出页大小，并保存下来以供后续使用。参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp</a></p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">//设置全局默认页大小，通过 Linux::page_size() 可以获取全局默认页大小</span></span><br><span class="line">Linux::<span class="built_in">set_page_size</span>(<span class="built_in">sysconf</span>(_SC_PAGESIZE));</span><br><span class="line"><span class="keyword">if</span> (Linux::<span class="built_in">page_size</span>() == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fatal</span>(<span class="string">&quot;os_linux.cpp: os::init: sysconf failed (%s)&quot;</span>,</span><br><span class="line">      os::<span class="built_in">strerror</span>(errno));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//将默认页大小加入可选的页大小列表，在涉及大页分配的时候有用</span></span><br><span class="line">_page_sizes.<span class="built_in">add</span>(Linux::<span class="built_in">page_size</span>());</span><br></pre></td></tr></table></figure>
+
+<h2 id="JVM-主要内存申请分配流程"><a href="#JVM-主要内存申请分配流程" class="headerlink" title="JVM 主要内存申请分配流程"></a>JVM 主要内存申请分配流程</h2><h3 id="每个子系统-Reserve-内存"><a href="#每个子系统-Reserve-内存" class="headerlink" title="每个子系统 Reserve 内存"></a>每个子系统 <code>Reserve</code> 内存</h3><p><strong>第一步，JVM 的每个子系统</strong>（例如 Java 堆，元空间，JIT 代码缓存，GC 等等等等），<strong>如果需要的话，在初始化的时候首先 <code>Reserve</code> 要分配区域的最大限制大小的内存</strong>（这个最大大小，需要按照<code>页大小对齐</code>（即是页大小的整数倍），默认页大小是前面提到的 <code>Linux::page_size()</code>），例如对于 Java 堆，就是最大堆大小（通过 <code>-Xmx</code> 或者 <code>-XX:MaxHeapSize</code>限制），还有对于代码缓存，也是最大代码缓存大小（通过 <code>-XX:ReservedCodeCacheSize</code> 限制）。Reserve 的目的是在虚拟内存空间划出一块内存专门给某个区域使用，这样做的好处是：</p>
+<ol>
+<li>隔离每个 JVM 子系统使用的内存的<code>虚拟空间</code>，这样在 JVM 代码有 bug 的时候（例如发生 Segment Fault 异常），通过报错中的<code>虚拟内存地址</code>可以快速定位到是哪个子系统出了问题。</li>
+<li>可以很方便的限制这个区域使用的最大内存大小。</li>
+<li>便于管理，<code>Reserve 不会触发操作系统分配映射实际物理内存</code>，这个区域可以在 Reserve 的区域内按需伸缩。</li>
+<li>便于一些 JIT 优化，例如我们故意将这个区域保留起来但是故意不将这个区域的虚拟内存映射物理内存，访问这块内存会造成 Segment Fault 异常。JVM 会预设 Segment Fault 异常的处理器，在处理器里面检查发生 Segment Fault 异常的内存地址属于哪个子系统的 Reserve 的区域，判断要做什么操作。后面我们会看到，null 检查抛出 <code>NullPointerException</code> 异常的优化，全局安全点，抛出 <code>StackOverflowError</code> 的实现，都和这个机制有关。</li>
+</ol>
+<p>在 Linux 的环境下，Reserve 通过  <code>mmap(2)</code> 系统调用实现，参数传入 <code>prot = PROT_NONE</code>，<code>PROT_NONE</code> 代表不会使用，即<code>不能做任何操作，包括读和写</code>。如果 JVM 使用这块内存，会发生 Segment Fault 异常。</p>
+<h3 id="每个子系统按照各自策略向操作系统申请映射物理内存"><a href="#每个子系统按照各自策略向操作系统申请映射物理内存" class="headerlink" title="每个子系统按照各自策略向操作系统申请映射物理内存"></a>每个子系统按照各自策略向操作系统申请映射物理内存</h3><p><strong>第二步，JVM 的每个子系统，按照各自的策略，通过 <code>Commit</code> 第一步 Reserve 的区域的<code>一部分扩展内存</code>（大小也一般页大小对齐的），从而<code>向操作系统申请映射物理内存</code>，通过 <code>Uncommit</code> 已经 Commit 的内存来释放物理内存给操作系统</strong></p>
+<p>Commit 内存之后，<code>并不是操作系统会立刻分配物理内存</code>，而是在向 <code>Commit 的内存里面写入数据的时候，操作系统才会实际映射内存</code>，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数。</p>
+<h3 id="JVM-commit-的内存与实际占用内存的差异"><a href="#JVM-commit-的内存与实际占用内存的差异" class="headerlink" title="JVM commit 的内存与实际占用内存的差异"></a>JVM commit 的内存与实际占用内存的差异</h3><p>前面一节我们知道了，JVM 中大块内存，基本都是先 <code>reserve</code> 一大块，之后 <code>commit</code> 其中需要的一小块，然后开始读写处理内存，在 Linux 环境下，底层基于 <code>mmap(2)</code> 实现。但是需要注意一点的是，commit 之后，内存并不是立刻被分配了物理内存，而是真正往内存中 <code>store</code> 东西的时候，才会真正映射物理内存，如果是 load 读取也是可能不映射物理内存的。</p>
+<p>这其实是可能你平常看到但是忽略的现象，如果你使用的是 SerialGC，ParallelGC 或者 CMS GC，老年代的内存在有对象晋升到老年代之前，可能是不会映射物理内存的，虽然这块内存已经被 commit 了。并且年轻代可能也是随着使用才会映射物理内存。如果你用的是 ZGC，G1GC，或者 ShenandoahGC，那么内存用的会更激进些（主要因为分区算法划分导致内存被写入），<code>这是你在换 GC 之后看到物理内存内存快速上涨的原因之一</code>。JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数，这个参数我们后面会详细分析以及历史版本存在的缺陷。还有的差异，主要来源于在 uncommit 之后，系统可能还没有来的及将这块物理内存真正回收。</p>
+<p>所以，JVM 认为自己 commit 的内存，与实际系统分配的物理内存，<code>可能是有差异的</code>，可能 JVM 认为自己 commit 的内存比系统分配的物理内存多，也可能少。这就是为啥 <code>Native Memory Tracking（JVM 认为自己 commit 的内存）与实际其他系统监控中体现的物理内存使用指标对不上的原因</code>。</p>
+<h2 id="大页分配-UseLargePages"><a href="#大页分配-UseLargePages" class="headerlink" title="大页分配 UseLargePages"></a>大页分配 UseLargePages</h2><p>前面提到了虚拟内存需要映射物理内存才能使用，这个映射关系被保存在内存中的<code>页表（Page Table）</code>。现代 CPU 架构中一般有 <code>TLB</code> （Translation Lookaside Buffer，翻译后备缓冲，也称为页表寄存器缓冲）存在，在里面保存了经常使用的页表映射项。TLB 的大小有限，一般 TLB 如果只能容纳小于 100 个页表映射项。 我们能让程序的虚拟内存对应的页表映射项都处于 TLB 中，那么能大大提升程序性能，这就要尽量减少页表映射项的个数：<code>页表项个数 = 程序所需内存大小 / 页大小</code>。我们要么缩小程序所需内存，要么增大页大小。我们一般会考虑<code>增加页大小</code>，这就大页分配的由来，JVM 对于堆内存分配也支持大页分配，用于优化大堆内存的分配。那么 Linux 环境中有哪些大页分配的方式呢？</p>
+<h3 id="Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs"><a href="#Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs" class="headerlink" title="Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)"></a>Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">相关的 Linux 内核文档</a></p>
+<p>这是出现的比较早的大页分配方式，其实就是在之前提到的页表映射上面做文章：</p>
+<p><strong>默认 4K 页大小</strong>：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
+<p><strong>PMD 直接映射实际物理页面，页面大小为 <code>4K * 2^9 = 2M</code></strong>：<br><img data-src="/images/jvm/memory/06.png" alt="img"></p>
+<p><strong>PUD 直接映射实际物理页面，页面大小为 <code>2M * 2^9 = 1G</code></strong>：<br><img data-src="/images/jvm/memory/07.png" alt="img"></p>
+<p>但是，要想使用这个特性，需要操作系统构建的时候开启 <code>CONFIG_HUGETLBFS</code> 以及 <code>CONFIG_HUGETLB_PAGE</code>。之后，大的页面通常是通过系统管理控制预先分配并放入池里面的。然后，可以通过 <code>mmap</code> 系统调用或者 <code>shmget,shmat</code> 这些 SysV 的共享内存系统调用使用大页分配方式从池中申请内存。</p>
+<p>这种大页分配的方式，需要系统预设开启大页，预分配大页之外，对于代码也是有一定侵入性的，在灵活性上面查一些。但是带来的好处就是，性能表现上更加可控。另一种灵活性很强的 Transparent Huge Pages (THP) 方式，总是可能在性能表现上有一些意想不到的情况。</p>
+<h3 id="Linux-大页分配方式-Transparent-Huge-Pages-THP"><a href="#Linux-大页分配方式-Transparent-Huge-Pages-THP" class="headerlink" title="Linux 大页分配方式 - Transparent Huge Pages (THP)"></a>Linux 大页分配方式 - Transparent Huge Pages (THP)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/transhuge.txt">相关的 Linux 内核文档</a></p>
+<p>THP 是一种使用大页的第二种方法，它支持页面大小的自动升级和降级，这样对于用户使用代码基本没有侵入性，非常灵活。但是，前面也提到过，这种系统自己去做页面大小的升级降级，并且系统一般考虑通用性，所以在某些情况下会出现意想不到的性能瓶颈。</p>
+<h3 id="JVM-大页分配相关参数与机制"><a href="#JVM-大页分配相关参数与机制" class="headerlink" title="JVM 大页分配相关参数与机制"></a>JVM 大页分配相关参数与机制</h3><p>相关的参数如下：</p>
+<ul>
+<li><code>UseLargePages</code>：明确指定是否开启大页分配，如果关闭，那么下面的参数就都不生效。<code>在 linux 下默认为 false</code>。</li>
+<li><code>UseHugeTLBFS</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>mmap</code> 系统调用分配内存。在 linux 下默认为 false。</li>
+<li><code>UseSHM</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>shmget,shmat</code> 系统调用分配内存。在 linux 下默认为 false。</li>
+<li><code>UseTransparentHugePages</code>：明确指定是否使用前面第二种大页分配方式 THP。在 linux 下默认为 false。</li>
+<li><code>LargePageSizeInBytes</code>：指定明确的大页的大小，仅适用于前面第一种大页分配方式 hugetlbfs，并且必须属于操作系统支持的页大小否则不生效。默认为 0，即不指定</li>
+</ul>
+<p>首先，需要对以上参数做一个简单的判断：如果没有指定 <code>UseLargePages</code>，那么使用对应系统的默认 <code>UseLargePages</code> 的值，在 linux 下是 false，那么就不会启用大页分配。如果启动参数明确指定 <code>UseLargePages</code> 不启用，那么也不会启用大页分配。如果读取 <code>/proc/meminfo</code> 获取默认大页大小读取不到或者为 0，则代表系统也不支大页分配，大页分配也不启用。</p>
+<p>那么如果大页分配启用的话，我们需要初始化并验证大页分配参数可行性，流程是：<br><img data-src="/images/jvm/memory/08.png" alt="img"></p>
+<p>首先，JVM 会读取根据当前所处的平台与系统环境读取支持的页的大小，当然，这个是针对前面第一种大页分配方式 <code>hugetlbfs</code> 的。在 Linux 环境下，JVM 会从 <code>/proc/meminfo</code> 读取默认的 <strong><code>Hugepagesize</code></strong>，从 <code>/sys/kernel/mm/hugepages</code> 目录下检索<strong>所有支持的大页大小</strong>，这块可以参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp%E3%80%82">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp。</a><br>有关这些文件或者目录的详细信息，请参考前面章节提到的 Linux 内核文档：<a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt</a></p>
+<p>如果操作系统开启了 hugetlbfs，<code>/sys/kernel/mm/hugepages</code> 目录下的结构类似于：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tree /sys/kernel/mm/hugepages</span><br><span class="line">/sys/kernel/mm/hugepages</span><br><span class="line">├── hugepages-1048576kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-2048kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-32768kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">└── hugepages-64kB</span><br><span class="line">    ├── free_hugepages</span><br><span class="line">    ├── nr_hugepages</span><br><span class="line">    ├── nr_hugepages_mempolicy</span><br><span class="line">    ├── nr_overcommit_hugepages</span><br><span class="line">    ├── resv_hugepages</span><br><span class="line">    └── surplus_hugepages</span><br></pre></td></tr></table></figure>
+
+<p>这个 <code>hugepages-1048576kB</code> 就代表支持大小为 <code>1GB</code> 的页，<code>hugepages-2048kB</code> 就代表支持大小为 2MB 的页。</p>
+<p>如果没有设置 <code>UseHugeTLBFS</code>，也没有设置 <code>UseSHM</code>，也没有设置 <code>UseTransparentHugePages</code>，那么其实就是走默认的，默认使用 <code>hugetlbfs</code> 方式，不使用 <code>THP</code> 方式，因为如前所述， THP 在某些场景下有意想不到的性能瓶颈表现，在大型应用中，稳定性优先于峰值性能。之后，默认优先尝试 <code>UseHugeTLBFS</code>（即使用 <code>mmap</code> 系统调用通过 hugetlbfs 方式大页分配），不行的话再尝试 <code>UseSHM</code>（即使用 <code>shmget</code> 系统调用通过 hugetlbfs 方式大页分配）。这里只是验证下这些大页内存的分配方式是否可用，只有可用后面真正分配内存的时候才会采用那种可用的大页内存分配方式。</p>
+<h2 id="JVM内存申请与分配机制分析"><a href="#JVM内存申请与分配机制分析" class="headerlink" title="JVM内存申请与分配机制分析"></a>JVM内存申请与分配机制分析</h2><h3 id="内存管理的多级层次"><a href="#内存管理的多级层次" class="headerlink" title="内存管理的多级层次"></a>内存管理的多级层次</h3><p><strong><code>Reserve</code></strong> (预留) → <strong><code>Commit</code></strong> (提交) → <strong><code>Physical Allocation</code></strong> (物理分配)</p>
+<ol>
+<li>Reserve阶段：<ul>
+<li>JVM向操作系统预留一块连续的虚拟地址空间</li>
+<li>此时仅分配地址空间，不分配物理内存或交换空间</li>
+<li>对应参数如 -Xmx 设置的最大堆内存</li>
+</ul>
+</li>
+<li>Commit阶段：<ul>
+<li>JVM向操作系统提交请求，准备使用之前预留的部分虚拟空间</li>
+<li>操作系统标记这部分空间为”已提交”，准备关联物理内存</li>
+<li>对应初始堆大小，如 -Xms 设置的内存</li>
+</ul>
+</li>
+<li>物理分配阶段:<ul>
+<li>当JVM实际写入数据到已提交的内存时，操作系统才分配物理内存页</li>
+<li>这符合现代操作系统的”按需分页”(demand paging)机制</li>
+<li>因此，已提交内存不等于实际使用的物理内存</li>
+</ul>
+</li>
+</ol>
+<h3 id="内存监控与差异"><a href="#内存监控与差异" class="headerlink" title="内存监控与差异"></a>内存监控与差异</h3><p><code>NMT(Native Memory Tracking)</code>显示的提交内存与进程实际使用的物理内存确实存在差异。</p>
+<ol>
+<li>NMT观察到的内存：<ul>
+<li>显示已提交(committed)的内存量</li>
+<li>包括已向操作系统申请但可能尚未使用的内存</li>
+<li>命令: jcmd <pid> VM.native_memory</li>
+</ul>
+</li>
+<li>实际物理内存使用<ul>
+<li>通过 &#x2F;proc&#x2F;<pid>&#x2F;smaps_rollup 中的 PSS(Proportional Set Size)查看</li>
+<li>PSS比VSS和RSS更准确地反映进程实际的物理内存使用</li>
+<li>PSS &#x3D; 私有内存 + 按比例分摊的共享内存</li>
+</ul>
+</li>
+</ol>
+<h3 id="内存监控的最佳实践"><a href="#内存监控的最佳实践" class="headerlink" title="内存监控的最佳实践"></a>内存监控的最佳实践</h3><ol>
+<li>JVM层面<ul>
+<li>NMT: jcmd <pid> VM.native_memory</li>
+<li>JConsole&#x2F;VisualVM可视化监控</li>
+</ul>
+</li>
+<li>OS层面<ul>
+<li>&#x2F;proc&#x2F;<pid>&#x2F;smaps_rollup中的PSS</li>
+<li>top&#x2F;htop命令的RES&#x2F;RSS列</li>
+<li>numastat -p <pid>查看NUMA内存分布</li>
+</ul>
+</li>
+<li>高级监控<ul>
+<li>perf工具分析内存访问模式</li>
+<li>BPF&#x2F;eBPF工具追踪内存分配</li>
+</ul>
+</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM内存解析</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>内存</tag>
+        <tag>linux内存</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>raft</title>
     <url>/2025/02/09/fen-bu-shi/suan-fa/raft/posts/undefined/</url>
     <content><![CDATA[<h2 id="Raft-的核心目标和基本工作原理"><a href="#Raft-的核心目标和基本工作原理" class="headerlink" title="Raft 的核心目标和基本工作原理"></a>Raft 的核心目标和基本工作原理</h2><p>核心目标：</p>
@@ -3880,145 +4022,6 @@ sequenceDiagram
         <tag>分布式</tag>
         <tag>算法</tag>
         <tag>raft</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>JVM内存解析 - 2.JVM 内存申请与使用流程</title>
-    <url>/2025/03/01/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-jvm-nei-cun-shen-qing-yu-shi-yong/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 2.JVM 内存申请与使用流程</p>
-</blockquote>
-<ul>
-<li><a href="https://juejin.cn/post/7225875600644407357">JVM 内存申请与使用流程</a></li>
-</ul>
-<h2 id="Linux-下内存管理模型简述"><a href="#Linux-下内存管理模型简述" class="headerlink" title="Linux 下内存管理模型简述"></a>Linux 下内存管理模型简述</h2><ul>
-<li><a href="https://mp.weixin.qq.com/s?__biz=Mzg2MzU3Mjc3Ng==&mid=2247486732&idx=1&sn=435d5e834e9751036c96384f6965b328&chksm=ce77cb4bf900425d33d2adfa632a4684cf7a63beece166c1ffedc4fdacb807c9413e8c73f298&token=1468822011&lang=zh_CN&scene=21&key=d9f8952995f1859ec52d8f5d9e6ab4720ffabd5403c103322ee7ec6f45279c0d6ff004df4d91e603b8da30fc862da32560064a1680e06e498f1478dedf8d24cd54abfe5bbf80610ac6a1ecfcadeceb1ce74fd27e061bc962a5e9d18c369786619a9ac7ad030b16a0f350638aed32ec61ad2c47b2df53b2fffac6419c8a55feb1&ascene=2&uin=MTQxMDM0OTkyNA==&devicetype=Windows+11+x64&version=6308011a&exportkey=n_ChQIAhIQLReSAiPPBq/rjeEsvhWLGhLpAQIE97dBBAEAAAAAAPboBnzhWE0AAAAOpnltbLcz9gKNyK89dVj0LB8MByB+LnarvTJ9k5LjHnaHSiRCVUH6zSSXMnbZ9AQCusp6IDK5hwtnugd9Du4BG2pqPuJHPIkVIcUMia320lXFN61yM/+2MKyl86soaJUlu0zu8x69eop1Fbdi4YBaoocZrDbr+Buq4hsy+Kf6ElIQw+6gPfQqllJ5R86pa0DoVOjdnD2bi7ZuxdMyvcOPEu3pDa5H/BgY1A+DcifqtVZlp+5LoJKYNhtlZg1zOS06RY15Ry0DdonN38efMsG2Req/&acctmode=0&pass_ticket=ywhUvrTZ0ZCaWLuvLdidNGnNwyS7T41V+KEL2N0td3RvwmPJ+ZREM3Zc0lit4wDxNhALtKqF2gPCKD6sLdagzA==&wx_header=1&fontgear=2">bin神系列文章深入理解linux内存</a></li>
-</ul>
-<p>CPU 是通过寻址来访问内存的，目前大部分 CPU 都是 64 位的，即寻址范围是：<code>0x0000 0000 0000 0000 ~ 0xFFFF FFFF FFFF FFFF</code>，即可以管理 16EB 的内存。但是，实际程序并不会直接通过 CPU 寻址访问到实际的物理内存，而是通过引入 <code>MMU</code>（Memory Management Unit 内存管理单元）与实际物理地址隔了一层虚拟内存的抽象。这样，程序申请以及访问的其实是<code>虚拟内存地址</code>，MMU 会将这个虚拟内存地址<code>映射</code>为实际的物理内存地址。同时，<code>为了减少内存碎片，以及增加内存分配效率</code>，在 MMU 的基础上 Linux 抽象了<code>内存分页（Paging）</code>的概念，将虚拟地址按固定大小分割成<code>页</code>（默认是 4K，如果平台支持更多更大的页大小 JVM 也是可以利用的，我们后面分析相关的 JVM 参数会看到），并在页被实际使用写入数据的时候，<code>映射同样大小的实际的物理内存</code>（页帧，Page Frame），或者是在物理内存不足的时候，将某些不常用的页<code>转移到其他存储设备比如磁盘上</code>。</p>
-<p>一般系统中会有多个进程使用内存，每个进程都有自己独立的虚拟内存空间，假设我们这里有三个进程，进程 A 访问的虚拟地址可以与进程 B 和进程 C 的虚拟地址相同，那么操作系统如何区分呢？即操作系统如何将这些虚拟地址转换为物理内存。这就需要页表了，页表也是每个进程独立的，操作系统会在给进程映射物理内存用来保存用户数据的时候，将物理内存保存到进程的页表里面。然后，进程访问虚拟内存空间的时候，通过页表找到物理内存：<br><img data-src="/images/jvm/memory/01.png" alt="img"></p>
-<p>页表如何将一个虚拟内存地址（我们需要注意一点，目前虚拟内存地址，用户空间与内核空间可以使用从 <code>0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF</code> 的地址，即 256TB），转化为物理内存的呢？下面我们举一个在 x86，64 位环境下四级页表的结构视图：<br><img data-src="/images/jvm/memory/02.png" alt="img"></p>
-<p>在这里，页表分为四个级别：PGD（Page Global Directory），PUD（Page Upper Directory），PMD（Page Middle Directory），PTE（Page Table Entry）。每个页表，里面的页表项，保存了指向下一个级别的页表的引用，除了最后一层的 PTE 里面的页表项保存的是指向用户数据内存的指针。如何将虚拟内存地址通过页表找到对应用户数据内存从而读取数据，过程是：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
-<ol>
-<li>取虚拟地址的 <code>39 ~ 47</code> 位（因为用户空间与内核空间可以使用从 0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF 的地址，即 47 位以下的地址）作为 offset，在<code>唯一</code>的 PGD 页面根据 offset 定位到 PGD 页表项 <code>pgd_t</code></li>
-<li>使用 <code>pgd_t</code> 定位到具体的 PUD 页面</li>
-<li>取虚拟地址的 <code>30 ~ 38</code> 位作为 offset，在对应的 PUD 页面根据 offset 定位到 PUD 页表项 <code>pud_t</code></li>
-<li>使用 <code>pud_t</code> 定位到具体的 PMD 页面</li>
-<li>取虚拟地址的 <code>21 ~ 29</code> 位作为 offset，在对应的 PMD 页面根据 offset 定位到 PMD 页表项 <code>pmd_t</code></li>
-<li>使用 <code>pmd_t</code> 定位到具体的 PTE 页面</li>
-<li>取虚拟地址的 <code>12 ~ 20</code> 位作为 offset，在对应的 PTE 页面根据 offset 定位到 PTE 页表项 <code>pte_t</code></li>
-<li>使用 <code>pte_t</code> 定位到具体的用户数据物理内存页面</li>
-<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset</li>
-</ol>
-<p>如果每次访问虚拟内存，都需要访问这个页表翻译成实际物理内存的话，性能太差。所以一般 CPU 里面都有一个 <code>TLB</code>（Translation Lookaside Buffer，翻译后备缓冲）存在，一般它属于 CPU 的 MMU 的一部分。<code>TLB 负责缓存虚拟内存与实际物理内存的映射关系</code>，一般 TLB 容量很小。每次访问虚拟内存，先查看 TLB 中是否有缓存，如果没有才会去页表查询。<br><img data-src="/images/jvm/memory/04.png" alt="img"><br>默认情况下，TLB 缓存的 key 为地址的 <code>12 ~ 47</code> 位，value 是实际的物理内存页面。这样前面从<code>第 1 到第 7 步</code>就可以被替换成访问 TLB 了：</p>
-<ol>
-<li>取虚拟地址的 <code>12 ~ 47</code> 位作为 key，访问 TLB，定位到具体的用户数据物理内存页面。</li>
-<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset。<br><img data-src="/images/jvm/memory/05.png" alt="img"></li>
-</ol>
-<p>TLB 整体可以容纳个数不多；页大小越大，TLB 能容纳的个数越少。但是整体看，TLB 能容纳的页大小还是增多的（比如 Nehalem 的 iTLB，页大小 4K 的时候，一共可以容纳 128 * 4 &#x3D; 512K 的内存，页大小 2M 的时候，一共可以容纳 2 * 7 &#x3D; 14M 的内存）</p>
-<p>JVM 中很多地方需要知道页大小，JVM 在初始化的时候，通过系统调用 <code>sysconf(_SC_PAGESIZE)</code> 读取出页大小，并保存下来以供后续使用。参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp</a></p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">//设置全局默认页大小，通过 Linux::page_size() 可以获取全局默认页大小</span></span><br><span class="line">Linux::<span class="built_in">set_page_size</span>(<span class="built_in">sysconf</span>(_SC_PAGESIZE));</span><br><span class="line"><span class="keyword">if</span> (Linux::<span class="built_in">page_size</span>() == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fatal</span>(<span class="string">&quot;os_linux.cpp: os::init: sysconf failed (%s)&quot;</span>,</span><br><span class="line">      os::<span class="built_in">strerror</span>(errno));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//将默认页大小加入可选的页大小列表，在涉及大页分配的时候有用</span></span><br><span class="line">_page_sizes.<span class="built_in">add</span>(Linux::<span class="built_in">page_size</span>());</span><br></pre></td></tr></table></figure>
-
-<h2 id="JVM-主要内存申请分配流程"><a href="#JVM-主要内存申请分配流程" class="headerlink" title="JVM 主要内存申请分配流程"></a>JVM 主要内存申请分配流程</h2><h3 id="每个子系统-Reserve-内存"><a href="#每个子系统-Reserve-内存" class="headerlink" title="每个子系统 Reserve 内存"></a>每个子系统 <code>Reserve</code> 内存</h3><p><strong>第一步，JVM 的每个子系统</strong>（例如 Java 堆，元空间，JIT 代码缓存，GC 等等等等），<strong>如果需要的话，在初始化的时候首先 <code>Reserve</code> 要分配区域的最大限制大小的内存</strong>（这个最大大小，需要按照<code>页大小对齐</code>（即是页大小的整数倍），默认页大小是前面提到的 <code>Linux::page_size()</code>），例如对于 Java 堆，就是最大堆大小（通过 <code>-Xmx</code> 或者 <code>-XX:MaxHeapSize</code>限制），还有对于代码缓存，也是最大代码缓存大小（通过 <code>-XX:ReservedCodeCacheSize</code> 限制）。Reserve 的目的是在虚拟内存空间划出一块内存专门给某个区域使用，这样做的好处是：</p>
-<ol>
-<li>隔离每个 JVM 子系统使用的内存的<code>虚拟空间</code>，这样在 JVM 代码有 bug 的时候（例如发生 Segment Fault 异常），通过报错中的<code>虚拟内存地址</code>可以快速定位到是哪个子系统出了问题。</li>
-<li>可以很方便的限制这个区域使用的最大内存大小。</li>
-<li>便于管理，<code>Reserve 不会触发操作系统分配映射实际物理内存</code>，这个区域可以在 Reserve 的区域内按需伸缩。</li>
-<li>便于一些 JIT 优化，例如我们故意将这个区域保留起来但是故意不将这个区域的虚拟内存映射物理内存，访问这块内存会造成 Segment Fault 异常。JVM 会预设 Segment Fault 异常的处理器，在处理器里面检查发生 Segment Fault 异常的内存地址属于哪个子系统的 Reserve 的区域，判断要做什么操作。后面我们会看到，null 检查抛出 <code>NullPointerException</code> 异常的优化，全局安全点，抛出 <code>StackOverflowError</code> 的实现，都和这个机制有关。</li>
-</ol>
-<p>在 Linux 的环境下，Reserve 通过  <code>mmap(2)</code> 系统调用实现，参数传入 <code>prot = PROT_NONE</code>，<code>PROT_NONE</code> 代表不会使用，即<code>不能做任何操作，包括读和写</code>。如果 JVM 使用这块内存，会发生 Segment Fault 异常。</p>
-<h3 id="每个子系统按照各自策略向操作系统申请映射物理内存"><a href="#每个子系统按照各自策略向操作系统申请映射物理内存" class="headerlink" title="每个子系统按照各自策略向操作系统申请映射物理内存"></a>每个子系统按照各自策略向操作系统申请映射物理内存</h3><p><strong>第二步，JVM 的每个子系统，按照各自的策略，通过 <code>Commit</code> 第一步 Reserve 的区域的<code>一部分扩展内存</code>（大小也一般页大小对齐的），从而<code>向操作系统申请映射物理内存</code>，通过 <code>Uncommit</code> 已经 Commit 的内存来释放物理内存给操作系统</strong></p>
-<p>Commit 内存之后，<code>并不是操作系统会立刻分配物理内存</code>，而是在向 <code>Commit 的内存里面写入数据的时候，操作系统才会实际映射内存</code>，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数。</p>
-<h3 id="JVM-commit-的内存与实际占用内存的差异"><a href="#JVM-commit-的内存与实际占用内存的差异" class="headerlink" title="JVM commit 的内存与实际占用内存的差异"></a>JVM commit 的内存与实际占用内存的差异</h3><p>前面一节我们知道了，JVM 中大块内存，基本都是先 <code>reserve</code> 一大块，之后 <code>commit</code> 其中需要的一小块，然后开始读写处理内存，在 Linux 环境下，底层基于 <code>mmap(2)</code> 实现。但是需要注意一点的是，commit 之后，内存并不是立刻被分配了物理内存，而是真正往内存中 <code>store</code> 东西的时候，才会真正映射物理内存，如果是 load 读取也是可能不映射物理内存的。</p>
-<p>这其实是可能你平常看到但是忽略的现象，如果你使用的是 SerialGC，ParallelGC 或者 CMS GC，老年代的内存在有对象晋升到老年代之前，可能是不会映射物理内存的，虽然这块内存已经被 commit 了。并且年轻代可能也是随着使用才会映射物理内存。如果你用的是 ZGC，G1GC，或者 ShenandoahGC，那么内存用的会更激进些（主要因为分区算法划分导致内存被写入），<code>这是你在换 GC 之后看到物理内存内存快速上涨的原因之一</code>。JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数，这个参数我们后面会详细分析以及历史版本存在的缺陷。还有的差异，主要来源于在 uncommit 之后，系统可能还没有来的及将这块物理内存真正回收。</p>
-<p>所以，JVM 认为自己 commit 的内存，与实际系统分配的物理内存，<code>可能是有差异的</code>，可能 JVM 认为自己 commit 的内存比系统分配的物理内存多，也可能少。这就是为啥 <code>Native Memory Tracking（JVM 认为自己 commit 的内存）与实际其他系统监控中体现的物理内存使用指标对不上的原因</code>。</p>
-<h2 id="大页分配-UseLargePages"><a href="#大页分配-UseLargePages" class="headerlink" title="大页分配 UseLargePages"></a>大页分配 UseLargePages</h2><p>前面提到了虚拟内存需要映射物理内存才能使用，这个映射关系被保存在内存中的<code>页表（Page Table）</code>。现代 CPU 架构中一般有 <code>TLB</code> （Translation Lookaside Buffer，翻译后备缓冲，也称为页表寄存器缓冲）存在，在里面保存了经常使用的页表映射项。TLB 的大小有限，一般 TLB 如果只能容纳小于 100 个页表映射项。 我们能让程序的虚拟内存对应的页表映射项都处于 TLB 中，那么能大大提升程序性能，这就要尽量减少页表映射项的个数：<code>页表项个数 = 程序所需内存大小 / 页大小</code>。我们要么缩小程序所需内存，要么增大页大小。我们一般会考虑<code>增加页大小</code>，这就大页分配的由来，JVM 对于堆内存分配也支持大页分配，用于优化大堆内存的分配。那么 Linux 环境中有哪些大页分配的方式呢？</p>
-<h3 id="Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs"><a href="#Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs" class="headerlink" title="Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)"></a>Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">相关的 Linux 内核文档</a></p>
-<p>这是出现的比较早的大页分配方式，其实就是在之前提到的页表映射上面做文章：</p>
-<p><strong>默认 4K 页大小</strong>：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
-<p><strong>PMD 直接映射实际物理页面，页面大小为 <code>4K * 2^9 = 2M</code></strong>：<br><img data-src="/images/jvm/memory/06.png" alt="img"></p>
-<p><strong>PUD 直接映射实际物理页面，页面大小为 <code>2M * 2^9 = 1G</code></strong>：<br><img data-src="/images/jvm/memory/07.png" alt="img"></p>
-<p>但是，要想使用这个特性，需要操作系统构建的时候开启 <code>CONFIG_HUGETLBFS</code> 以及 <code>CONFIG_HUGETLB_PAGE</code>。之后，大的页面通常是通过系统管理控制预先分配并放入池里面的。然后，可以通过 <code>mmap</code> 系统调用或者 <code>shmget,shmat</code> 这些 SysV 的共享内存系统调用使用大页分配方式从池中申请内存。</p>
-<p>这种大页分配的方式，需要系统预设开启大页，预分配大页之外，对于代码也是有一定侵入性的，在灵活性上面查一些。但是带来的好处就是，性能表现上更加可控。另一种灵活性很强的 Transparent Huge Pages (THP) 方式，总是可能在性能表现上有一些意想不到的情况。</p>
-<h3 id="Linux-大页分配方式-Transparent-Huge-Pages-THP"><a href="#Linux-大页分配方式-Transparent-Huge-Pages-THP" class="headerlink" title="Linux 大页分配方式 - Transparent Huge Pages (THP)"></a>Linux 大页分配方式 - Transparent Huge Pages (THP)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/transhuge.txt">相关的 Linux 内核文档</a></p>
-<p>THP 是一种使用大页的第二种方法，它支持页面大小的自动升级和降级，这样对于用户使用代码基本没有侵入性，非常灵活。但是，前面也提到过，这种系统自己去做页面大小的升级降级，并且系统一般考虑通用性，所以在某些情况下会出现意想不到的性能瓶颈。</p>
-<h3 id="JVM-大页分配相关参数与机制"><a href="#JVM-大页分配相关参数与机制" class="headerlink" title="JVM 大页分配相关参数与机制"></a>JVM 大页分配相关参数与机制</h3><p>相关的参数如下：</p>
-<ul>
-<li><code>UseLargePages</code>：明确指定是否开启大页分配，如果关闭，那么下面的参数就都不生效。<code>在 linux 下默认为 false</code>。</li>
-<li><code>UseHugeTLBFS</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>mmap</code> 系统调用分配内存。在 linux 下默认为 false。</li>
-<li><code>UseSHM</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>shmget,shmat</code> 系统调用分配内存。在 linux 下默认为 false。</li>
-<li><code>UseTransparentHugePages</code>：明确指定是否使用前面第二种大页分配方式 THP。在 linux 下默认为 false。</li>
-<li><code>LargePageSizeInBytes</code>：指定明确的大页的大小，仅适用于前面第一种大页分配方式 hugetlbfs，并且必须属于操作系统支持的页大小否则不生效。默认为 0，即不指定</li>
-</ul>
-<p>首先，需要对以上参数做一个简单的判断：如果没有指定 <code>UseLargePages</code>，那么使用对应系统的默认 <code>UseLargePages</code> 的值，在 linux 下是 false，那么就不会启用大页分配。如果启动参数明确指定 <code>UseLargePages</code> 不启用，那么也不会启用大页分配。如果读取 <code>/proc/meminfo</code> 获取默认大页大小读取不到或者为 0，则代表系统也不支大页分配，大页分配也不启用。</p>
-<p>那么如果大页分配启用的话，我们需要初始化并验证大页分配参数可行性，流程是：<br><img data-src="/images/jvm/memory/08.png" alt="img"></p>
-<p>首先，JVM 会读取根据当前所处的平台与系统环境读取支持的页的大小，当然，这个是针对前面第一种大页分配方式 <code>hugetlbfs</code> 的。在 Linux 环境下，JVM 会从 <code>/proc/meminfo</code> 读取默认的 <strong><code>Hugepagesize</code></strong>，从 <code>/sys/kernel/mm/hugepages</code> 目录下检索<strong>所有支持的大页大小</strong>，这块可以参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp%E3%80%82">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp。</a><br>有关这些文件或者目录的详细信息，请参考前面章节提到的 Linux 内核文档：<a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt</a></p>
-<p>如果操作系统开启了 hugetlbfs，<code>/sys/kernel/mm/hugepages</code> 目录下的结构类似于：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tree /sys/kernel/mm/hugepages</span><br><span class="line">/sys/kernel/mm/hugepages</span><br><span class="line">├── hugepages-1048576kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-2048kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-32768kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">└── hugepages-64kB</span><br><span class="line">    ├── free_hugepages</span><br><span class="line">    ├── nr_hugepages</span><br><span class="line">    ├── nr_hugepages_mempolicy</span><br><span class="line">    ├── nr_overcommit_hugepages</span><br><span class="line">    ├── resv_hugepages</span><br><span class="line">    └── surplus_hugepages</span><br></pre></td></tr></table></figure>
-
-<p>这个 <code>hugepages-1048576kB</code> 就代表支持大小为 <code>1GB</code> 的页，<code>hugepages-2048kB</code> 就代表支持大小为 2MB 的页。</p>
-<p>如果没有设置 <code>UseHugeTLBFS</code>，也没有设置 <code>UseSHM</code>，也没有设置 <code>UseTransparentHugePages</code>，那么其实就是走默认的，默认使用 <code>hugetlbfs</code> 方式，不使用 <code>THP</code> 方式，因为如前所述， THP 在某些场景下有意想不到的性能瓶颈表现，在大型应用中，稳定性优先于峰值性能。之后，默认优先尝试 <code>UseHugeTLBFS</code>（即使用 <code>mmap</code> 系统调用通过 hugetlbfs 方式大页分配），不行的话再尝试 <code>UseSHM</code>（即使用 <code>shmget</code> 系统调用通过 hugetlbfs 方式大页分配）。这里只是验证下这些大页内存的分配方式是否可用，只有可用后面真正分配内存的时候才会采用那种可用的大页内存分配方式。</p>
-<h2 id="JVM内存申请与分配机制分析"><a href="#JVM内存申请与分配机制分析" class="headerlink" title="JVM内存申请与分配机制分析"></a>JVM内存申请与分配机制分析</h2><h3 id="内存管理的多级层次"><a href="#内存管理的多级层次" class="headerlink" title="内存管理的多级层次"></a>内存管理的多级层次</h3><p><strong><code>Reserve</code></strong> (预留) → <strong><code>Commit</code></strong> (提交) → <strong><code>Physical Allocation</code></strong> (物理分配)</p>
-<ol>
-<li>Reserve阶段：<ul>
-<li>JVM向操作系统预留一块连续的虚拟地址空间</li>
-<li>此时仅分配地址空间，不分配物理内存或交换空间</li>
-<li>对应参数如 -Xmx 设置的最大堆内存</li>
-</ul>
-</li>
-<li>Commit阶段：<ul>
-<li>JVM向操作系统提交请求，准备使用之前预留的部分虚拟空间</li>
-<li>操作系统标记这部分空间为”已提交”，准备关联物理内存</li>
-<li>对应初始堆大小，如 -Xms 设置的内存</li>
-</ul>
-</li>
-<li>物理分配阶段:<ul>
-<li>当JVM实际写入数据到已提交的内存时，操作系统才分配物理内存页</li>
-<li>这符合现代操作系统的”按需分页”(demand paging)机制</li>
-<li>因此，已提交内存不等于实际使用的物理内存</li>
-</ul>
-</li>
-</ol>
-<h3 id="内存监控与差异"><a href="#内存监控与差异" class="headerlink" title="内存监控与差异"></a>内存监控与差异</h3><p><code>NMT(Native Memory Tracking)</code>显示的提交内存与进程实际使用的物理内存确实存在差异。</p>
-<ol>
-<li>NMT观察到的内存：<ul>
-<li>显示已提交(committed)的内存量</li>
-<li>包括已向操作系统申请但可能尚未使用的内存</li>
-<li>命令: jcmd <pid> VM.native_memory</li>
-</ul>
-</li>
-<li>实际物理内存使用<ul>
-<li>通过 &#x2F;proc&#x2F;<pid>&#x2F;smaps_rollup 中的 PSS(Proportional Set Size)查看</li>
-<li>PSS比VSS和RSS更准确地反映进程实际的物理内存使用</li>
-<li>PSS &#x3D; 私有内存 + 按比例分摊的共享内存</li>
-</ul>
-</li>
-</ol>
-<h3 id="内存监控的最佳实践"><a href="#内存监控的最佳实践" class="headerlink" title="内存监控的最佳实践"></a>内存监控的最佳实践</h3><ol>
-<li>JVM层面<ul>
-<li>NMT: jcmd <pid> VM.native_memory</li>
-<li>JConsole&#x2F;VisualVM可视化监控</li>
-</ul>
-</li>
-<li>OS层面<ul>
-<li>&#x2F;proc&#x2F;<pid>&#x2F;smaps_rollup中的PSS</li>
-<li>top&#x2F;htop命令的RES&#x2F;RSS列</li>
-<li>numastat -p <pid>查看NUMA内存分布</li>
-</ul>
-</li>
-<li>高级监控<ul>
-<li>perf工具分析内存访问模式</li>
-<li>BPF&#x2F;eBPF工具追踪内存分配</li>
-</ul>
-</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JVM内存解析</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>内存</tag>
-        <tag>linux内存</tag>
       </tags>
   </entry>
   <entry>
@@ -4630,6 +4633,133 @@ sequenceDiagram
         <tag>消息队列</tag>
         <tag>中间件</tag>
         <tag>kafka</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>spring-kafka</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p> Spring kafka 版本 2.8.4</p>
+</blockquote>
+<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
+<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
+<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
+</ul>
+<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
+<li>enable.auto.commit&#x3D;true</li>
+<li>auto-commit-interval 自动提交的时间间隔</li>
+</ul>
+<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
+<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
+
+  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
+
+  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
+</code></pre>
+<ul>
+<li>自动提交流程</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
+<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
+<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
+<li>ackMode &#x3D; <em>RECORD</em></li>
+</ul>
+<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
+<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
+<ul>
+<li>ackMode !&#x3D; <em>RECORD</em></li>
+</ul>
+<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
+<ul>
+<li>AckMode 解析</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">类型</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><em>RECORD</em></td>
+<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>BATCH</em></td>
+<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
+</tr>
+<tr>
+<td align="left"><em>TIME</em></td>
+<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT</em></td>
+<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
+</tr>
+<tr>
+<td align="left"><em>COUNT_TIME</em></td>
+<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
+</tr>
+<tr>
+<td align="left"><em>MANUAL_IMMEDIATE</em></td>
+<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
+</tr>
+</tbody></table>
+<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
+<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
+<li>异步提交 syncCommits&#x3D;false</li>
+</ul>
+<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
+<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
+<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
+<li>默认重试 9 次，每次重试之前没有间隔</li>
+</ul>
+<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
+<ul>
+<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
+</ul>
+<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
+<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
+<ul>
+<li>定义重试次数 &amp; 重试间隔</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
+
+<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
+<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
+
+<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
+<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
+<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
+<li>autoCommit &#x3D; false</li>
+<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
+<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
+</ul>
+</li>
+</ul>
+<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+        <tag>spring</tag>
       </tags>
   </entry>
   <entry>
@@ -5816,133 +5946,6 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>spring-kafka</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/spring-kakfa/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p> Spring kafka 版本 2.8.4</p>
-</blockquote>
-<h2 id="网站资料"><a href="#网站资料" class="headerlink" title="网站资料"></a>网站资料</h2><ul>
-<li><a href="https://docs.spring.io/spring-kafka/docs/2.8.11/reference/html/#message-listener-container">spring-kafka(2.8.11)</a></li>
-<li><a href="https://www.baeldung.com/?s=spring+kafka">baeldung-spring-kafka</a></li>
-</ul>
-<h2 id="offset管理"><a href="#offset管理" class="headerlink" title="offset管理"></a>offset管理</h2><h3 id="Kafka-自动提交-offset"><a href="#Kafka-自动提交-offset" class="headerlink" title="Kafka 自动提交 offset"></a>Kafka 自动提交 offset</h3><ul>
-<li>enable.auto.commit&#x3D;true</li>
-<li>auto-commit-interval 自动提交的时间间隔</li>
-</ul>
-<p>​      比如 1s，那么自动提交的时间点 deadline 就是当前时间 +1s，但是自动提交 offset 的线程也是 poll 线程，所以提交 offset 的时间不一定是固定的 1s，会有下面几种情况</p>
-<pre><code>  A.  业务处理时间 &gt;= auto-commit-interval  提交 offset 的时间点就是每次 poll 的时候，由于业务处理时间已经大于自定提交间隔，那么每次 poll 的时候当前时间一定大于 deadline，
-
-  所以一定会进行一次 offset 提交（异步提交），这里提交的 offset 区间就是单次拉取消息的数量大小 max.poll.records
-
-  B.  业务处理时间 &lt;&lt; auto-commit-interval  提叫 offset 的时间点可能在第 n 次 poll 的时候（假设 m=业务处理时间，要求  $$n * m$$  &gt; auto-commit-interval），这时候会进行一次一次 offset 提交（异提   交），这里提交的 offset 区间= $$n * $$max.poll.records 
-</code></pre>
-<ul>
-<li>自动提交流程</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">maybeAutoCommitOffsetsAsync</span><span class="params">(<span class="type">long</span> now)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (autoCommitEnabled) &#123;</span><br><span class="line">        nextAutoCommitTimer.update(now);</span><br><span class="line">        <span class="keyword">if</span> (nextAutoCommitTimer.isExpired()) &#123;</span><br><span class="line">            nextAutoCommitTimer.reset(autoCommitIntervalMs);</span><br><span class="line">            doAutoCommitOffsetsAsync();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="/images/message/kafka/02.png" alt="img"></p>
-<h3 id="SpringKafka-提交-offset-流程"><a href="#SpringKafka-提交-offset-流程" class="headerlink" title="SpringKafka 提交 offset 流程"></a>SpringKafka 提交 offset 流程</h3><ul>
-<li>前置条件： <strong>enable-auto-commit</strong> &#x3D; false</li>
-<li>ackMode &#x3D; <em>RECORD</em></li>
-</ul>
-<p>​      业务消息处理完成之后，即 doInvokeOnMessage 方法之后，会对发送每条消息的 offset 给 broker</p>
-<p><img data-src="/images/message/kafka/03.PNG" alt="img"></p>
-<ul>
-<li>ackMode !&#x3D; <em>RECORD</em></li>
-</ul>
-<p><img data-src="/images/message/kafka/04.png" alt="img"></p>
-<ul>
-<li>AckMode 解析</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th align="left">类型</th>
-<th align="left">说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><em>RECORD</em></td>
-<td align="left">自动提交每条消息处理完后提交 offset监听模式不支持批量，只支持单条消息业务处理完成后向 broker 提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>BATCH</em></td>
-<td align="left">自动提交默认的类型一批消息处理完成后再提交 offset消息处理完成后会记录在 acks 中，再次 poll 的时候会将 akcs 转换为 offset 并提交到 broker</td>
-</tr>
-<tr>
-<td align="left"><em>TIME</em></td>
-<td align="left">自动提交经过 ackTime 之后提交 offset消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT</em></td>
-<td align="left">自动提交消息消费数量超过此配置后提交消息处理完成后会记录在 acks 中</td>
-</tr>
-<tr>
-<td align="left"><em>COUNT_TIME</em></td>
-<td align="left">自动提交满足 COUNT 或 <em>TIME</em> 时提交 offset</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset（指的是内存中维护的 offset）真正向 broker 提交 offset 还是在下一次 poll（）方法执行时</td>
-</tr>
-<tr>
-<td align="left"><em>MANUAL_IMMEDIATE</em></td>
-<td align="left">手动提交业务处理后调用 acknowledgment.acknowledge（） 提交 offset提交 offset 指向 broker 提交 offset，而不是维护内存中的数据</td>
-</tr>
-</tbody></table>
-<h3 id="向-Broker-提交-offset-流程"><a href="#向-Broker-提交-offset-流程" class="headerlink" title="向 Broker 提交 offset 流程"></a>向 Broker 提交 offset 流程</h3><ul>
-<li>同步提交 syncCommits&#x3D;true（<strong>默认</strong>）</li>
-<li>异步提交 syncCommits&#x3D;false</li>
-</ul>
-<p><img data-src="/images/message/kafka/05.png" alt="img"></p>
-<h2 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a><a href="https://rq3nt70g815.feishu.cn/wiki/RO2qwqD4YiF4W8kQXmPcos02n8f">异常处理</a></h2><h3 id="默认的异常处理器-DefaultErrorHandler"><a href="#默认的异常处理器-DefaultErrorHandler" class="headerlink" title="默认的异常处理器 DefaultErrorHandler"></a>默认的异常处理器 DefaultErrorHandler</h3><ul>
-<li>此处理会重试 n 次，n 次重试都失败后会跳过当前失败的消息，offset 推进一位，所以会导致失败消息丢失！</li>
-<li>默认重试 9 次，每次重试之前没有间隔</li>
-</ul>
-<p><img data-src="/images/message/kafka/06.png" alt="img"></p>
-<ul>
-<li>业务处理失败 &amp; 重试次数 &lt; 9，抛出异常；会重新 poll 消息进行消费；</li>
-</ul>
-<p>假设拉取的整批消息中第 n 条消息消费失败（n &gt; 1），那么在消费失败时会先提交 offset，保证前面已经消费的 offset 正常提交</p>
-<p><img data-src="/images/message/kafka/07.png" alt="img"></p>
-<ul>
-<li>定义重试次数 &amp; 重试间隔</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">100</span>, <span class="number">1</span>);</span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(fixedBackOff);</span><br><span class="line">kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 3 指的是失败最小消息的index，重试会从这里开始</span></span><br><span class="line"><span class="type">BatchListenerFailedException</span> <span class="variable">batchListenerFailedException</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BatchListenerFailedException</span>(<span class="string">&quot;批次消费失败&quot;</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">throw</span> batchListenerFailedException;</span><br></pre></td></tr></table></figure>
-
-<h3 id="优雅的异常处理"><a href="#优雅的异常处理" class="headerlink" title="优雅的异常处理"></a>优雅的异常处理</h3><p>默认的异常处理器重试失败仅仅打印日志，对于系统来说消息就丢失了。</p>
-<p>所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 自定义重试次数 &amp; 重试间隔</span></span><br><span class="line"><span class="type">FixedBackOff</span> <span class="variable">fixedBackOff</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FixedBackOff</span>(<span class="number">2000</span>, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// 自定义消息recover，针对不同类型的消息，转发到不同的topic中</span></span><br><span class="line"><span class="type">DeadLetterPublishingRecoverer</span> <span class="variable">recoverer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DeadLetterPublishingRecoverer</span>(kafkaTemplate, (record, exception) -&gt; &#123;</span><br><span class="line">    log.error(<span class="string">&quot;消息消费失败, topic: &#123;&#125;, partition: &#123;&#125;, offset: &#123;&#125;, data: &#123;&#125;&quot;</span>, record.topic(), record.partition(), record.offset(), record.value());</span><br><span class="line">    <span class="keyword">if</span> (exception.getCause() <span class="keyword">instanceof</span> ArithmeticException) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.arithmetic.failures&quot;</span>, record.partition());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">TopicPartition</span>(record.topic() + <span class="string">&quot;.other.failures&quot;</span>, record.partition());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="type">DefaultErrorHandler</span> <span class="variable">defaultErrorHandler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultErrorHandler</span>(recoverer, fixedBackOff);</span><br></pre></td></tr></table></figure>
-
-<h3 id="版本差异"><a href="#版本差异" class="headerlink" title="版本差异"></a>版本差异</h3><ul>
-<li>当前 spring kafka 版本为 2.8.4，这个版本下因为 DefaultErrorHandler  的原因，无论是自动提交还是手动提交，都会 seek 到失败的消息，再进行重试，所以不会出现消费异常时直接提交 offset 的情况；同时此异常处理器对于某条消息处理失败后，不会跳过这条消息是尝试下一条消息消费，所以理论上不会出现消息丢失的情况，只是消费失败仅仅打印日志不友好，需要参考 2。优雅的异常处理 进行处理</li>
-<li>在某些早版本的 spring kafka（比如 2.2.4）中，消费失败会直接提交 offset；或者当前这条消息消费失败，下一条消息消费成功后会提交下一条消息的 offset，导致消息丢失；遇到这种情况，以下操作是相对✅的<ul>
-<li>autoCommit &#x3D; false</li>
-<li>ackMode &#x3D; 手动&#x2F;手动立即</li>
-<li>设置错误处理器 SeekToCurrentErrorHandler 更新本地内存拉取 offset 的值为消费失败的 record 的 offset 值，下次 poll 周期就会去重新拉取未提交的 offset。重试 DeadLetterPublishRecover 多次消费失败： 入死信队列，可设置 Topic 名称，默认到 [target_topic]。DLT</li>
-</ul>
-</li>
-</ul>
-<p><img data-src="/images/message/kafka/08.png" alt="img"></p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
-        <tag>spring</tag>
       </tags>
   </entry>
   <entry>
