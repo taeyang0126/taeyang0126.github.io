@@ -464,6 +464,12 @@
 <td>⭐️⭐️⭐️⭐️⭐</td>
 </tr>
 </tbody></table>
+<h2 id="使用-httpbin-测试"><a href="#使用-httpbin-测试" class="headerlink" title="使用 httpbin 测试"></a>使用 httpbin 测试</h2><hr>
+<h3 id="使用-testcontainers-构建通用的测试类"><a href="#使用-testcontainers-构建通用的测试类" class="headerlink" title="使用 testcontainers 构建通用的测试类"></a>使用 testcontainers 构建通用的测试类</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Testcontainers</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">CommonMicroServiceTest</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建一个私有的 Docker 网络，使得不同的容器可以在这个网络内相互通信。</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Network</span> <span class="variable">network</span> <span class="operator">=</span> Network.newNetwork();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">HTTPBIN</span> <span class="operator">=</span> <span class="string">&quot;httpbin&quot;</span>;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">HTTPBIN_PORT</span> <span class="operator">=</span> <span class="number">80</span>;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">        设置一个 httpbin 容器（它提供各种 HTTP 测试端点）</span></span><br><span class="line"><span class="comment">        暴露 80 端口</span></span><br><span class="line"><span class="comment">        将容器连接到之前创建的网络</span></span><br><span class="line"><span class="comment">        给容器一个网络别名 &quot;httpbin&quot;，使其在网络内可通过该名称访问</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> GenericContainer&lt;?&gt; HTTPBIN_CONTAINER</span><br><span class="line">            = <span class="keyword">new</span> <span class="title class_">GenericContainer</span>&lt;&gt;(<span class="string">&quot;kennethreitz/httpbin:latest&quot;</span>)</span><br><span class="line">            .withExposedPorts(HTTPBIN_PORT)</span><br><span class="line">            .withNetwork(network)</span><br><span class="line">            .withNetworkAliases(HTTPBIN);</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * &lt;a href=&quot;https://java.testcontainers.org/modules/toxiproxy/&quot;&gt;toxiproxy&lt;/a&gt;</span></span><br><span class="line"><span class="comment">     * 使用 toxiproxy 封装 httpbin</span></span><br><span class="line"><span class="comment">     * 可以使用 toxiproxy 模拟网络故障等情况</span></span><br><span class="line"><span class="comment">     * 可以用的 port 范围是 8666～8697</span></span><br><span class="line"><span class="comment">     * 也连接到同一个网络</span></span><br><span class="line"><span class="comment">     * 一个 TOXIPROXY_CONTAINER 对应多个不同 proxy，通过 TOXIPROXY_CONTAINER.getMappedPort(内部端口) 获取映射到主机的端口</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">ToxiproxyContainer</span> <span class="variable">TOXIPROXY_CONTAINER</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ToxiproxyContainer</span>(<span class="string">&quot;ghcr.io/shopify/toxiproxy:2.5.0&quot;</span>)</span><br><span class="line">            .withNetwork(network);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 可用的 httpbin 端口</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">GOOD_HTTPBIN_PROXY_PORT</span> <span class="operator">=</span> <span class="number">8666</span>;</span><br><span class="line">    <span class="comment">// READ_TIMEOUT httpbin 端口</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">READ_TIMEOUT_HTTPBIN_PROXY_PORT</span> <span class="operator">=</span> <span class="number">8667</span>;</span><br><span class="line">    <span class="comment">//</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">RESET_PEER_HTTPBIN_PROXY_PORT</span> <span class="operator">=</span> <span class="number">8668</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String GOOD_HOST;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> GOOD_PORT;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 以下代表请求已经发出到服务端，但是响应超时，或者不能响应（比如服务器重启）</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String READ_TIMEOUT_HOST;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> READ_TIMEOUT_PORT;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String RESET_PEER_HOST;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> RESET_PEER_PORT;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 以下代表请求都没有发出去，TCP 链接都没有建立</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">String</span> <span class="variable">CONNECT_TIMEOUT_HOST</span> <span class="operator">=</span> <span class="string">&quot;localhost&quot;</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 端口 1 一定连不上的</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">CONNECT_TIMEOUT_PORT</span> <span class="operator">=</span> <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        <span class="comment">// 不使用 @Container 注解管理容器声明周期，因为我们需要在静态块生成代理，必须在这之前启动容器</span></span><br><span class="line">        <span class="comment">// 不用担心容器不会被关闭，因为 testcontainers 会启动一个 ryuk 容器，用于监控并关闭所有容器</span></span><br><span class="line">        HTTPBIN_CONTAINER.start();</span><br><span class="line">        TOXIPROXY_CONTAINER.start();</span><br><span class="line">        <span class="keyword">final</span> <span class="type">ToxiproxyClient</span> <span class="variable">toxiproxyClient</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ToxiproxyClient</span>(TOXIPROXY_CONTAINER.getHost(), TOXIPROXY_CONTAINER.getControlPort());</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 1. 创建正常代理</span></span><br><span class="line">            <span class="meta">@SuppressWarnings(&quot;all&quot;)</span></span><br><span class="line">            <span class="type">Proxy</span> <span class="variable">proxy</span> <span class="operator">=</span> toxiproxyClient.createProxy(<span class="string">&quot;good&quot;</span>, <span class="string">&quot;0.0.0.0:&quot;</span> + GOOD_HTTPBIN_PROXY_PORT, HTTPBIN + <span class="string">&quot;:&quot;</span> + HTTPBIN_PORT);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 2. 创建读取超时代理</span></span><br><span class="line">            <span class="comment">// 关闭流量，会 READ TIME OUT</span></span><br><span class="line">            proxy = toxiproxyClient.createProxy(<span class="string">&quot;read_timeout&quot;</span>, <span class="string">&quot;0.0.0.0:&quot;</span> + READ_TIMEOUT_HTTPBIN_PROXY_PORT, HTTPBIN + <span class="string">&quot;:&quot;</span> + HTTPBIN_PORT);</span><br><span class="line">            <span class="comment">// 将上下行带宽设为0，模拟读取超时</span></span><br><span class="line">            <span class="comment">// bandwidth 限制网络连接的带宽</span></span><br><span class="line">            <span class="comment">// UPSTREAM=0 客户端无法向服务端发送请求，导致写超时</span></span><br><span class="line">            <span class="comment">// DOWNSTREAM=0 服务端无法向客户端响应，导致读超时</span></span><br><span class="line">            proxy.toxics().bandwidth(<span class="string">&quot;UP_DISABLE&quot;</span>, ToxicDirection.UPSTREAM, <span class="number">0</span>);</span><br><span class="line">            proxy.toxics().bandwidth(<span class="string">&quot;DOWN_DISABLE&quot;</span>, ToxicDirection.DOWNSTREAM, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 3. 创建连接重置代理</span></span><br><span class="line">            <span class="comment">// todo reset peer 不生效，抓包发现没有发送 rst 包，具体原因需要再看</span></span><br><span class="line">            proxy = toxiproxyClient.createProxy(<span class="string">&quot;reset_peer&quot;</span>, <span class="string">&quot;0.0.0.0:&quot;</span> + RESET_PEER_HTTPBIN_PROXY_PORT, HTTPBIN + <span class="string">&quot;:&quot;</span> + HTTPBIN_PORT);</span><br><span class="line">            <span class="comment">// 在连接建立后立即重置连接</span></span><br><span class="line">            <span class="comment">// 上游重置 (ToxicDirection.UPSTREAM): 当客户端尝试向服务器发送数据时，连接会被重置，客户端会收到 &quot;Connection reset by peer&quot; 错误</span></span><br><span class="line">            <span class="comment">// 下游重置 (ToxicDirection.DOWNSTREAM): 当服务器尝试向客户端发送数据时，连接会被重置，服务器会收到 &quot;Connection reset by peer&quot; 错误</span></span><br><span class="line">            <span class="comment">// 延迟为1ms</span></span><br><span class="line">            proxy.toxics().resetPeer(<span class="string">&quot;UP_SLOW_CLOSE&quot;</span>, ToxicDirection.UPSTREAM, <span class="number">1</span>);</span><br><span class="line">            proxy.toxics().resetPeer(<span class="string">&quot;DOWN_SLOW_CLOSE&quot;</span>, ToxicDirection.DOWNSTREAM, <span class="number">1</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(e);</span><br><span class="line">        &#125;</span><br><span class="line">        GOOD_HOST = TOXIPROXY_CONTAINER.getHost();</span><br><span class="line">        GOOD_PORT = TOXIPROXY_CONTAINER.getMappedPort(GOOD_HTTPBIN_PROXY_PORT);</span><br><span class="line">        READ_TIMEOUT_HOST = TOXIPROXY_CONTAINER.getHost();</span><br><span class="line">        READ_TIMEOUT_PORT = TOXIPROXY_CONTAINER.getMappedPort(READ_TIMEOUT_HTTPBIN_PROXY_PORT);</span><br><span class="line">        RESET_PEER_HOST = TOXIPROXY_CONTAINER.getHost();</span><br><span class="line">        RESET_PEER_PORT = TOXIPROXY_CONTAINER.getMappedPort(RESET_PEER_HTTPBIN_PROXY_PORT);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Log4j2</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">NetworkTest</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> OkHttpClient okHttpClient;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Before</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">init</span><span class="params">()</span> &#123;</span><br><span class="line">        okHttpClient = <span class="keyword">new</span> <span class="title class_">OkHttpClient</span>.Builder()</span><br><span class="line">                .readTimeout(Duration.ofSeconds(<span class="number">1</span>))</span><br><span class="line">                .writeTimeout(Duration.ofSeconds(<span class="number">1</span>))</span><br><span class="line">                .connectTimeout(Duration.ofSeconds(<span class="number">1</span>))</span><br><span class="line">                .retryOnConnectionFailure(<span class="literal">false</span>)</span><br><span class="line">                .build();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">test_good</span><span class="params">()</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        curl(GOOD_HOST, GOOD_PORT);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Test(expected = ConnectException.class)</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">test_connectTimeout</span><span class="params">()</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        curl(CONNECT_TIMEOUT_HOST, CONNECT_TIMEOUT_PORT);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Test(expected = SocketTimeoutException.class)</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">test_readTimeout</span><span class="params">()</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        curl(READ_TIMEOUT_HOST, READ_TIMEOUT_PORT);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">test_reset</span><span class="params">()</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        curl(RESET_PEER_HOST, RESET_PEER_PORT);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">curl</span><span class="params">(String goodHost, <span class="type">int</span> goodPort)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">url</span> <span class="operator">=</span> <span class="string">&quot;http://&quot;</span> + goodHost + <span class="string">&quot;:&quot;</span> + goodPort + <span class="string">&quot;/delay/0.5&quot;</span>;</span><br><span class="line"></span><br><span class="line">        <span class="type">Request</span> <span class="variable">request</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Request</span>.Builder()</span><br><span class="line">                .url(url)</span><br><span class="line">                .build();</span><br><span class="line"></span><br><span class="line">        <span class="type">var</span> <span class="variable">res</span> <span class="operator">=</span> okHttpClient</span><br><span class="line">                .newCall(request)</span><br><span class="line">                .execute()</span><br><span class="line">                .body()</span><br><span class="line">                .string();</span><br><span class="line"></span><br><span class="line">        log.info(<span class="string">&quot;res =&gt; &#123;&#125;&quot;</span>, res);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>JAVA</category>
@@ -1677,38 +1683,6 @@ flowchart TD
       </tags>
   </entry>
   <entry>
-    <title>JVM内存相关的监控指标</title>
-    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
-<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
-<p>JVM Heap代表存放Java Objects的Heap</p>
-</blockquote>
-<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
-<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
-</blockquote>
-<ul>
-<li>CodeCache</li>
-<li>Metaspace</li>
-<li>CompressedClassSpace</li>
-<li>DirectBuffer</li>
-<li>Thread Stacks</li>
-</ul>
-<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
-<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
-<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>监控</tag>
-        <tag>内存</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>JVM重要参数</title>
     <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
     <content><![CDATA[<h3 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h3><table>
@@ -1819,6 +1793,38 @@ flowchart TD
         <tag>JVM</tag>
         <tag>JFR</tag>
         <tag>对象分配</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM内存相关的监控指标</title>
+    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
+    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
+<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
+<p>JVM Heap代表存放Java Objects的Heap</p>
+</blockquote>
+<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
+<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+</blockquote>
+<ul>
+<li>CodeCache</li>
+<li>Metaspace</li>
+<li>CompressedClassSpace</li>
+<li>DirectBuffer</li>
+<li>Thread Stacks</li>
+</ul>
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
+<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
+<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>监控</tag>
+        <tag>内存</tag>
       </tags>
   </entry>
   <entry>
@@ -2610,6 +2616,41 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>Netty中的细节优化</title>
+    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
+    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
+<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
+<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
+</ul>
+<p><img data-src="/images/netty/01.png" alt="netty"></p>
+<ul>
+<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
+</ul>
+<p><img data-src="/images/netty/02.png" alt="netty"></p>
+<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
+<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
+</ul>
+<p><img data-src="/images/netty/03.png" alt="netty"></p>
+<ul>
+<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
+</ul>
+<p><img data-src="/images/netty/04.png" alt="netty"></p>
+<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
+<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
+<p><img data-src="/images/netty/05.png" alt="netty"></p>
+<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
+<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
+</ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>Netty</category>
+      </categories>
+      <tags>
+        <tag>Netty</tag>
+        <tag>源码解析</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>panama</title>
     <url>/2025/02/19/panama/panama/posts/undefined/</url>
     <content><![CDATA[<ul>
@@ -2655,41 +2696,6 @@ flowchart TD
         <tag>java</tag>
         <tag>panama</tag>
         <tag>ffi</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Netty中的细节优化</title>
-    <url>/2025/02/12/netty/netty-zhong-de-xi-jie-you-hua/posts/undefined/</url>
-    <content><![CDATA[<h3 id="优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率"><a href="#优化-jdk-原生-selector-中-IO-就绪事件的插入和遍历效率" class="headerlink" title="优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率"></a>优化 jdk 原生 selector 中 IO 就绪事件的插入和遍历效率</h3><ul>
-<li>优化代码 <code>io.netty.channel.nio.NioEventLoop#openSelector</code></li>
-<li>原生的 jdk selector 实现是 <code>sun.nio.ch.SelectorImpl</code> 其中 IO 就绪事件存放容器是<code>Set</code></li>
-</ul>
-<p><img data-src="/images/netty/01.png" alt="netty"></p>
-<ul>
-<li><code>SelectedSelectionKeySet</code> 底层使用数组存储，减少了插入时的 hash 碰撞，遍历时又能利用 cpu 缓存提升效率</li>
-</ul>
-<p><img data-src="/images/netty/02.png" alt="netty"></p>
-<h3 id="优化客户端-channel-选择-reactor-的效率"><a href="#优化客户端-channel-选择-reactor-的效率" class="headerlink" title="优化客户端 channel 选择 reactor 的效率"></a>优化客户端 channel 选择 reactor 的效率</h3><ul>
-<li>从 reactor 数量是 2 的倍数时使用 &amp; 运算</li>
-</ul>
-<p><img data-src="/images/netty/03.png" alt="netty"></p>
-<ul>
-<li>从 reactor 数量不是 2 的倍数时使用取模运算</li>
-</ul>
-<p><img data-src="/images/netty/04.png" alt="netty"></p>
-<h3 id="解决-JDK-epoll-空轮训-bug"><a href="#解决-JDK-epoll-空轮训-bug" class="headerlink" title="解决 JDK epoll 空轮训 bug"></a>解决 JDK epoll 空轮训 bug</h3><p>由于<code>JDK NIO Epoll的空轮询BUG</code>存在，这样会导致<code>Reactor线程</code>在没有任何事情可做的情况下被意外唤醒，导致 CPU 空转。</p>
-<p>其实 Netty 也没有从根本上解决这个<code>JDK BUG</code>，而是选择巧妙的绕过这个<code>BUG</code></p>
-<p><img data-src="/images/netty/05.png" alt="netty"></p>
-<h3 id="对象池的设计"><a href="#对象池的设计" class="headerlink" title="对象池的设计"></a>对象池的设计</h3><ul>
-<li>stack 是对象池中真正用来存储池化对象的地方；为了避免这种不必要的同步竞争，Netty 也采用了类似 TLAB 分配内存的方式，每个线程拥有一个独立 Stack，这样当多个线程并发从对象池中获取对象时，都是从自己线程中的 Stack 中获取，全程无锁化运行。大大提高了多线程从对象池中获取对象的效率</li>
-</ul>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>Netty</category>
-      </categories>
-      <tags>
-        <tag>Netty</tag>
-        <tag>源码解析</tag>
       </tags>
   </entry>
   <entry>
@@ -3630,6 +3636,135 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>JVM内存解析 - 1.Native Memory Tracking</title>
+    <url>/2025/02/23/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-native-memory-tracking/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 1.从 Native Memory Tracking 说起</p>
+</blockquote>
+<ul>
+<li><a href="https://juejin.cn/post/7225871227743043644">Native Memory Tracking</a></li>
+</ul>
+<h3 id="开启"><a href="#开启" class="headerlink" title="开启"></a>开启</h3><p>Native Memory Tracking 主要是用来通过在 <code>JVM 向系统申请内存的时候进行埋点实现的</code>。注意，这个埋点，并不是完全没有消耗的，我们后面会看到。由于需要埋点，并且 JVM 中申请内存的地方很多，这个埋点是有不小消耗的，这个 Native Memory Tracking 默认是不开启的，并且<code>无法动态开启</code>（因为这是埋点采集统计的，如果可以动态开启那么没开启的时候的内存分配没有记录无法知晓，所以无法动态开启），目前只能通过在启动 JVM 的时候通过启动参数开启。即通过 <code>-XX:NativeMemoryTracking</code> 开启:</p>
+<ul>
+<li><code>-XX:NativeMemoryTracking=off</code>:这是默认值，即关闭 Native Memory Tracking</li>
+<li><code>-XX:NativeMemoryTracking=summary</code>: 开启 Native Memory Tracking，但是仅仅按照各个 JVM 子系统去统计内存占用情况</li>
+<li><code>-XX:NativeMemoryTracking=detail</code>: 开启 Native Memory Tracking，从每次 JVM 中申请内存的不同调用路径的维度去统计内存占用情况。注意，开启 detail 比开启 summary 的消耗要大不少，因为 detail 每次都要解析 CallSite 分辨调用位置。我们一般用不到这么详细的内容，除非是 JVM 开发。</li>
+</ul>
+<p>开启之后，我们可以通过 jcmd 命令去查看 Native Memory Tracking 的信息，即<code>jcmd &lt;pid&gt; VM.native_memory</code>：</p>
+<ul>
+<li><code>jcmd &lt;pid&gt; VM.native_memory</code>或者<code>jcmd &lt;pid&gt; VM.native_memory summary</code>：两者是等价的，即查看 Native Memory Tracking 的 summary 信息。默认单位是 KB，可以指定单位为其他，例如 jcmd <pid> VM.native_memory summary scale&#x3D;MB</li>
+<li><code>jcmd &lt;pid&gt; VM.native_memory detail</code>：查看 Native Memory Tracking 的 detail 信息，包括 summary 信息，以及按照虚拟内存映射分组的内存使用信息，还有按照不同 CallSite 调用分组的内存使用情况。默认单位是 KB，可以指定单位为其他，例如 jcmd <pid> VM.native_memory detail scale&#x3D;MB</li>
+</ul>
+<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><blockquote>
+<p>我们只关心并且查看 Native Memory Tracking 的 summary 信息即可，detail 信息一般是供 JVM 开发人员使用的，我们不用太关心</p>
+</blockquote>
+<p>一般地，只有遇到问题的时候，我们才会考虑开启 Native Memory Tracking，并且在定位出问题后，我们想把它关闭，可以通过 <code>jcmd &lt;pid&gt; VM.native_memory shutdown</code> 进行关闭并清理掉之前 Native Memory tracking 使用的埋点以及占用的内存。如前面所述，我们无法动态开启 Native Memory tracking，所以只要动态关闭了，这个进程就无法再开启了。</p>
+<p>jcmd 本身提供了简单的对比功能，例如：</p>
+<ol>
+<li>使用 <code>jcmd &lt;pid&gt; VM.native_memory baseline</code> 记录当前内存占用信息</li>
+<li>之后过一段时间 <code>jcmd &lt;pid&gt; VM.native_memory summary.diff</code> 会输出当前 Native Memory Tracking 的 summary 信息，如果与第一步 baseline 的有差异，会在对应位将差异输出</li>
+</ol>
+<p>但是这个工具本身比较粗糙，我们有时候并不知道何时调用 <code>jcmd &lt;pid&gt; VM.native_memory summary.diff</code> 合适，因为我们不确定什么时候会有我们想看到的内存使用过大的问题。所以我们一般做成一种持续监控的方式</p>
+<h3 id="summary-信息每部分含义"><a href="#summary-信息每部分含义" class="headerlink" title="summary 信息每部分含义"></a>summary 信息每部分含义</h3><p>以下是一个 Native Memory Tracking 的示例输出：</p>
+<ol>
+<li>压测 <a href="https://github.com/spring-projects/spring-petclinic.git">spring-petclinic</a> 项目</li>
+<li>jdk21</li>
+<li>vm options</li>
+</ol>
+  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-Xmx256m</span><br><span class="line">-XX:StartFlightRecording=disk=true,maxsize=5000m,maxage=2d,settings=./default.jfc</span><br><span class="line">-XX:FlightRecorderOptions=maxchunksize=128m,repository=./,stackdepth=256</span><br><span class="line">-XX:NativeMemoryTracking=summary</span><br></pre></td></tr></table></figure>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Native Memory Tracking:</span><br><span class="line"></span><br><span class="line">(Omitting categories weighting less than 1KB)</span><br><span class="line"></span><br><span class="line">Total: reserved=1751414KB, committed=470662KB</span><br><span class="line">       malloc: 104634KB #545587</span><br><span class="line">       mmap:   reserved=1646780KB, committed=366028KB</span><br><span class="line"></span><br><span class="line">-                 Java Heap (reserved=262144KB, committed=82944KB)</span><br><span class="line">                            (mmap: reserved=262144KB, committed=82944KB, peak=262144KB) </span><br><span class="line"> </span><br><span class="line">-                     Class (reserved=1050511KB, committed=17167KB)</span><br><span class="line">                            (classes #21948)</span><br><span class="line">                            (  instance classes #20377, array classes #1571)</span><br><span class="line">                            (malloc=1935KB #58688) (peak=1999KB #58351) </span><br><span class="line">                            (mmap: reserved=1048576KB, committed=15232KB, at peak) </span><br><span class="line">                            (  Metadata:   )</span><br><span class="line">                            (    reserved=131072KB, committed=91072KB)</span><br><span class="line">                            (    used=90300KB)</span><br><span class="line">                            (    waste=772KB =0.85%)</span><br><span class="line">                            (  Class space:)</span><br><span class="line">                            (    reserved=1048576KB, committed=15232KB)</span><br><span class="line">                            (    used=14704KB)</span><br><span class="line">                            (    waste=528KB =3.46%)</span><br><span class="line"> </span><br><span class="line">-                    Thread (reserved=117590KB, committed=117590KB)</span><br><span class="line">                            (threads #58)</span><br><span class="line">                            (stack: reserved=117420KB, committed=117420KB, peak=117420KB)</span><br><span class="line">                            (malloc=103KB #350) (peak=123KB #391) </span><br><span class="line">                            (arena=67KB #114) (peak=3010KB #121)</span><br><span class="line"> </span><br><span class="line">-                      Code (reserved=52246KB, committed=27478KB)</span><br><span class="line">                            (malloc=2710KB #9638) (peak=2833KB #13764) </span><br><span class="line">                            (mmap: reserved=49536KB, committed=24768KB, at peak) </span><br><span class="line">                            (arena=0KB #0) (peak=33KB #1)</span><br><span class="line"> </span><br><span class="line">-                        GC (reserved=58006KB, committed=54566KB)</span><br><span class="line">                            (malloc=20038KB #14233) (peak=20310KB #15935) </span><br><span class="line">                            (mmap: reserved=37968KB, committed=34528KB, peak=37968KB) </span><br><span class="line"> </span><br><span class="line">-                 GCCardSet (reserved=70KB, committed=70KB)</span><br><span class="line">                            (malloc=70KB #778) (peak=483KB #1344) </span><br><span class="line"> </span><br><span class="line">-                  Compiler (reserved=230KB, committed=230KB)</span><br><span class="line">                            (malloc=100KB #711) (peak=142KB #1118) </span><br><span class="line">                            (arena=130KB #2) (peak=10244KB #9)</span><br><span class="line"> </span><br><span class="line">-                  Internal (reserved=2904KB, committed=2904KB)</span><br><span class="line">                            (malloc=2872KB #56765) (peak=2920KB #57573) </span><br><span class="line">                            (mmap: reserved=32KB, committed=32KB, at peak) </span><br><span class="line"> </span><br><span class="line">-                     Other (reserved=108KB, committed=108KB)</span><br><span class="line">                            (malloc=108KB #18) (peak=130KB #20) </span><br><span class="line"> </span><br><span class="line">-                    Symbol (reserved=39117KB, committed=39117KB)</span><br><span class="line">                            (malloc=33100KB #285200) (peak=33111KB #284967) </span><br><span class="line">                            (arena=6017KB #1) (at peak)</span><br><span class="line"> </span><br><span class="line">-    Native Memory Tracking (reserved=8633KB, committed=8633KB)</span><br><span class="line">                            (malloc=108KB #1942) (peak=109KB #1948) </span><br><span class="line">                            (tracking overhead=8525KB)</span><br><span class="line"> </span><br><span class="line">-               Arena Chunk (reserved=199KB, committed=199KB)</span><br><span class="line">                            (malloc=199KB #306) (peak=16383KB #630) </span><br><span class="line"> </span><br><span class="line">-                   Tracing (reserved=21522KB, committed=21522KB)</span><br><span class="line">                            (malloc=21522KB #12431) (at peak) </span><br><span class="line">                            (arena=0KB #0) (peak=32KB #1)</span><br><span class="line"> </span><br><span class="line">-                   Logging (reserved=0KB, committed=0KB)</span><br><span class="line">                            (malloc=0KB #2) (peak=6KB #4) </span><br><span class="line"> </span><br><span class="line">-                    Module (reserved=276KB, committed=276KB)</span><br><span class="line">                            (malloc=276KB #4515) (peak=303KB #4521) </span><br><span class="line"> </span><br><span class="line">-                 Safepoint (reserved=32KB, committed=32KB)</span><br><span class="line">                            (mmap: reserved=32KB, committed=32KB, at peak) </span><br><span class="line"> </span><br><span class="line">-           Synchronization (reserved=3462KB, committed=3462KB)</span><br><span class="line">                            (malloc=3462KB #66139) (peak=3479KB #66484) </span><br><span class="line"> </span><br><span class="line">-            Serviceability (reserved=2837KB, committed=2837KB)</span><br><span class="line">                            (malloc=2837KB #33552) (peak=2850KB #33877) </span><br><span class="line"> </span><br><span class="line">-                 Metaspace (reserved=131503KB, committed=91503KB)</span><br><span class="line">                            (malloc=431KB #186) (peak=443KB #226) </span><br><span class="line">                            (mmap: reserved=131072KB, committed=91072KB, at peak) </span><br><span class="line"> </span><br><span class="line">-      String Deduplication (reserved=1KB, committed=1KB)</span><br><span class="line">                            (malloc=1KB #8) (at peak) </span><br><span class="line"> </span><br><span class="line">-           Object Monitors (reserved=24KB, committed=24KB)</span><br><span class="line">                            (malloc=24KB #116) (peak=162KB #798) </span><br><span class="line"> </span><br><span class="line">-                   Unknown (reserved=0KB, committed=0KB)</span><br><span class="line">                            (mmap: reserved=0KB, committed=0KB, peak=32KB) </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h4 id="Java堆内存-Java-Heap"><a href="#Java堆内存-Java-Heap" class="headerlink" title="Java堆内存(Java Heap)"></a>Java堆内存(Java Heap)</h4><blockquote>
+<p>所有 Java 对象分配占用内存的来源，由 JVM GC 管理回收</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// 堆内存占用，reserve 了 262144KB=256M，当前 commit 了 82944KB(81M) 用于实际使用</span><br><span class="line">// 发现 申请的内存大小正好等于=-Xmx256m，预留内存空间（不实际分配物理内存），只是为了让操作系统选择地址，预留大小。commit才是实际使用的物理内存</span><br><span class="line">Java Heap (reserved=262144KB, committed=82944KB)</span><br><span class="line">    // 堆内存都是通过 mmap 系统调用方式分配的，peak=最大使用量</span><br><span class="line">    (mmap: reserved=262144KB, committed=82944KB, peak=262144KB) </span><br></pre></td></tr></table></figure>
+
+<h4 id="元空间-Class"><a href="#元空间-Class" class="headerlink" title="元空间(Class)"></a>元空间(Class)</h4><blockquote>
+<p>JVM 将类文件加载到内存中用于后续使用占用的空间，注意是 JVM C++ 层面的内存占用，主要包括类文件中在 JVM 解析为 C++ 的 Klass 类以及相关元素。对应的 Java 反射类 Class 还是在堆内存空间中</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// Class 是类元空间总占用，reserve 了 1050511KB(1025M)，当前 commit 了 17167KB(16MB) 用于实际使用</span><br><span class="line">// 总共 reserved 1050511KB = mmap reserved 1048576KB(1024) + malloc 1935KB(1.8)</span><br><span class="line">// 总共 committed 17167KB = mmap committed 15232KB + malloc 1999KB</span><br><span class="line"> Class (reserved=1050511KB, committed=17167KB)</span><br><span class="line">        (classes #21948) //一共加载了 21948 个类</span><br><span class="line">        (  instance classes #20377, array classes #1571)    //其中 20377 个实体类，1571 个数组类</span><br><span class="line">        (malloc=1935KB #58688) (peak=1999KB #58351)  //通过 malloc 系统调用方式一共分配了 1935KB，一共调用了 58688 次 malloc</span><br><span class="line">        (mmap: reserved=1048576KB, committed=15232KB, at peak)  //通过 mmap 系统调用方式 reserve 了 1048576KB，当前 commit 了 15232KB 用于实际使用</span><br><span class="line">        (  Metadata:   ) //注意，MetaData 这块不属于类元空间，属于数据元空间</span><br><span class="line">        (    reserved=131072KB, committed=91072KB) //数据元空间当前 reserve 了 131072KB，commit 了 91072KB 用于实际使用</span><br><span class="line">        (    used=90300KB) //但是实际从 MetaChunk 的角度去看使用，只有 90300KB 用于实际数据的分配，有 772KB 的浪费</span><br><span class="line">        (    waste=772KB =0.85%)</span><br><span class="line">        (  Class space:)</span><br><span class="line">        (    reserved=1048576KB, committed=15232KB) //类元空间当前 reserve 了 1048576KB，commit 了 15232KB 用于实际使用 </span><br><span class="line">        (    used=14704KB)  //但是实际从 MetaChunk 的角度去看使用，只有 14704KB 用于实际数据的分配，有 528KB 的浪费</span><br><span class="line">        (    waste=528KB =3.46%)</span><br><span class="line">Module (reserved=276KB, committed=276KB) //加载并记录模块占用空间，当前 reserve 了 276KB，commit 了 276KB 用于实际使用</span><br><span class="line">        (malloc=276KB #4515) (peak=303KB #4521) </span><br><span class="line">Metaspace (reserved=131503KB, committed=91503KB) //等价于上面 Class 中的 MetaChunk（除了 malloc 的部分），当前 reserve 了 131503KB，commit 了 91503KB 用于实际使用</span><br><span class="line">        (malloc=431KB #186) (peak=443KB #226) </span><br><span class="line">        (mmap: reserved=131072KB, committed=91072KB, at peak) </span><br></pre></td></tr></table></figure>
+<h4 id="C-字符串即符号-Symbol-占用空间"><a href="#C-字符串即符号-Symbol-占用空间" class="headerlink" title="C++ 字符串即符号(Symbol)占用空间"></a>C++ 字符串即符号(Symbol)占用空间</h4><blockquote>
+<p>前面加载类的时候，其实里面有很多字符串信息（注意不是 Java 字符串，是 JVM 层面 C++ 字符串），不同类的字符串信息可能会重复。所以统一放入符号表(Symbol table)复用。元空间中保存的是针对符号表中符号的引用</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Symbol (reserved=39117KB, committed=39117KB)</span><br><span class="line">        (malloc=33100KB #285200) (peak=33111KB #284967)  //通过 malloc 系统调用方式一共分配了 33100KB，一共调用了 285200 次 malloc</span><br><span class="line">        (arena=6017KB #1) (at peak) //通过 arena 系统调用方式一共分配了 6017KB，一共调用了 1 次 arena</span><br></pre></td></tr></table></figure>
+
+<h4 id="线程占用内存-Thread"><a href="#线程占用内存-Thread" class="headerlink" title="线程占用内存(Thread)"></a>线程占用内存(Thread)</h4><blockquote>
+<p>主要是每个线程的线程栈，我们也只会主要分析线程栈占用空间（在第五章），其他的管理线程占用的空间很小，可以忽略不计</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// 总共 reserve 了 117590KB(114M)，commit 了 117590KB(114M)</span><br><span class="line">Thread (reserved=117590KB, committed=117590KB)</span><br><span class="line">    (threads #58) //当前线程数量是 58</span><br><span class="line">    (stack: reserved=117420KB, committed=117420KB, peak=117420KB) //线程栈占用的空间: 每个线程实际占用 ≈ 1MB(栈) + 2MB(Guard Pages) 58个线程总占用 ≈ 58 * (1MB + 2MB) ≈ 174MB，实际看到117MB比理论值小，因为Guard Pages可能共享</span><br><span class="line">    (malloc=103KB #350) (peak=123KB #391) </span><br><span class="line">    (arena=67KB #114) (peak=3010KB #121)</span><br></pre></td></tr></table></figure>
+
+<h4 id="JIT编译器本身占用的空间以及JIT编译器编译后的代码占用空间-Code"><a href="#JIT编译器本身占用的空间以及JIT编译器编译后的代码占用空间-Code" class="headerlink" title="JIT编译器本身占用的空间以及JIT编译器编译后的代码占用空间(Code)"></a>JIT编译器本身占用的空间以及JIT编译器编译后的代码占用空间(Code)</h4><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Code (reserved=52246KB, committed=27478KB)</span><br><span class="line">    (malloc=2710KB #9638) (peak=2833KB #13764) </span><br><span class="line">    (mmap: reserved=49536KB, committed=24768KB, at peak) </span><br><span class="line">    (arena=0KB #0) (peak=33KB #1)</span><br></pre></td></tr></table></figure>
+
+<h4 id="Arena-数据结构占用空间-Arena-Chunk"><a href="#Arena-数据结构占用空间-Arena-Chunk" class="headerlink" title="Arena 数据结构占用空间(Arena Chunk)"></a>Arena 数据结构占用空间(Arena Chunk)</h4><blockquote>
+<p> Native Memory Tracking 中有很多通过 arena 分配的内存，这个就是管理 Arena 数据结构占用空间</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Arena Chunk (reserved=199KB, committed=199KB)</span><br><span class="line">            (malloc=199KB #306) (peak=16383KB #630) </span><br></pre></td></tr></table></figure>
+
+<h4 id="JVM-Tracing-占用内存"><a href="#JVM-Tracing-占用内存" class="headerlink" title="JVM Tracing 占用内存"></a>JVM Tracing 占用内存</h4><blockquote>
+<p>包括 JVM perf 以及 JFR 占用的空间。其中 JFR 占用的空间可能会比较大</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Tracing (reserved=21522KB, committed=21522KB)</span><br><span class="line">    (malloc=21522KB #12431) (at peak) </span><br><span class="line">    (arena=0KB #0) (peak=32KB #1)</span><br></pre></td></tr></table></figure>
+
+<h4 id="写-JVM-日志占用的内存-Logging"><a href="#写-JVM-日志占用的内存-Logging" class="headerlink" title="写 JVM 日志占用的内存(Logging)"></a>写 JVM 日志占用的内存(Logging)</h4><blockquote>
+<p>-Xlog 参数指定的日志输出，并且 Java 17 之后引入了异步 JVM 日志-Xlog:async，异步日志所需的 buffer 也在这里</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Logging (reserved=0KB, committed=0KB)</span><br><span class="line">        (malloc=0KB #2) (peak=6KB #4) </span><br></pre></td></tr></table></figure>
+
+<h4 id="JVM-参数占用内存-Arguments"><a href="#JVM-参数占用内存-Arguments" class="headerlink" title="JVM 参数占用内存(Arguments)"></a>JVM 参数占用内存(Arguments)</h4><blockquote>
+<p>我们需要保存并处理当前的 JVM 参数以及用户启动 JVM 的是传入的各种参数（有时候称为 flag）</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Arguments (reserved=31KB, committed=31KB)</span><br><span class="line">(malloc=31KB #90) </span><br></pre></td></tr></table></figure>
+
+<h4 id="JVM-安全点占用内存-Safepoint"><a href="#JVM-安全点占用内存-Safepoint" class="headerlink" title="JVM 安全点占用内存(Safepoint)"></a>JVM 安全点占用内存(Safepoint)</h4><blockquote>
+<p>是固定的两页内存（我这里是一页是 16KB，后面第二章会分析这个页大小与操作系统相关），用于 JVM 安全点的实现，不会随着 JVM 运行时的内存占用而变化</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Safepoint (reserved=32KB, committed=32KB)</span><br><span class="line">           (mmap: reserved=32KB, committed=32KB, at peak) </span><br></pre></td></tr></table></figure>
+
+<h4 id="Java-同步机制-Synchronization"><a href="#Java-同步机制-Synchronization" class="headerlink" title="Java 同步机制(Synchronization)"></a>Java 同步机制(Synchronization)</h4><blockquote>
+<p>例如 synchronized，还有 AQS 的基础 LockSupport 底层依赖的 C++ 的数据结构，系统内部的 mutex 等占用的内存</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Synchronization (reserved=3462KB, committed=3462KB)</span><br><span class="line">                (malloc=3462KB #66139) (peak=3479KB #66484) </span><br></pre></td></tr></table></figure>
+
+<h4 id="JVM-TI-相关内存-Serviceability"><a href="#JVM-TI-相关内存-Serviceability" class="headerlink" title="JVM TI 相关内存(Serviceability)"></a>JVM TI 相关内存(Serviceability)</h4><blockquote>
+<p>JVMTI 是 Java 虚拟机工具接口（Java Virtual Machine Tool Interface）的缩写。它是 Java 虚拟机（JVM）的一部分，提供了一组 API，使开发人员可以开发自己的 Java 工具和代理程序，以监视、分析和调试 Java 应用程序。JVMTI API 是一组 C&#x2F;C++ 函数，可以通过 JVM TI Agent Library 和 JVM 进行交互。开发人员可以使用 JVMTI API 开发自己的 JVM 代理程序或工具，以监视和操作 Java 应用程序。例如，可以使用 JVMTI API 开发性能分析工具、代码覆盖率工具、内存泄漏检测工具等等。这里的内存就是调用了 JVMTI API 之后 JVM 为了生成数据占用的内存</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Serviceability (reserved=2837KB, committed=2837KB)</span><br><span class="line">                (malloc=2837KB #33552) (peak=2850KB #33877) </span><br></pre></td></tr></table></figure>
+
+<h4 id="Java-字符串去重占用内存-String-Deduplication"><a href="#Java-字符串去重占用内存-String-Deduplication" class="headerlink" title="Java 字符串去重占用内存(String Deduplication)"></a>Java 字符串去重占用内存(String Deduplication)</h4><blockquote>
+<p>Java 字符串去重机制可以减少应用程序中字符串对象的内存占用。 在 Java 应用程序中，字符串常量是不可变的，并且通常被使用多次。这意味着在应用程序中可能存在大量相同的字符串对象，这些对象占用了大量的内存。Java 字符串去重机制通过在堆中共享相同的字符串对象来解决这个问题。当一个字符串对象被创建时，JVM 会检查堆中是否已经存在相同的字符串对象。如果存在，那么新的字符串对象将被舍弃，而引用被返回给现有的对象。这样就可以减少应用程序中字符串对象的数量，从而减少内存占用。 但是这个机制一直在某些 GC 下表现不佳，尤其是 <code>G1GC</code> 以及 <code>ZGC</code> 中，所以默认是关闭的，可以通过 <code>-XX:+UseStringDeduplication</code> 来启用</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">String Deduplication (reserved=1KB, committed=1KB)</span><br><span class="line">                    (malloc=1KB #8) (at peak) </span><br></pre></td></tr></table></figure>
+
+<h4 id="JVM-GC需要的数据结构与记录信息占用的空间-GC"><a href="#JVM-GC需要的数据结构与记录信息占用的空间-GC" class="headerlink" title="JVM GC需要的数据结构与记录信息占用的空间(GC)"></a>JVM GC需要的数据结构与记录信息占用的空间(GC)</h4><blockquote>
+<p>这块内存可能会比较大，尤其是对于那种专注于低延迟的 GC，例如 <code>ZGC</code>。其实 ZGC 是一种以空间换时间的思路，提高 CPU 消耗与内存占用，但是消灭全局暂停。之后的 ZGC 优化方向就是尽量降低 CPU 消耗与内存占用，相当于提高了性价比</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">GC (reserved=58006KB, committed=54566KB)</span><br><span class="line">    (malloc=20038KB #14233) (peak=20310KB #15935) </span><br><span class="line">    (mmap: reserved=37968KB, committed=34528KB, peak=37968KB) </span><br></pre></td></tr></table></figure>
+
+<h4 id="JVM内部与其他占用"><a href="#JVM内部与其他占用" class="headerlink" title="JVM内部与其他占用"></a>JVM内部与其他占用</h4><blockquote>
+<p>JVM内部(不属于其他类的占用就会归到这一类)与其他占用(不是 JVM 本身而是操作系统的某些系统调用导致额外占的空间)，不会很大</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Internal (reserved=2904KB, committed=2904KB)</span><br><span class="line">        (malloc=2872KB #56765) (peak=2920KB #57573) </span><br><span class="line">        (mmap: reserved=32KB, committed=32KB, at peak) </span><br><span class="line"></span><br><span class="line"> Other (reserved=108KB, committed=108KB)</span><br><span class="line">        (malloc=108KB #18) (peak=130KB #20) </span><br></pre></td></tr></table></figure>
+
+<h4 id="开启-Native-Memory-Tracking-本身消耗的内存"><a href="#开启-Native-Memory-Tracking-本身消耗的内存" class="headerlink" title="开启 Native Memory Tracking 本身消耗的内存"></a>开启 Native Memory Tracking 本身消耗的内存</h4><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Native Memory Tracking (reserved=8633KB, committed=8633KB)</span><br><span class="line">                    (malloc=108KB #1942) (peak=109KB #1948) </span><br><span class="line">                    (tracking overhead=8525KB)</span><br></pre></td></tr></table></figure>
+
+<h3 id="Native-Memory-Tracking-的-summary-信息的持续监控"><a href="#Native-Memory-Tracking-的-summary-信息的持续监控" class="headerlink" title="Native Memory Tracking 的 summary 信息的持续监控"></a>Native Memory Tracking 的 summary 信息的持续监控</h3><p>现在 JVM 一般大部分部署在 k8s 这种云容器编排的环境中，每个 JVM 进程内存是受限的。如果超过限制，那么会触发 OOMKiller 将这个 JVM 进程杀掉。我们一般都是由于自己的 JVM 进程被 OOMKiller杀掉，才会考虑打开 <code>NativeMemoryTracking</code> 去看看哪块内存占用比较多以及如何调整的。</p>
+<p><code>OOMKiller 是积分制</code>，并不是你的 JVM 进程一超过限制就立刻会被杀掉，而是超过的话会累积分，累积到一定程度，就可能会被 OOMKiller 杀掉。所以，我们可以通过<code>定时输出</code> Native Memory Tracking的 summary 信息，从而抓到超过内存限制的点进行分析</p>
+<p>但是，我们不能仅通过 Native Memory Tracking 的数据就判断 JVM 占用的内存，因为在后面的 JVM 内存申请与使用流程的分析我们会看到，<code>JVM 通过 mmap 分配的大量内存都是先 reserve 再 commit 之后实际往里面写入数据的时候，才会真正分配物理内存</code>。同时，JVM 还会动态释放一些内存，这些内存可能不会立刻被操作系统回收。<code>Native Memory Tracking 是 JVM 认为自己向操作系统申请的内存，与实际操作系统分配的内存是有所差距的</code>，所以我们不能只查看 Native Memory Tracking 去判断，我们还需要查看能体现真正内存占用指标。这里可以查看 linux 进程监控文件 smaps_rollup 看出具体的内存占用，例如 (一般不看 Rss，因为如果涉及多个虚拟地址映射同一个物理地址的话会有不准确，所以主要关注 <code>Pss</code> 即可，但是 Pss 更新不是实时的，但也差不多，这就可以理解为进程占用的实际物理内存)：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">&gt; cat /proc/1/smaps_rollup </span><br><span class="line">f8000000-ffffe5c27000 ---p 00000000 00:00 0                              [rollup]</span><br><span class="line">Rss:              198904 kB</span><br><span class="line">Pss:              197331 kB</span><br><span class="line">Pss_Dirty:        181900 kB</span><br><span class="line">Pss_Anon:         181880 kB</span><br><span class="line">Pss_File:          15451 kB</span><br><span class="line">Pss_Shmem:             0 kB</span><br><span class="line">Shared_Clean:       1864 kB</span><br><span class="line">Shared_Dirty:          0 kB</span><br><span class="line">Private_Clean:     15140 kB</span><br><span class="line">Private_Dirty:    181900 kB</span><br><span class="line">Referenced:       198904 kB</span><br><span class="line">Anonymous:        181880 kB</span><br><span class="line">KSM:                   0 kB</span><br><span class="line">LazyFree:              0 kB</span><br><span class="line">AnonHugePages:         0 kB</span><br><span class="line">ShmemPmdMapped:        0 kB</span><br><span class="line">FilePmdMapped:         0 kB</span><br><span class="line">Shared_Hugetlb:        0 kB</span><br><span class="line">Private_Hugetlb:       0 kB</span><br><span class="line">Swap:                  0 kB</span><br><span class="line">SwapPss:               0 kB</span><br><span class="line">Locked:                0 kB</span><br></pre></td></tr></table></figure>
+<p>通过在每个 Spring Cloud 微服务进程加入下面的代码，来实现定时的进程内存监控，主要通过 <code>smaps_rollup</code> 查看实际的物理内存占用找到内存超限的时间点，Native Memory Tracking 查看 JVM 每块内存占用的多少，用于指导优化参数。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> lombok.extern.log4j.Log4j2;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.io.FileUtils;</span><br><span class="line"><span class="keyword">import</span> org.springframework.boot.context.event.ApplicationReadyEvent;</span><br><span class="line"><span class="keyword">import</span> org.springframework.context.ApplicationListener;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.BufferedReader;</span><br><span class="line"><span class="keyword">import</span> java.io.File;</span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"><span class="keyword">import</span> java.io.InputStreamReader;</span><br><span class="line"><span class="keyword">import</span> java.util.List;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.ScheduledThreadPoolExecutor;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.TimeUnit;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.atomic.AtomicBoolean;</span><br><span class="line"><span class="keyword">import</span> java.util.stream.Collectors;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="keyword">static</span> org.springframework.cloud.bootstrap.BootstrapApplicationListener.BOOTSTRAP_PROPERTY_SOURCE_NAME;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Log4j2</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MonitorMemoryRSS</span> <span class="keyword">implements</span> <span class="title class_">ApplicationListener</span>&lt;ApplicationReadyEvent&gt; &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">AtomicBoolean</span> <span class="variable">INITIALIZED</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AtomicBoolean</span>(<span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">ScheduledThreadPoolExecutor</span> <span class="variable">sc</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ScheduledThreadPoolExecutor</span>(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onApplicationEvent</span><span class="params">(ApplicationReadyEvent event)</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (isBootstrapContext(event)) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">synchronized</span> (INITIALIZED) &#123;</span><br><span class="line">            <span class="keyword">if</span> (INITIALIZED.get()) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            sc.scheduleAtFixedRate(() -&gt; &#123;</span><br><span class="line">                <span class="type">long</span> <span class="variable">pid</span> <span class="operator">=</span> ProcessHandle.current().pid();</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">//读取 smaps_rollup</span></span><br><span class="line">                    List&lt;String&gt; strings = FileUtils.readLines(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;/proc/&quot;</span> + pid + <span class="string">&quot;/smaps_rollup&quot;</span>));</span><br><span class="line">                    log.info(<span class="string">&quot;MonitorMemoryRSS, smaps_rollup: &#123;&#125;&quot;</span>, strings.stream().collect(Collectors.joining(<span class="string">&quot;\n&quot;</span>)));</span><br><span class="line">                    <span class="comment">//读取 Native Memory Tracking 信息</span></span><br><span class="line">                    <span class="type">Process</span> <span class="variable">process</span> <span class="operator">=</span> Runtime.getRuntime().exec(<span class="keyword">new</span> <span class="title class_">String</span>[]&#123;<span class="string">&quot;jcmd&quot;</span>, pid + <span class="string">&quot;&quot;</span>, <span class="string">&quot;VM.native_memory&quot;</span>&#125;);</span><br><span class="line">                    <span class="keyword">try</span> (<span class="type">BufferedReader</span> <span class="variable">reader</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BufferedReader</span>(<span class="keyword">new</span> <span class="title class_">InputStreamReader</span>(process.getInputStream()))) &#123;</span><br><span class="line">                        log.info(<span class="string">&quot;MonitorMemoryRSS, native_memory: &#123;&#125;&quot;</span>, reader.lines().collect(Collectors.joining(<span class="string">&quot;\n&quot;</span>)));</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">            &#125;, <span class="number">0</span>, <span class="number">30</span>, TimeUnit.SECONDS);</span><br><span class="line">            INITIALIZED.set(<span class="literal">true</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> <span class="type">boolean</span> <span class="title function_">isBootstrapContext</span><span class="params">(ApplicationReadyEvent applicationEvent)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> applicationEvent.getApplicationContext().getEnvironment().getPropertySources().contains(BOOTSTRAP_PROPERTY_SOURCE_NAME);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM内存解析</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>内存</tag>
+        <tag>NMT</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>raft</title>
     <url>/2025/02/09/fen-bu-shi/suan-fa/raft/posts/undefined/</url>
     <content><![CDATA[<h2 id="Raft-的核心目标和基本工作原理"><a href="#Raft-的核心目标和基本工作原理" class="headerlink" title="Raft 的核心目标和基本工作原理"></a>Raft 的核心目标和基本工作原理</h2><p>核心目标：</p>
@@ -3822,132 +3957,99 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
-    <title>JVM内存解析 - 1.Native Memory Tracking</title>
-    <url>/2025/02/23/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-native-memory-tracking/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 1.从 Native Memory Tracking 说起</p>
-</blockquote>
-<ul>
-<li><a href="https://juejin.cn/post/7225871227743043644">Native Memory Tracking</a></li>
+    <title>ES</title>
+    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
+    <content><![CDATA[<ul>
+<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
 </ul>
-<h3 id="开启"><a href="#开启" class="headerlink" title="开启"></a>开启</h3><p>Native Memory Tracking 主要是用来通过在 <code>JVM 向系统申请内存的时候进行埋点实现的</code>。注意，这个埋点，并不是完全没有消耗的，我们后面会看到。由于需要埋点，并且 JVM 中申请内存的地方很多，这个埋点是有不小消耗的，这个 Native Memory Tracking 默认是不开启的，并且<code>无法动态开启</code>（因为这是埋点采集统计的，如果可以动态开启那么没开启的时候的内存分配没有记录无法知晓，所以无法动态开启），目前只能通过在启动 JVM 的时候通过启动参数开启。即通过 <code>-XX:NativeMemoryTracking</code> 开启:</p>
-<ul>
-<li><code>-XX:NativeMemoryTracking=off</code>:这是默认值，即关闭 Native Memory Tracking</li>
-<li><code>-XX:NativeMemoryTracking=summary</code>: 开启 Native Memory Tracking，但是仅仅按照各个 JVM 子系统去统计内存占用情况</li>
-<li><code>-XX:NativeMemoryTracking=detail</code>: 开启 Native Memory Tracking，从每次 JVM 中申请内存的不同调用路径的维度去统计内存占用情况。注意，开启 detail 比开启 summary 的消耗要大不少，因为 detail 每次都要解析 CallSite 分辨调用位置。我们一般用不到这么详细的内容，除非是 JVM 开发。</li>
+<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
+<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
+<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
+<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
 </ul>
-<p>开启之后，我们可以通过 jcmd 命令去查看 Native Memory Tracking 的信息，即<code>jcmd &lt;pid&gt; VM.native_memory</code>：</p>
-<ul>
-<li><code>jcmd &lt;pid&gt; VM.native_memory</code>或者<code>jcmd &lt;pid&gt; VM.native_memory summary</code>：两者是等价的，即查看 Native Memory Tracking 的 summary 信息。默认单位是 KB，可以指定单位为其他，例如 jcmd <pid> VM.native_memory summary scale&#x3D;MB</li>
-<li><code>jcmd &lt;pid&gt; VM.native_memory detail</code>：查看 Native Memory Tracking 的 detail 信息，包括 summary 信息，以及按照虚拟内存映射分组的内存使用信息，还有按照不同 CallSite 调用分组的内存使用情况。默认单位是 KB，可以指定单位为其他，例如 jcmd <pid> VM.native_memory detail scale&#x3D;MB</li>
+</li>
+<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
+<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
+<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
 </ul>
-<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><blockquote>
-<p>我们只关心并且查看 Native Memory Tracking 的 summary 信息即可，detail 信息一般是供 JVM 开发人员使用的，我们不用太关心</p>
-</blockquote>
-<p>一般地，只有遇到问题的时候，我们才会考虑开启 Native Memory Tracking，并且在定位出问题后，我们想把它关闭，可以通过 <code>jcmd &lt;pid&gt; VM.native_memory shutdown</code> 进行关闭并清理掉之前 Native Memory tracking 使用的埋点以及占用的内存。如前面所述，我们无法动态开启 Native Memory tracking，所以只要动态关闭了，这个进程就无法再开启了。</p>
-<p>jcmd 本身提供了简单的对比功能，例如：</p>
+</li>
+<li>最佳实践<ul>
+<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
+<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
+<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
+<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
+<li>作用：添加或替换文档。</li>
+<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
+<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
+<li>特点：不关心之前是否存在这本书。</li>
+</ul>
+<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
+<li>作用：仅添加新文档，如果文档已存在则失败。</li>
+<li>类比：只有当书架上没有这本书时，才能放上去。</li>
+<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
+<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
+</ul>
+<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
+<li>作用：修改现有文档的部分内容。</li>
+<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
+<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
+<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
+</ul>
 <ol>
-<li>使用 <code>jcmd &lt;pid&gt; VM.native_memory baseline</code> 记录当前内存占用信息</li>
-<li>之后过一段时间 <code>jcmd &lt;pid&gt; VM.native_memory summary.diff</code> 会输出当前 Native Memory Tracking 的 summary 信息，如果与第一步 baseline 的有差异，会在对应位将差异输出</li>
+<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
+<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
+<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
+<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
+<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
 </ol>
-<p>但是这个工具本身比较粗糙，我们有时候并不知道何时调用 <code>jcmd &lt;pid&gt; VM.native_memory summary.diff</code> 合适，因为我们不确定什么时候会有我们想看到的内存使用过大的问题。所以我们一般做成一种持续监控的方式</p>
-<h3 id="summary-信息每部分含义"><a href="#summary-信息每部分含义" class="headerlink" title="summary 信息每部分含义"></a>summary 信息每部分含义</h3><p>以下是一个 Native Memory Tracking 的示例输出：</p>
+<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
+<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
+<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
+<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
+</blockquote>
 <ol>
-<li>压测 <a href="https://github.com/spring-projects/spring-petclinic.git">spring-petclinic</a> 项目</li>
-<li>jdk21</li>
-<li>vm options</li>
+<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
+<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
 </ol>
-  <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-Xmx256m</span><br><span class="line">-XX:StartFlightRecording=disk=true,maxsize=5000m,maxage=2d,settings=./default.jfc</span><br><span class="line">-XX:FlightRecorderOptions=maxchunksize=128m,repository=./,stackdepth=256</span><br><span class="line">-XX:NativeMemoryTracking=summary</span><br></pre></td></tr></table></figure>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Native Memory Tracking:</span><br><span class="line"></span><br><span class="line">(Omitting categories weighting less than 1KB)</span><br><span class="line"></span><br><span class="line">Total: reserved=1751414KB, committed=470662KB</span><br><span class="line">       malloc: 104634KB #545587</span><br><span class="line">       mmap:   reserved=1646780KB, committed=366028KB</span><br><span class="line"></span><br><span class="line">-                 Java Heap (reserved=262144KB, committed=82944KB)</span><br><span class="line">                            (mmap: reserved=262144KB, committed=82944KB, peak=262144KB) </span><br><span class="line"> </span><br><span class="line">-                     Class (reserved=1050511KB, committed=17167KB)</span><br><span class="line">                            (classes #21948)</span><br><span class="line">                            (  instance classes #20377, array classes #1571)</span><br><span class="line">                            (malloc=1935KB #58688) (peak=1999KB #58351) </span><br><span class="line">                            (mmap: reserved=1048576KB, committed=15232KB, at peak) </span><br><span class="line">                            (  Metadata:   )</span><br><span class="line">                            (    reserved=131072KB, committed=91072KB)</span><br><span class="line">                            (    used=90300KB)</span><br><span class="line">                            (    waste=772KB =0.85%)</span><br><span class="line">                            (  Class space:)</span><br><span class="line">                            (    reserved=1048576KB, committed=15232KB)</span><br><span class="line">                            (    used=14704KB)</span><br><span class="line">                            (    waste=528KB =3.46%)</span><br><span class="line"> </span><br><span class="line">-                    Thread (reserved=117590KB, committed=117590KB)</span><br><span class="line">                            (threads #58)</span><br><span class="line">                            (stack: reserved=117420KB, committed=117420KB, peak=117420KB)</span><br><span class="line">                            (malloc=103KB #350) (peak=123KB #391) </span><br><span class="line">                            (arena=67KB #114) (peak=3010KB #121)</span><br><span class="line"> </span><br><span class="line">-                      Code (reserved=52246KB, committed=27478KB)</span><br><span class="line">                            (malloc=2710KB #9638) (peak=2833KB #13764) </span><br><span class="line">                            (mmap: reserved=49536KB, committed=24768KB, at peak) </span><br><span class="line">                            (arena=0KB #0) (peak=33KB #1)</span><br><span class="line"> </span><br><span class="line">-                        GC (reserved=58006KB, committed=54566KB)</span><br><span class="line">                            (malloc=20038KB #14233) (peak=20310KB #15935) </span><br><span class="line">                            (mmap: reserved=37968KB, committed=34528KB, peak=37968KB) </span><br><span class="line"> </span><br><span class="line">-                 GCCardSet (reserved=70KB, committed=70KB)</span><br><span class="line">                            (malloc=70KB #778) (peak=483KB #1344) </span><br><span class="line"> </span><br><span class="line">-                  Compiler (reserved=230KB, committed=230KB)</span><br><span class="line">                            (malloc=100KB #711) (peak=142KB #1118) </span><br><span class="line">                            (arena=130KB #2) (peak=10244KB #9)</span><br><span class="line"> </span><br><span class="line">-                  Internal (reserved=2904KB, committed=2904KB)</span><br><span class="line">                            (malloc=2872KB #56765) (peak=2920KB #57573) </span><br><span class="line">                            (mmap: reserved=32KB, committed=32KB, at peak) </span><br><span class="line"> </span><br><span class="line">-                     Other (reserved=108KB, committed=108KB)</span><br><span class="line">                            (malloc=108KB #18) (peak=130KB #20) </span><br><span class="line"> </span><br><span class="line">-                    Symbol (reserved=39117KB, committed=39117KB)</span><br><span class="line">                            (malloc=33100KB #285200) (peak=33111KB #284967) </span><br><span class="line">                            (arena=6017KB #1) (at peak)</span><br><span class="line"> </span><br><span class="line">-    Native Memory Tracking (reserved=8633KB, committed=8633KB)</span><br><span class="line">                            (malloc=108KB #1942) (peak=109KB #1948) </span><br><span class="line">                            (tracking overhead=8525KB)</span><br><span class="line"> </span><br><span class="line">-               Arena Chunk (reserved=199KB, committed=199KB)</span><br><span class="line">                            (malloc=199KB #306) (peak=16383KB #630) </span><br><span class="line"> </span><br><span class="line">-                   Tracing (reserved=21522KB, committed=21522KB)</span><br><span class="line">                            (malloc=21522KB #12431) (at peak) </span><br><span class="line">                            (arena=0KB #0) (peak=32KB #1)</span><br><span class="line"> </span><br><span class="line">-                   Logging (reserved=0KB, committed=0KB)</span><br><span class="line">                            (malloc=0KB #2) (peak=6KB #4) </span><br><span class="line"> </span><br><span class="line">-                    Module (reserved=276KB, committed=276KB)</span><br><span class="line">                            (malloc=276KB #4515) (peak=303KB #4521) </span><br><span class="line"> </span><br><span class="line">-                 Safepoint (reserved=32KB, committed=32KB)</span><br><span class="line">                            (mmap: reserved=32KB, committed=32KB, at peak) </span><br><span class="line"> </span><br><span class="line">-           Synchronization (reserved=3462KB, committed=3462KB)</span><br><span class="line">                            (malloc=3462KB #66139) (peak=3479KB #66484) </span><br><span class="line"> </span><br><span class="line">-            Serviceability (reserved=2837KB, committed=2837KB)</span><br><span class="line">                            (malloc=2837KB #33552) (peak=2850KB #33877) </span><br><span class="line"> </span><br><span class="line">-                 Metaspace (reserved=131503KB, committed=91503KB)</span><br><span class="line">                            (malloc=431KB #186) (peak=443KB #226) </span><br><span class="line">                            (mmap: reserved=131072KB, committed=91072KB, at peak) </span><br><span class="line"> </span><br><span class="line">-      String Deduplication (reserved=1KB, committed=1KB)</span><br><span class="line">                            (malloc=1KB #8) (at peak) </span><br><span class="line"> </span><br><span class="line">-           Object Monitors (reserved=24KB, committed=24KB)</span><br><span class="line">                            (malloc=24KB #116) (peak=162KB #798) </span><br><span class="line"> </span><br><span class="line">-                   Unknown (reserved=0KB, committed=0KB)</span><br><span class="line">                            (mmap: reserved=0KB, committed=0KB, peak=32KB) </span><br><span class="line"></span><br></pre></td></tr></table></figure>
-<h4 id="Java堆内存-Java-Heap"><a href="#Java堆内存-Java-Heap" class="headerlink" title="Java堆内存(Java Heap)"></a>Java堆内存(Java Heap)</h4><blockquote>
-<p>所有 Java 对象分配占用内存的来源，由 JVM GC 管理回收</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
+<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
 </blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// 堆内存占用，reserve 了 262144KB=256M，当前 commit 了 82944KB(81M) 用于实际使用</span><br><span class="line">// 发现 申请的内存大小正好等于=-Xmx256m，预留内存空间（不实际分配物理内存），只是为了让操作系统选择地址，预留大小。commit才是实际使用的物理内存</span><br><span class="line">Java Heap (reserved=262144KB, committed=82944KB)</span><br><span class="line">    // 堆内存都是通过 mmap 系统调用方式分配的，peak=最大使用量</span><br><span class="line">    (mmap: reserved=262144KB, committed=82944KB, peak=262144KB) </span><br></pre></td></tr></table></figure>
+<ol>
+<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h4 id="元空间-Class"><a href="#元空间-Class" class="headerlink" title="元空间(Class)"></a>元空间(Class)</h4><blockquote>
-<p>JVM 将类文件加载到内存中用于后续使用占用的空间，注意是 JVM C++ 层面的内存占用，主要包括类文件中在 JVM 解析为 C++ 的 Klass 类以及相关元素。对应的 Java 反射类 Class 还是在堆内存空间中</p>
+<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
+<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
 </blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// Class 是类元空间总占用，reserve 了 1050511KB(1025M)，当前 commit 了 17167KB(16MB) 用于实际使用</span><br><span class="line">// 总共 reserved 1050511KB = mmap reserved 1048576KB(1024) + malloc 1935KB(1.8)</span><br><span class="line">// 总共 committed 17167KB = mmap committed 15232KB + malloc 1999KB</span><br><span class="line"> Class (reserved=1050511KB, committed=17167KB)</span><br><span class="line">        (classes #21948) //一共加载了 21948 个类</span><br><span class="line">        (  instance classes #20377, array classes #1571)    //其中 20377 个实体类，1571 个数组类</span><br><span class="line">        (malloc=1935KB #58688) (peak=1999KB #58351)  //通过 malloc 系统调用方式一共分配了 1935KB，一共调用了 58688 次 malloc</span><br><span class="line">        (mmap: reserved=1048576KB, committed=15232KB, at peak)  //通过 mmap 系统调用方式 reserve 了 1048576KB，当前 commit 了 15232KB 用于实际使用</span><br><span class="line">        (  Metadata:   ) //注意，MetaData 这块不属于类元空间，属于数据元空间</span><br><span class="line">        (    reserved=131072KB, committed=91072KB) //数据元空间当前 reserve 了 131072KB，commit 了 91072KB 用于实际使用</span><br><span class="line">        (    used=90300KB) //但是实际从 MetaChunk 的角度去看使用，只有 90300KB 用于实际数据的分配，有 772KB 的浪费</span><br><span class="line">        (    waste=772KB =0.85%)</span><br><span class="line">        (  Class space:)</span><br><span class="line">        (    reserved=1048576KB, committed=15232KB) //类元空间当前 reserve 了 1048576KB，commit 了 15232KB 用于实际使用 </span><br><span class="line">        (    used=14704KB)  //但是实际从 MetaChunk 的角度去看使用，只有 14704KB 用于实际数据的分配，有 528KB 的浪费</span><br><span class="line">        (    waste=528KB =3.46%)</span><br><span class="line">Module (reserved=276KB, committed=276KB) //加载并记录模块占用空间，当前 reserve 了 276KB，commit 了 276KB 用于实际使用</span><br><span class="line">        (malloc=276KB #4515) (peak=303KB #4521) </span><br><span class="line">Metaspace (reserved=131503KB, committed=91503KB) //等价于上面 Class 中的 MetaChunk（除了 malloc 的部分），当前 reserve 了 131503KB，commit 了 91503KB 用于实际使用</span><br><span class="line">        (malloc=431KB #186) (peak=443KB #226) </span><br><span class="line">        (mmap: reserved=131072KB, committed=91072KB, at peak) </span><br></pre></td></tr></table></figure>
-<h4 id="C-字符串即符号-Symbol-占用空间"><a href="#C-字符串即符号-Symbol-占用空间" class="headerlink" title="C++ 字符串即符号(Symbol)占用空间"></a>C++ 字符串即符号(Symbol)占用空间</h4><blockquote>
-<p>前面加载类的时候，其实里面有很多字符串信息（注意不是 Java 字符串，是 JVM 层面 C++ 字符串），不同类的字符串信息可能会重复。所以统一放入符号表(Symbol table)复用。元空间中保存的是针对符号表中符号的引用</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Symbol (reserved=39117KB, committed=39117KB)</span><br><span class="line">        (malloc=33100KB #285200) (peak=33111KB #284967)  //通过 malloc 系统调用方式一共分配了 33100KB，一共调用了 285200 次 malloc</span><br><span class="line">        (arena=6017KB #1) (at peak) //通过 arena 系统调用方式一共分配了 6017KB，一共调用了 1 次 arena</span><br></pre></td></tr></table></figure>
+<ol>
+<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
+<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h4 id="线程占用内存-Thread"><a href="#线程占用内存-Thread" class="headerlink" title="线程占用内存(Thread)"></a>线程占用内存(Thread)</h4><blockquote>
-<p>主要是每个线程的线程栈，我们也只会主要分析线程栈占用空间（在第五章），其他的管理线程占用的空间很小，可以忽略不计</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// 总共 reserve 了 117590KB(114M)，commit 了 117590KB(114M)</span><br><span class="line">Thread (reserved=117590KB, committed=117590KB)</span><br><span class="line">    (threads #58) //当前线程数量是 58</span><br><span class="line">    (stack: reserved=117420KB, committed=117420KB, peak=117420KB) //线程栈占用的空间: 每个线程实际占用 ≈ 1MB(栈) + 2MB(Guard Pages) 58个线程总占用 ≈ 58 * (1MB + 2MB) ≈ 174MB，实际看到117MB比理论值小，因为Guard Pages可能共享</span><br><span class="line">    (malloc=103KB #350) (peak=123KB #391) </span><br><span class="line">    (arena=67KB #114) (peak=3010KB #121)</span><br></pre></td></tr></table></figure>
-
-<h4 id="JIT编译器本身占用的空间以及JIT编译器编译后的代码占用空间-Code"><a href="#JIT编译器本身占用的空间以及JIT编译器编译后的代码占用空间-Code" class="headerlink" title="JIT编译器本身占用的空间以及JIT编译器编译后的代码占用空间(Code)"></a>JIT编译器本身占用的空间以及JIT编译器编译后的代码占用空间(Code)</h4><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Code (reserved=52246KB, committed=27478KB)</span><br><span class="line">    (malloc=2710KB #9638) (peak=2833KB #13764) </span><br><span class="line">    (mmap: reserved=49536KB, committed=24768KB, at peak) </span><br><span class="line">    (arena=0KB #0) (peak=33KB #1)</span><br></pre></td></tr></table></figure>
-
-<h4 id="Arena-数据结构占用空间-Arena-Chunk"><a href="#Arena-数据结构占用空间-Arena-Chunk" class="headerlink" title="Arena 数据结构占用空间(Arena Chunk)"></a>Arena 数据结构占用空间(Arena Chunk)</h4><blockquote>
-<p> Native Memory Tracking 中有很多通过 arena 分配的内存，这个就是管理 Arena 数据结构占用空间</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Arena Chunk (reserved=199KB, committed=199KB)</span><br><span class="line">            (malloc=199KB #306) (peak=16383KB #630) </span><br></pre></td></tr></table></figure>
-
-<h4 id="JVM-Tracing-占用内存"><a href="#JVM-Tracing-占用内存" class="headerlink" title="JVM Tracing 占用内存"></a>JVM Tracing 占用内存</h4><blockquote>
-<p>包括 JVM perf 以及 JFR 占用的空间。其中 JFR 占用的空间可能会比较大</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Tracing (reserved=21522KB, committed=21522KB)</span><br><span class="line">    (malloc=21522KB #12431) (at peak) </span><br><span class="line">    (arena=0KB #0) (peak=32KB #1)</span><br></pre></td></tr></table></figure>
-
-<h4 id="写-JVM-日志占用的内存-Logging"><a href="#写-JVM-日志占用的内存-Logging" class="headerlink" title="写 JVM 日志占用的内存(Logging)"></a>写 JVM 日志占用的内存(Logging)</h4><blockquote>
-<p>-Xlog 参数指定的日志输出，并且 Java 17 之后引入了异步 JVM 日志-Xlog:async，异步日志所需的 buffer 也在这里</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Logging (reserved=0KB, committed=0KB)</span><br><span class="line">        (malloc=0KB #2) (peak=6KB #4) </span><br></pre></td></tr></table></figure>
-
-<h4 id="JVM-参数占用内存-Arguments"><a href="#JVM-参数占用内存-Arguments" class="headerlink" title="JVM 参数占用内存(Arguments)"></a>JVM 参数占用内存(Arguments)</h4><blockquote>
-<p>我们需要保存并处理当前的 JVM 参数以及用户启动 JVM 的是传入的各种参数（有时候称为 flag）</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Arguments (reserved=31KB, committed=31KB)</span><br><span class="line">(malloc=31KB #90) </span><br></pre></td></tr></table></figure>
-
-<h4 id="JVM-安全点占用内存-Safepoint"><a href="#JVM-安全点占用内存-Safepoint" class="headerlink" title="JVM 安全点占用内存(Safepoint)"></a>JVM 安全点占用内存(Safepoint)</h4><blockquote>
-<p>是固定的两页内存（我这里是一页是 16KB，后面第二章会分析这个页大小与操作系统相关），用于 JVM 安全点的实现，不会随着 JVM 运行时的内存占用而变化</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Safepoint (reserved=32KB, committed=32KB)</span><br><span class="line">           (mmap: reserved=32KB, committed=32KB, at peak) </span><br></pre></td></tr></table></figure>
-
-<h4 id="Java-同步机制-Synchronization"><a href="#Java-同步机制-Synchronization" class="headerlink" title="Java 同步机制(Synchronization)"></a>Java 同步机制(Synchronization)</h4><blockquote>
-<p>例如 synchronized，还有 AQS 的基础 LockSupport 底层依赖的 C++ 的数据结构，系统内部的 mutex 等占用的内存</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Synchronization (reserved=3462KB, committed=3462KB)</span><br><span class="line">                (malloc=3462KB #66139) (peak=3479KB #66484) </span><br></pre></td></tr></table></figure>
-
-<h4 id="JVM-TI-相关内存-Serviceability"><a href="#JVM-TI-相关内存-Serviceability" class="headerlink" title="JVM TI 相关内存(Serviceability)"></a>JVM TI 相关内存(Serviceability)</h4><blockquote>
-<p>JVMTI 是 Java 虚拟机工具接口（Java Virtual Machine Tool Interface）的缩写。它是 Java 虚拟机（JVM）的一部分，提供了一组 API，使开发人员可以开发自己的 Java 工具和代理程序，以监视、分析和调试 Java 应用程序。JVMTI API 是一组 C&#x2F;C++ 函数，可以通过 JVM TI Agent Library 和 JVM 进行交互。开发人员可以使用 JVMTI API 开发自己的 JVM 代理程序或工具，以监视和操作 Java 应用程序。例如，可以使用 JVMTI API 开发性能分析工具、代码覆盖率工具、内存泄漏检测工具等等。这里的内存就是调用了 JVMTI API 之后 JVM 为了生成数据占用的内存</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Serviceability (reserved=2837KB, committed=2837KB)</span><br><span class="line">                (malloc=2837KB #33552) (peak=2850KB #33877) </span><br></pre></td></tr></table></figure>
-
-<h4 id="Java-字符串去重占用内存-String-Deduplication"><a href="#Java-字符串去重占用内存-String-Deduplication" class="headerlink" title="Java 字符串去重占用内存(String Deduplication)"></a>Java 字符串去重占用内存(String Deduplication)</h4><blockquote>
-<p>Java 字符串去重机制可以减少应用程序中字符串对象的内存占用。 在 Java 应用程序中，字符串常量是不可变的，并且通常被使用多次。这意味着在应用程序中可能存在大量相同的字符串对象，这些对象占用了大量的内存。Java 字符串去重机制通过在堆中共享相同的字符串对象来解决这个问题。当一个字符串对象被创建时，JVM 会检查堆中是否已经存在相同的字符串对象。如果存在，那么新的字符串对象将被舍弃，而引用被返回给现有的对象。这样就可以减少应用程序中字符串对象的数量，从而减少内存占用。 但是这个机制一直在某些 GC 下表现不佳，尤其是 <code>G1GC</code> 以及 <code>ZGC</code> 中，所以默认是关闭的，可以通过 <code>-XX:+UseStringDeduplication</code> 来启用</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">String Deduplication (reserved=1KB, committed=1KB)</span><br><span class="line">                    (malloc=1KB #8) (at peak) </span><br></pre></td></tr></table></figure>
-
-<h4 id="JVM-GC需要的数据结构与记录信息占用的空间-GC"><a href="#JVM-GC需要的数据结构与记录信息占用的空间-GC" class="headerlink" title="JVM GC需要的数据结构与记录信息占用的空间(GC)"></a>JVM GC需要的数据结构与记录信息占用的空间(GC)</h4><blockquote>
-<p>这块内存可能会比较大，尤其是对于那种专注于低延迟的 GC，例如 <code>ZGC</code>。其实 ZGC 是一种以空间换时间的思路，提高 CPU 消耗与内存占用，但是消灭全局暂停。之后的 ZGC 优化方向就是尽量降低 CPU 消耗与内存占用，相当于提高了性价比</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">GC (reserved=58006KB, committed=54566KB)</span><br><span class="line">    (malloc=20038KB #14233) (peak=20310KB #15935) </span><br><span class="line">    (mmap: reserved=37968KB, committed=34528KB, peak=37968KB) </span><br></pre></td></tr></table></figure>
-
-<h4 id="JVM内部与其他占用"><a href="#JVM内部与其他占用" class="headerlink" title="JVM内部与其他占用"></a>JVM内部与其他占用</h4><blockquote>
-<p>JVM内部(不属于其他类的占用就会归到这一类)与其他占用(不是 JVM 本身而是操作系统的某些系统调用导致额外占的空间)，不会很大</p>
-</blockquote>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Internal (reserved=2904KB, committed=2904KB)</span><br><span class="line">        (malloc=2872KB #56765) (peak=2920KB #57573) </span><br><span class="line">        (mmap: reserved=32KB, committed=32KB, at peak) </span><br><span class="line"></span><br><span class="line"> Other (reserved=108KB, committed=108KB)</span><br><span class="line">        (malloc=108KB #18) (peak=130KB #20) </span><br></pre></td></tr></table></figure>
-
-<h4 id="开启-Native-Memory-Tracking-本身消耗的内存"><a href="#开启-Native-Memory-Tracking-本身消耗的内存" class="headerlink" title="开启 Native Memory Tracking 本身消耗的内存"></a>开启 Native Memory Tracking 本身消耗的内存</h4><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Native Memory Tracking (reserved=8633KB, committed=8633KB)</span><br><span class="line">                    (malloc=108KB #1942) (peak=109KB #1948) </span><br><span class="line">                    (tracking overhead=8525KB)</span><br></pre></td></tr></table></figure>
-
-<h3 id="Native-Memory-Tracking-的-summary-信息的持续监控"><a href="#Native-Memory-Tracking-的-summary-信息的持续监控" class="headerlink" title="Native Memory Tracking 的 summary 信息的持续监控"></a>Native Memory Tracking 的 summary 信息的持续监控</h3><p>现在 JVM 一般大部分部署在 k8s 这种云容器编排的环境中，每个 JVM 进程内存是受限的。如果超过限制，那么会触发 OOMKiller 将这个 JVM 进程杀掉。我们一般都是由于自己的 JVM 进程被 OOMKiller杀掉，才会考虑打开 <code>NativeMemoryTracking</code> 去看看哪块内存占用比较多以及如何调整的。</p>
-<p><code>OOMKiller 是积分制</code>，并不是你的 JVM 进程一超过限制就立刻会被杀掉，而是超过的话会累积分，累积到一定程度，就可能会被 OOMKiller 杀掉。所以，我们可以通过<code>定时输出</code> Native Memory Tracking的 summary 信息，从而抓到超过内存限制的点进行分析</p>
-<p>但是，我们不能仅通过 Native Memory Tracking 的数据就判断 JVM 占用的内存，因为在后面的 JVM 内存申请与使用流程的分析我们会看到，<code>JVM 通过 mmap 分配的大量内存都是先 reserve 再 commit 之后实际往里面写入数据的时候，才会真正分配物理内存</code>。同时，JVM 还会动态释放一些内存，这些内存可能不会立刻被操作系统回收。<code>Native Memory Tracking 是 JVM 认为自己向操作系统申请的内存，与实际操作系统分配的内存是有所差距的</code>，所以我们不能只查看 Native Memory Tracking 去判断，我们还需要查看能体现真正内存占用指标。这里可以查看 linux 进程监控文件 smaps_rollup 看出具体的内存占用，例如 (一般不看 Rss，因为如果涉及多个虚拟地址映射同一个物理地址的话会有不准确，所以主要关注 <code>Pss</code> 即可，但是 Pss 更新不是实时的，但也差不多，这就可以理解为进程占用的实际物理内存)：</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">&gt; cat /proc/1/smaps_rollup </span><br><span class="line">f8000000-ffffe5c27000 ---p 00000000 00:00 0                              [rollup]</span><br><span class="line">Rss:              198904 kB</span><br><span class="line">Pss:              197331 kB</span><br><span class="line">Pss_Dirty:        181900 kB</span><br><span class="line">Pss_Anon:         181880 kB</span><br><span class="line">Pss_File:          15451 kB</span><br><span class="line">Pss_Shmem:             0 kB</span><br><span class="line">Shared_Clean:       1864 kB</span><br><span class="line">Shared_Dirty:          0 kB</span><br><span class="line">Private_Clean:     15140 kB</span><br><span class="line">Private_Dirty:    181900 kB</span><br><span class="line">Referenced:       198904 kB</span><br><span class="line">Anonymous:        181880 kB</span><br><span class="line">KSM:                   0 kB</span><br><span class="line">LazyFree:              0 kB</span><br><span class="line">AnonHugePages:         0 kB</span><br><span class="line">ShmemPmdMapped:        0 kB</span><br><span class="line">FilePmdMapped:         0 kB</span><br><span class="line">Shared_Hugetlb:        0 kB</span><br><span class="line">Private_Hugetlb:       0 kB</span><br><span class="line">Swap:                  0 kB</span><br><span class="line">SwapPss:               0 kB</span><br><span class="line">Locked:                0 kB</span><br></pre></td></tr></table></figure>
-<p>通过在每个 Spring Cloud 微服务进程加入下面的代码，来实现定时的进程内存监控，主要通过 <code>smaps_rollup</code> 查看实际的物理内存占用找到内存超限的时间点，Native Memory Tracking 查看 JVM 每块内存占用的多少，用于指导优化参数。</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> lombok.extern.log4j.Log4j2;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.io.FileUtils;</span><br><span class="line"><span class="keyword">import</span> org.springframework.boot.context.event.ApplicationReadyEvent;</span><br><span class="line"><span class="keyword">import</span> org.springframework.context.ApplicationListener;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.BufferedReader;</span><br><span class="line"><span class="keyword">import</span> java.io.File;</span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"><span class="keyword">import</span> java.io.InputStreamReader;</span><br><span class="line"><span class="keyword">import</span> java.util.List;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.ScheduledThreadPoolExecutor;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.TimeUnit;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.atomic.AtomicBoolean;</span><br><span class="line"><span class="keyword">import</span> java.util.stream.Collectors;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="keyword">static</span> org.springframework.cloud.bootstrap.BootstrapApplicationListener.BOOTSTRAP_PROPERTY_SOURCE_NAME;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Log4j2</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MonitorMemoryRSS</span> <span class="keyword">implements</span> <span class="title class_">ApplicationListener</span>&lt;ApplicationReadyEvent&gt; &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">AtomicBoolean</span> <span class="variable">INITIALIZED</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AtomicBoolean</span>(<span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">ScheduledThreadPoolExecutor</span> <span class="variable">sc</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ScheduledThreadPoolExecutor</span>(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onApplicationEvent</span><span class="params">(ApplicationReadyEvent event)</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (isBootstrapContext(event)) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">synchronized</span> (INITIALIZED) &#123;</span><br><span class="line">            <span class="keyword">if</span> (INITIALIZED.get()) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            sc.scheduleAtFixedRate(() -&gt; &#123;</span><br><span class="line">                <span class="type">long</span> <span class="variable">pid</span> <span class="operator">=</span> ProcessHandle.current().pid();</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">//读取 smaps_rollup</span></span><br><span class="line">                    List&lt;String&gt; strings = FileUtils.readLines(<span class="keyword">new</span> <span class="title class_">File</span>(<span class="string">&quot;/proc/&quot;</span> + pid + <span class="string">&quot;/smaps_rollup&quot;</span>));</span><br><span class="line">                    log.info(<span class="string">&quot;MonitorMemoryRSS, smaps_rollup: &#123;&#125;&quot;</span>, strings.stream().collect(Collectors.joining(<span class="string">&quot;\n&quot;</span>)));</span><br><span class="line">                    <span class="comment">//读取 Native Memory Tracking 信息</span></span><br><span class="line">                    <span class="type">Process</span> <span class="variable">process</span> <span class="operator">=</span> Runtime.getRuntime().exec(<span class="keyword">new</span> <span class="title class_">String</span>[]&#123;<span class="string">&quot;jcmd&quot;</span>, pid + <span class="string">&quot;&quot;</span>, <span class="string">&quot;VM.native_memory&quot;</span>&#125;);</span><br><span class="line">                    <span class="keyword">try</span> (<span class="type">BufferedReader</span> <span class="variable">reader</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BufferedReader</span>(<span class="keyword">new</span> <span class="title class_">InputStreamReader</span>(process.getInputStream()))) &#123;</span><br><span class="line">                        log.info(<span class="string">&quot;MonitorMemoryRSS, native_memory: &#123;&#125;&quot;</span>, reader.lines().collect(Collectors.joining(<span class="string">&quot;\n&quot;</span>)));</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">            &#125;, <span class="number">0</span>, <span class="number">30</span>, TimeUnit.SECONDS);</span><br><span class="line">            INITIALIZED.set(<span class="literal">true</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> <span class="type">boolean</span> <span class="title function_">isBootstrapContext</span><span class="params">(ApplicationReadyEvent applicationEvent)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> applicationEvent.getApplicationContext().getEnvironment().getPropertySources().contains(BOOTSTRAP_PROPERTY_SOURCE_NAME);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-
+<ol>
+<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
+<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
-        <category>JVM内存解析</category>
+        <category>ES</category>
       </categories>
       <tags>
-        <tag>JVM</tag>
-        <tag>内存</tag>
-        <tag>NMT</tag>
+        <tag>数据库</tag>
+        <tag>ES</tag>
       </tags>
   </entry>
   <entry>
@@ -4087,102 +4189,6 @@ sequenceDiagram
         <tag>JVM</tag>
         <tag>内存</tag>
         <tag>linux内存</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ES</title>
-    <url>/2025/02/10/shu-ju-ku/es/es/posts/undefined/</url>
-    <content><![CDATA[<ul>
-<li><a href="/files/ES%E5%8F%82%E6%95%B0%E4%BC%98%E5%8C%96.xlsx">ES参数优化</a></li>
-</ul>
-<h3 id="PUT、POST"><a href="#PUT、POST" class="headerlink" title="PUT、POST"></a>PUT、POST</h3><ul>
-<li><code>PUT</code>操作主要是用来创建一个确定的新的文档<ul>
-<li><code>PUT /index/_doc/1</code> 会创建一个 id&#x3D;1 的新文档，若是文档已存在，那么会进行删除，同时新增一条</li>
-<li><code>PUT /index/_create/2</code> 会创建一个 id&#x3D;2 的新文档，若文档已存在，返回 http 409 错误</li>
-</ul>
-</li>
-<li>POST 操作主要是用来创建一个不确定的新文档或者部分更新文档<ul>
-<li><code>POST /index/_doc</code> 创建新文档，自动生成 ID</li>
-<li><code>POST /index/_update/1</code> 部分更新现有文档</li>
-</ul>
-</li>
-<li>最佳实践<ul>
-<li>新增指定 ID 文档 &amp; 允许覆盖  <code>PUT /index/_doc/1</code></li>
-<li>新增指定 ID 文档 &amp; 文档存在则报错 <code>PUT /index/_create/2</code></li>
-<li>新增文档不指定 ID <code>POST /index/_doc</code></li>
-<li>部分更新现有文档 <code>POST /index/_update/1</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="index、create、update-API"><a href="#index、create、update-API" class="headerlink" title="index、create、update API"></a>index、create、update API</h3><h4 id="Index-API（索引-API）"><a href="#Index-API（索引-API）" class="headerlink" title="Index API（索引 API）"></a>Index API（索引 API）</h4><ul>
-<li>作用：添加或替换文档。</li>
-<li>类比：把一本书放在书架上。如果那个位置已经有书，就替换它。</li>
-<li>示例：<code>PUT /library/book/1 &#123;&quot;title&quot;: &quot;Elasticsearch Guide&quot;&#125;</code></li>
-<li>特点：不关心之前是否存在这本书。</li>
-</ul>
-<h4 id="Create-API（创建-API）"><a href="#Create-API（创建-API）" class="headerlink" title="Create API（创建 API）"></a>Create API（创建 API）</h4><ul>
-<li>作用：仅添加新文档，如果文档已存在则失败。</li>
-<li>类比：只有当书架上没有这本书时，才能放上去。</li>
-<li>示例：<code>PUT /library/book/1?op_type=create &#123;&quot;title&quot;: &quot;New Book&quot;&#125;</code></li>
-<li>特点：确保只添加新文档，不会覆盖现有文档。</li>
-</ul>
-<h4 id="Update-API（更新-API）"><a href="#Update-API（更新-API）" class="headerlink" title="Update API（更新 API）"></a>Update API（更新 API）</h4><ul>
-<li>作用：修改现有文档的部分内容。</li>
-<li>类比：修改书架上已有书的某些信息，比如更新作者名。</li>
-<li>示例：<code>POST /library/book/1/_update &#123;&quot;doc&quot;: &#123;&quot;author&quot;: &quot;John Doe&quot;&#125;&#125;</code></li>
-<li>特点：只能修改已存在的文档，且只更新指定的字段。</li>
-</ul>
-<ol>
-<li>Index：不在乎文档是否已存在，总是添加或替换。（当你有新数据，但不确定它是否已存在时）</li>
-<li>Create：只在文档不存在时才能成功。（当你只想添加新数据，绝不覆盖现有数据时）</li>
-<li>Update：只能修改已存在的文档。（当你要修改现有数据的部分内容时）</li>
-<li>Index 和 Create 通常使用 PUT 方法，Update 使用 POST 方法</li>
-<li>Update 需要使用 “doc” 字段来指定要更新的内容</li>
-</ol>
-<h3 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h3><p><img data-src="/images/db/es/01.PNG" alt="img"></p>
-<h3 id="分页查询"><a href="#分页查询" class="headerlink" title="分页查询"></a>分页查询</h3><h4 id="from-size"><a href="#from-size" class="headerlink" title="from + size"></a>from + size</h4><blockquote>
-<p>from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）</p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 简单的分页操作</span><br><span class="line">GET books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;from&quot;</span>: <span class="number">0</span>, # 指定开始位置</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">10</span>, # 指定获取文档个数</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="search-after"><a href="#search-after" class="headerlink" title="search after"></a>search after</h4><blockquote>
-<p>使用 search after API 可以避免产生深分页的问题，不过 <strong>search after 不支持跳转到指定页数，只能一页页地往下翻</strong></p>
-</blockquote>
-<ol>
-<li>在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。</li>
-<li>在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 返回结果</span><br><span class="line"><span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="string">&quot;6&quot;</span>]</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">      <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span>,</span><br><span class="line">      <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>]</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after</span><br><span class="line">POST books/_search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>:[<span class="number">19.9</span>, <span class="string">&quot;1&quot;</span>], # 设置为上次返回结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;_id&quot;</span>: <span class="string">&quot;asc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Scroll-API"><a href="#Scroll-API" class="headerlink" title="Scroll API"></a>Scroll API</h4><blockquote>
-<p>对结果集进行遍历的时候，例如做全量数据导出时，可以使用 scroll API。<strong>scroll API 会创建数据快照，后续的访问将会基于这个快照来进行，所以无法检索新写入的数据</strong></p>
-</blockquote>
-<ol>
-<li>ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次使用 scroll API，指定快照10m结束，超过10m</span><br><span class="line">POST books/_search?scroll=10m</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;, </span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;_scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      ......</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 进行翻页</span><br><span class="line">POST /_search/scroll                                                    </span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;scroll_id&quot;</span> : <span class="string">&quot;FGluY2x1ZGVfY29udGV4dF9......==&quot;</span> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Point-in-time"><a href="#Point-in-time" class="headerlink" title="Point in time"></a>Point in time</h4><blockquote>
-<p>Point In Time（PIT）是 ES 7.10 中引入的新特性，<strong>PIT 是一个轻量级的数据状态视图，用户可以利用这个视图反复查询某个索引，仿佛这个索引的数据集停留在某个时间点上</strong>。也就是说，在创建 PIT 之后更新的数据是无法被检索到的</p>
-</blockquote>
-<ol>
-<li>使用 PIT 前需要显式使用 _pit API 获取一个 PID ID</li>
-<li>PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 使用 pit API 获取一个 PID ID</span><br><span class="line">POST /books/_pit?keep_alive=20m</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;id&quot;</span>: <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ol>
-<li>PIT 可以结合 search after 进行查询，能有效保证数据的一致性</li>
-<li>Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line"># 不再需要在 sort 中指定唯一的排序值了</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123; <span class="string">&quot;match_all&quot;</span>: &#123;&#125; &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125; # 按价格倒序排序</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 结果</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;pit_id&quot;</span> : <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>,</span><br><span class="line">  <span class="string">&quot;hits&quot;</span> : &#123;</span><br><span class="line">    <span class="string">&quot;hits&quot;</span> : [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82467&quot;</span>,</span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">20.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">20.9</span>, <span class="number">8589934593</span>]</span><br><span class="line">      &#125;,</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="string">&quot;_id&quot;</span> : <span class="string">&quot;1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;_source&quot;</span> : &#123;</span><br><span class="line">          <span class="string">&quot;book_id&quot;</span> : <span class="string">&quot;4ee82462&quot;</span></span><br><span class="line">          <span class="string">&quot;price&quot;</span> : <span class="number">19.9</span></span><br><span class="line">        &#125;,</span><br><span class="line">        # 第一个是我们用作排序的 price 的值</span><br><span class="line">        # 第二个值是一个隐含的排序值。所有的 PIT 请求都会自动加入一个隐式的用于排序的字段称为：_shard_doc，当然这个排序值可以显式指定。</span><br><span class="line">        # 这个隐含的字段官方也称它为：tiebreaker（决胜字段），其代表的是文档的唯一值，保证了分页不会丢失或者分页结果的数据不会重复，其作用就好像原 search after 的 sort 字段中要指定的唯一值一样</span><br><span class="line">        <span class="string">&quot;sort&quot;</span> : [<span class="number">19.9</span>, <span class="number">8589934592</span>]</span><br><span class="line">      &#125;</span><br><span class="line">    ]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># 第二次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。</span><br><span class="line">POST _search</span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;size&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;query&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;match_all&quot;</span>: &#123;&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;pit&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;id&quot;</span>:  <span class="string">&quot;46ToAwMDaWR5BXV1aWQy......==&quot;</span>, # 添加 PIT id</span><br><span class="line">    <span class="string">&quot;keep_alive&quot;</span>: <span class="string">&quot;5m&quot;</span> # 视图的有效时长</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&quot;search_after&quot;</span>: [<span class="number">19.9</span>, <span class="number">8589934592</span>], # 上次结果中最后一个文档的 sort 值</span><br><span class="line">  <span class="string">&quot;sort&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;price&quot;</span>: <span class="string">&quot;desc&quot;</span> &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>ES</category>
-      </categories>
-      <tags>
-        <tag>数据库</tag>
-        <tag>ES</tag>
       </tags>
   </entry>
   <entry>
@@ -4551,6 +4557,144 @@ sequenceDiagram
 </ul>
 </li>
 </ul>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>消息队列</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>消息队列</tag>
+        <tag>中间件</tag>
+        <tag>kafka</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kafka-producer</title>
+    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
+    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
+<thead>
+<tr>
+<th align="left">配置项</th>
+<th align="left">默认值</th>
+<th align="left">说明</th>
+<th align="left">示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>bootstrap.servers</strong></td>
+<td align="left"></td>
+<td align="left">Kafka broker 地址</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>key.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Key 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>value.serializer</strong></td>
+<td align="left"></td>
+<td align="left">Value 序列化器实现 Serializer 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left"><strong>acks</strong></td>
+<td align="left">1</td>
+<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retries</strong></td>
+<td align="left"></td>
+<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>retry.backoff.ms</strong></td>
+<td align="left"></td>
+<td align="left">重试的时间间隔</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
+</tr>
+<tr>
+<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
+<td align="left">5</td>
+<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
+</tr>
+<tr>
+<td align="left">request.timeout.ms</td>
+<td align="left">30 * 1000</td>
+<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">linger.ms</td>
+<td align="left">0</td>
+<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
+</tr>
+<tr>
+<td align="left">send.buffer.bytes</td>
+<td align="left">128 * 1024</td>
+<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">interceptor.classes</td>
+<td align="left"></td>
+<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
+</tr>
+<tr>
+<td align="left">buffer.memory</td>
+<td align="left">32 * 1024 * 1024</td>
+<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
+<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
+</tr>
+<tr>
+<td align="left">max.block.ms</td>
+<td align="left">60 * 1000</td>
+<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
+<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
+</tr>
+<tr>
+<td align="left">batch.size</td>
+<td align="left">16 * 1024</td>
+<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">max.request.size</td>
+<td align="left">1024 * 1024</td>
+<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
+</tr>
+<tr>
+<td align="left">compression.type</td>
+<td align="left">none</td>
+<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
+</tr>
+<tr>
+<td align="left">connections.max.idle.ms</td>
+<td align="left">9 * 60 * 1000</td>
+<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
+<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
+<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
+</ul>
+<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
+<ul>
+<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
+</ul>
+<p>NetworkClient:</p>
+<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
+<p>​      </p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>消息队列</category>
@@ -5746,144 +5890,6 @@ SET [@@(GLOBAL|SESSION).]var_name = XXX;
       <tags>
         <tag>数据库</tag>
         <tag>MySQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>kafka-producer</title>
-    <url>/2025/02/09/xiao-xi-dui-lie/kafka/producer/posts/undefined/</url>
-    <content><![CDATA[<h2 id="重要参数"><a href="#重要参数" class="headerlink" title="重要参数"></a>重要参数</h2><table>
-<thead>
-<tr>
-<th align="left">配置项</th>
-<th align="left">默认值</th>
-<th align="left">说明</th>
-<th align="left">示例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left"><strong>bootstrap.servers</strong></td>
-<td align="left"></td>
-<td align="left">Kafka broker 地址</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BOOTSTRAP_SERVERS_CONFIG*, *brokerList*);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>key.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Key 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*KEY_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>value.serializer</strong></td>
-<td align="left"></td>
-<td align="left">Value 序列化器实现 Serializer 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*VALUE_SERIALIZER_CLASS_CONFIG*, StringSerializer.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left"><strong>acks</strong></td>
-<td align="left">1</td>
-<td align="left">指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认 1acks&#x3D;1 生产者发送消息到分区 leader，leader 将消息写入本地日志后即返回成功acks&#x3D;0 生产者发送消息到分区 leader，不等待 leader 写入本地日志，直接返回成功acks&#x3D;all&#x2F;acks&#x3D;-1 生产者发送消息到分区 leader，leader 将消息写入本地日志后，等待 ISR 中所有副本都写入成功后才返回成功 acks&#x3D;all 等价于 acks&#x3D;-1 并不一定最可靠，因为 ISR 中的副本可能会因为各种原因不可用，导致 ISR 副本只有 leader 节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数（broker 参数，建议配置大于 1 &amp; 小于副本数量），此参数表示 ISR 中至少有多少个副本是可用的</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*ACKS_CONFIG*, &quot;all&quot;);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retries</strong></td>
-<td align="left"></td>
-<td align="left">配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRIES_CONFIG*, 10);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>retry.backoff.ms</strong></td>
-<td align="left"></td>
-<td align="left">重试的时间间隔</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*RETRY_BACKOFF_MS_CONFIG*, 100);</code></td>
-</tr>
-<tr>
-<td align="left"><strong>max.in.flight.requests.per.connection</strong></td>
-<td align="left">5</td>
-<td align="left">配置单个连接最大缓存请求数量，发送的请求 ProducerBatch 会缓存到 InFlightRequests 中，此参数限制 InFlightRequests 的大小，默认 5，即每个连接最多只能缓存 5 个未响应的请求</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION*, 5);</code></td>
-</tr>
-<tr>
-<td align="left">request.timeout.ms</td>
-<td align="left">30 * 1000</td>
-<td align="left">Producer 等待请求响应的最长时间，默认 30s，如果在 30s 内没有收到响应，那么会重发消息这个参数需要比 broker 端的参数 replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">linger.ms</td>
-<td align="left">0</td>
-<td align="left">指定生产者发送 ProducerBatch 之前等待更多消息加入到 ProducerBatch 的时间，默认 0，即立即发送，这个参数与 TCP 的 Nagle 算法类似</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*LINGER_MS_CONFIG*, 0);</code></td>
-</tr>
-<tr>
-<td align="left">send.buffer.bytes</td>
-<td align="left">128 * 1024</td>
-<td align="left">设置 socket 发送缓冲区大小，默认 128k，如果设置为 -1，那么使用操作系统默认的大小</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">interceptor.classes</td>
-<td align="left"></td>
-<td align="left">消息发送拦截器消息发送到 broker 之前拦截，可修改消息内容实现 ProducerInterceptor 接口</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*INTERCEPTOR_CLASSES_CONFIG*, ProducerInterceptorPrefix.class.getName());</code></td>
-</tr>
-<tr>
-<td align="left">buffer.memory</td>
-<td align="left">32 * 1024 * 1024</td>
-<td align="left">缓存消息大小生产者主线程会将消息缓存到 RecordAccumulator 中，然后由 Sender 线程发送到 Kafka，这里的参数是 RecordAccumulator 的缓存大小，默认 32M</td>
-<td align="left"><code>// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M *properties*.put(ProducerConfig.*BUFFER_MEMORY_CONFIG*, 32 * 1024 * 1024L);</code></td>
-</tr>
-<tr>
-<td align="left">max.block.ms</td>
-<td align="left">60 * 1000</td>
-<td align="left">RecordAccumulator 缓存空间不足时，最大阻塞时间，默认 60s</td>
-<td align="left"><code>// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s *properties*.put(ProducerConfig.*MAX_BLOCK_MS_CONFIG*, 60 * 1000);</code></td>
-</tr>
-<tr>
-<td align="left">batch.size</td>
-<td align="left">16 * 1024</td>
-<td align="left">单次发送消息大小，kafka 会将消息组装为 ProducerBatch，此参数影响 ProducerBatch 的大小，如果消息小于此参数，则会通过 BufferPool 进行复用，默认 16k</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*BATCH_SIZE_CONFIG*, 16 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">max.request.size</td>
-<td align="left">1024 * 1024</td>
-<td align="left">客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数客户端能发送消息的最大值，默认 1M，不建议修改这个值，因为涉及到 broker 端的参数</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*MAX_REQUEST_SIZE_CONFIG*, 1024 * 1024);</code></td>
-</tr>
-<tr>
-<td align="left">compression.type</td>
-<td align="left">none</td>
-<td align="left">消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, &quot;none&quot;);</code></td>
-</tr>
-<tr>
-<td align="left">connections.max.idle.ms</td>
-<td align="left">9 * 60 * 1000</td>
-<td align="left">关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间</td>
-<td align="left"><code>*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);</code></td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);</span><br><span class="line">    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line">    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 发送拦截器</span></span><br><span class="line">    properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptorPrefix.class.getName());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产者发送配置</span></span><br><span class="line">    <span class="comment">// 缓存消息大小，生产者主线程会将消息缓存到RecordAccumulator中，然后由Sender线程发送到Kafka，这里的参数是RecordAccumulator的缓存大小，默认32M</span></span><br><span class="line">    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, <span class="number">32</span> * <span class="number">1024</span> * <span class="number">1024L</span>);</span><br><span class="line">    <span class="comment">// RecordAccumulator缓存空间不足时，最大阻塞时间，默认60s</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">    <span class="comment">// 单次发送消息大小，kafka会将消息组装为ProducerBatch，此参数影响ProducerBatch的大小，如果消息小于此参数，则会通过pBufferPool进行复用，默认16k</span></span><br><span class="line">    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, <span class="number">16</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 配置单个连接最大缓存请求数量，发送的请求ProducerBatch会缓存到InFlightRequests中，此参数限制InFlightRequests的大小，默认5，即每个连接最多只能缓存5个未响应的请求</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 重要的生产者参数</span></span><br><span class="line">    <span class="comment">// 指定分区中必须有多少个副本收到消息，生产者才认为消息写入成功，默认1</span></span><br><span class="line">    <span class="comment">// acks=1 生产者发送消息到分区leader，leader将消息写入本地日志后即返回成功</span></span><br><span class="line">    <span class="comment">// acks=0 生产者发送消息到分区leader，不等待leader写入本地日志，直接返回成功</span></span><br><span class="line">    <span class="comment">// acks=all/acks=-1 生产者发送消息到分区leader，leader将消息写入本地日志后，等待ISR中所有副本都写入成功后才返回成功</span></span><br><span class="line">    <span class="comment">// acks=all 等价于 acks=-1 并不一定最可靠，因为ISR中的副本可能会因为各种原因不可用，导致ISR副本只有leader节点一个，如果需要获得更高的可靠性，需要配置 min.insync.replicas 参数，此参数表示ISR中至少有多少个副本是可用的</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端能发送消息的最大值，默认1M，不建议修改这个值，因为涉及到broker端的参数</span></span><br><span class="line">    <span class="comment">// 此参数表示单次网络请求的大小，这次请求中可能包含很多个ProducerBatch</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, <span class="number">1024</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// 指定生产者发送ProducerBatch之前等待更多消息加入到ProducerBatch的时间，默认0，即立即发送，这个参数与TCP的Nagle算法类似</span></span><br><span class="line">    properties.put(ProducerConfig.LINGER_MS_CONFIG, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置socket发送缓冲区大小，默认128k，如果设置为-1，那么使用操作系统默认的大小</span></span><br><span class="line">    properties.put(ProducerConfig.SEND_BUFFER_CONFIG, <span class="number">128</span> * <span class="number">1024</span>);</span><br><span class="line">    <span class="comment">// Producer等待氢气响应的最长时间，默认30s，如果在30s内没有收到响应，那么会重发消息</span></span><br><span class="line">    <span class="comment">// 这个参数需要比broker端的参数replica.lag.time.max.ms（Follower 副本能够落后 Leader 副本的最长时间间隔，默认值是 10 秒）大，否则可能会出现消息丢失</span></span><br><span class="line">    properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, <span class="number">30</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置重试次数，重试次数只限制于可重试的异常，不可重试的异常此参数无意义</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// 重试的时间间隔</span></span><br><span class="line">    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, <span class="number">100</span>);</span><br><span class="line">    <span class="comment">// 某些场景下消息的顺序是非常重要的，如果retry重试次数设置大于0 &amp; max.in.flight.requests.per.connection &gt; 1，那么可能会导致消息乱序</span></span><br><span class="line">    <span class="comment">// 比如第一批次消息发送失败，第二批次消息发送成功，第一批次消息重试发送成功，那么第一批次消息就会出现在第二批次消息之后</span></span><br><span class="line">    <span class="comment">// 建议如果需要保证消息的顺序，那么将max.in.flight.requests.per.connection设置为1，而不是设置重试次数为0，不过这样会导致吞吐量下降</span></span><br><span class="line">    <span class="comment">// ? todo-wl 如果重试次数=0，max.in.flight.requests.per.connection&gt;1，怎么保证消息是有序的？</span></span><br><span class="line">    <span class="comment">// -&gt; 因为单次网络包可能包含多个ProducerBatch，kafka在处理的时候会将多个ProducerBatch合并为一个请求，同时对于同一个分区的消息，kafka会保证消息的顺序，所以能保证消息是有序的</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 消息压缩方式，默认是none，支持none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩</span></span><br><span class="line">    properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, <span class="string">&quot;none&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关闭闲置的连接，默认9分钟，如果生产者在9分钟内没有发送消息，那么生产者会关闭连接，如果生产者在9分钟内发送消息，那么生产者会重置闲置时间</span></span><br><span class="line">    properties.put(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, <span class="number">9</span> * <span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 幂等性配置</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 开启幂等性</span></span><br><span class="line">    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);</span><br><span class="line">    <span class="comment">// 幂等的原理是消费者会被分配一个pid，pid是一个递增的序列号，生产者每发送一条消息就会将&lt;PID,分区&gt;对应的序列号+1</span></span><br><span class="line">    <span class="comment">// 当发送消息时，会将seq发送到broker，broker内存中保存&lt;PID,分区&gt;对应的序列号，如果seq大于broker中的序列号+1，那么broker会将消息写入日志，然后更新序列号</span></span><br><span class="line">    <span class="comment">// 如果seq小于broker中的序列号+1，那么broker会直接返回成功，不会写入日志</span></span><br><span class="line">    <span class="comment">// 如果seq大于broker中的序列号+1，那么broker会返回错误</span></span><br><span class="line">    <span class="comment">// !! Kafka幂等只保证单个生产者会话(session)中单个分区内的幂等性，不保证多个分区之间的幂等性</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有配置以下配置，只需要配置上面的配置即可</span></span><br><span class="line">    <span class="comment">// retry重试次数必须大于0</span></span><br><span class="line">    properties.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);</span><br><span class="line">    <span class="comment">// acks 必须是 all</span></span><br><span class="line">    properties.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);</span><br><span class="line">    <span class="comment">// max.in.flight.requests.per.connection 不能大于5</span></span><br><span class="line">    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事务配置</span></span><br><span class="line"><span class="comment">// 幂等性不能跨分区，如果需要跨分区的幂等性，那么需要使用事务</span></span><br><span class="line"><span class="comment">// 事务可以保证对多个分区写入操作的原子性</span></span><br><span class="line"><span class="comment">// kafka中的事务可以使应用程序将消费消息、生产消息、提交消费位移当做原子操作来处理，同时成功或失败</span></span><br><span class="line"><span class="keyword">static</span> &#123;</span><br><span class="line">    <span class="comment">// 必须提供唯一的transactional.id，如果transactional.id相同，那么会认为是同一个事务</span></span><br><span class="line">    <span class="comment">// 显示设置</span></span><br><span class="line">    properties.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, <span class="string">&quot;transactional-id&quot;</span>);</span><br><span class="line">    <span class="comment">// ！！事务要求生产者开启幂等性</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="如何保证消息顺序"><a href="#如何保证消息顺序" class="headerlink" title="如何保证消息顺序"></a>如何保证消息顺序</h2><ul>
-<li><strong>retries</strong> &gt; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &#x3D; 1</li>
-</ul>
-<p>​      推荐使用此方式，一定程度上能保证消息不丢失，但是会导致吞吐量下降；</p>
-<ul>
-<li><strong>retries</strong> &#x3D; 0 &amp; <strong>max.in.flight.requests.per.connection</strong> &gt; 1</li>
-</ul>
-<p>NetworkClient:</p>
-<p><img data-src="/images/message/kafka/01.png" alt="img"></p>
-<p>​      </p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>消息队列</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-        <tag>消息队列</tag>
-        <tag>中间件</tag>
-        <tag>kafka</tag>
       </tags>
   </entry>
   <entry>
