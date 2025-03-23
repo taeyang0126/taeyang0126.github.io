@@ -1683,6 +1683,38 @@ flowchart TD
       </tags>
   </entry>
   <entry>
+    <title>JVM内存相关的监控指标</title>
+    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
+    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
+<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
+<p>JVM Heap代表存放Java Objects的Heap</p>
+</blockquote>
+<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
+<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
+</blockquote>
+<ul>
+<li>CodeCache</li>
+<li>Metaspace</li>
+<li>CompressedClassSpace</li>
+<li>DirectBuffer</li>
+<li>Thread Stacks</li>
+</ul>
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
+<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
+<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>监控</tag>
+        <tag>内存</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>JVM重要参数</title>
     <url>/2025/02/09/jvm/jvm-chong-yao-can-shu/posts/undefined/</url>
     <content><![CDATA[<h3 id="常规启动配置参数"><a href="#常规启动配置参数" class="headerlink" title="常规启动配置参数"></a>常规启动配置参数</h3><table>
@@ -1793,38 +1825,6 @@ flowchart TD
         <tag>JVM</tag>
         <tag>JFR</tag>
         <tag>对象分配</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>JVM内存相关的监控指标</title>
-    <url>/2025/02/09/jvm/jvm-nei-cun-xiang-guan-de-jian-kong-zhi-biao/posts/undefined/</url>
-    <content><![CDATA[<p><img data-src="/images/jvm/jvm-memory.PNG" alt="jvm内存图片"></p>
-<h3 id="Heap"><a href="#Heap" class="headerlink" title="Heap"></a>Heap</h3><blockquote>
-<p>JVM Heap代表存放Java Objects的Heap</p>
-</blockquote>
-<h3 id="Non-Heap"><a href="#Non-Heap" class="headerlink" title="Non-Heap"></a>Non-Heap</h3><h4 id="1-SpringBoot的JVM-metrics埋点代码"><a href="#1-SpringBoot的JVM-metrics埋点代码" class="headerlink" title="1. SpringBoot的JVM metrics埋点代码"></a>1. SpringBoot的JVM metrics埋点代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现</span></span><br><span class="line"><span class="keyword">for</span> (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">area</span> <span class="operator">=</span> MemoryType.HEAP.equals(memoryPoolBean.getType()) ? <span class="string">&quot;heap&quot;</span> : <span class="string">&quot;nonheap&quot;</span>;</span><br><span class="line">    Iterable&lt;Tag&gt; tagsWithId = Tags.concat(tags, <span class="string">&quot;id&quot;</span>, memoryPoolBean.getName(), <span class="string">&quot;area&quot;</span>, area);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.used&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getUsed))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of used memory&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge</span><br><span class="line">        .builder(<span class="string">&quot;jvm.memory.committed&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getCommitted))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The amount of memory in bytes that is committed for the Java virtual machine to use&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line"></span><br><span class="line">    Gauge.builder(<span class="string">&quot;jvm.memory.max&quot;</span>, memoryPoolBean, (mem) -&gt; getUsageValue(mem, MemoryUsage::getMax))</span><br><span class="line">        .tags(tagsWithId)</span><br><span class="line">        .description(<span class="string">&quot;The maximum amount of memory in bytes that can be used for memory management&quot;</span>)</span><br><span class="line">        .baseUnit(BaseUnits.BYTES)</span><br><span class="line">        .register(registry);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MemoryPoolMXBean接口的实现类是sun.management.MemoryPoolImpl，该类通过native method得到JVM提供的内存使用信息</span></span><br><span class="line"><span class="comment">// Native VM support</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">native</span> MemoryUsage <span class="title function_">getUsage0</span><span class="params">()</span>;</span><br></pre></td></tr></table></figure>
-
-<h4 id="2-JVM本身的代码"><a href="#2-JVM本身的代码" class="headerlink" title="2. JVM本身的代码"></a>2. JVM本身的代码</h4><blockquote>
-<p>设置-XX:NativeMemoryTracking&#x3D;summary或者details，然后使用jcmd去查看</p>
-</blockquote>
-<ul>
-<li>CodeCache</li>
-<li>Metaspace</li>
-<li>CompressedClassSpace</li>
-<li>DirectBuffer</li>
-<li>Thread Stacks</li>
-</ul>
-<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><h4 id="1-JVM里used内存很低，但是容器物理内存占用很高"><a href="#1-JVM里used内存很低，但是容器物理内存占用很高" class="headerlink" title="1. JVM里used内存很低，但是容器物理内存占用很高"></a>1. JVM里used内存很低，但是容器物理内存占用很高</h4><p>因为k8s不允许使用交换分区，所以这里不用考虑外存和内存的交换关系。</p>
-<p>JVM申请内存的时候，会预先使用<strong>pretouch</strong>的方式声明去告知OS，期望使用多少size的内存，由于物理内存的分配（内核本身的虚拟内存-物理内存管理）时惰性的，所以声明要使用多少size，不代表物理内存就立刻分配多少。</p>
-<p>比如JavaHeap声明了1G的内存需要使用，但实际使用过程中，物理内存也是逐步被分配的，由于JavaHeap的内存被JVM的GC管理，当Heap满时，JVM的GC会内部释放内存空间，很明显，GC的过程不会让OS感知，不会去释放物理内存，假如FGC后，JavaHeap实际used的内存（常驻在JavaHeap）中只有200M，但此时容器物理内存很可能是1G多。</p>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JVM</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>监控</tag>
-        <tag>内存</tag>
       </tags>
   </entry>
   <entry>
@@ -2227,6 +2227,61 @@ flowchart TD
 </ul>
 </li>
 </ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>loom</category>
+      </categories>
+      <tags>
+        <tag>loom</tag>
+        <tag>虚拟线程</tag>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>loom-Continuation</title>
+    <url>/2025/03/23/loom/continuation/posts/undefined/</url>
+    <content><![CDATA[<h3 id="基础条件"><a href="#基础条件" class="headerlink" title="基础条件"></a>基础条件</h3><hr>
+<ul>
+<li>jdk21及以上</li>
+<li>编译&#x2F;运行时开启 <code>--enable-preview</code> &amp; <code>--add-exports=java.base/jdk.internal.vm=ALL-UNNAMED</code></li>
+</ul>
+<h3 id="简单使用"><a href="#简单使用" class="headerlink" title="简单使用"></a>简单使用</h3><hr>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ContinuationDemo</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">        <span class="type">var</span> <span class="variable">cont</span> <span class="operator">=</span> getContinuation();</span><br><span class="line">        cont.run();</span><br><span class="line">        System.out.println(<span class="string">&quot;xxx&quot;</span>);</span><br><span class="line">        cont.run();</span><br><span class="line">        System.out.println(<span class="string">&quot;yyy&quot;</span>);</span><br><span class="line">        cont.run();</span><br><span class="line">        System.out.println(<span class="string">&quot;zzz&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Continuation <span class="title function_">getContinuation</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">var</span> <span class="variable">scope</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ContinuationScope</span>(<span class="string">&quot;Demo&quot;</span>);</span><br><span class="line">        <span class="type">var</span> <span class="variable">cont</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Continuation</span>(scope, () -&gt; &#123;</span><br><span class="line">            System.out.println(<span class="string">&quot;A&quot;</span>);</span><br><span class="line">            Continuation.<span class="keyword">yield</span>(scope);</span><br><span class="line">            System.out.println(<span class="string">&quot;B&quot;</span>);</span><br><span class="line">            Continuation.<span class="keyword">yield</span>(scope);</span><br><span class="line">            System.out.println(<span class="string">&quot;C&quot;</span>);</span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="keyword">return</span> cont;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="ContinuationScope"><a href="#ContinuationScope" class="headerlink" title="ContinuationScope"></a>ContinuationScope</h4><ol>
+<li>定义挂起边界: 只有在 <code>scope</code> 内才能被挂起</li>
+<li>实现嵌套和隔离: ContinuationScope 允许创建多个互相隔离的作用域，支持嵌套调用时的独立控制<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">ContinuationScope</span> <span class="variable">OUTER_SCOPE</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ContinuationScope</span>(<span class="string">&quot;outer&quot;</span>);</span><br><span class="line"><span class="type">ContinuationScope</span> <span class="variable">INNER_SCOPE</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ContinuationScope</span>(<span class="string">&quot;inner&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="type">Continuation</span> <span class="variable">outer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Continuation</span>(OUTER_SCOPE, () -&gt; &#123;</span><br><span class="line">    System.out.println(<span class="string">&quot;外层开始&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="type">Continuation</span> <span class="variable">inner</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Continuation</span>(INNER_SCOPE, () -&gt; &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;内层开始&quot;</span>);</span><br><span class="line">        Continuation.<span class="keyword">yield</span>(INNER_SCOPE); <span class="comment">// 只挂起内层</span></span><br><span class="line">        System.out.println(<span class="string">&quot;内层继续&quot;</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">while</span>(!inner.isDone()) inner.run();</span><br><span class="line">    </span><br><span class="line">    Continuation.<span class="keyword">yield</span>(OUTER_SCOPE); <span class="comment">// 只挂起外层</span></span><br><span class="line">    System.out.println(<span class="string">&quot;外层继续&quot;</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure></li>
+<li>控制挂起权限</li>
+<li>安全性保障</li>
+<li>分层架构支持</li>
+<li>调试和监控支持</li>
+</ol>
+<h4 id="Continuation-yield"><a href="#Continuation-yield" class="headerlink" title="Continuation#yield"></a>Continuation#yield</h4><ol>
+<li><code>挂起执行</code>：立即暂停当前 Continuation 的执行</li>
+<li><code>保存状态</code>：保存当前执行状态（包括调用栈、局部变量等）</li>
+<li><code>返回控制权</code>：将控制权返回到启动该 Continuation 的 run() 方法的<code>调用者</code></li>
+</ol>
+<h5 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h5><p><img data-src="/../../images/loom/img7.png" alt="img.png"></p>
+<ol>
+<li>执行 <code>yield</code> 会返回 run() 方法的调用者，同时将堆栈信息保存到 <code>Continuation</code> 对象中</li>
+<li>当执行 <code>run</code> 时，会将控制权转移到最后一个 <code>yield</code> 的地方继续执行</li>
+</ol>
+<h5 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h5><ol>
+<li>异步转同步<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">void</span> <span class="title function_">fetchDataSynchronously</span><span class="params">()</span> &#123;</span><br><span class="line"> <span class="type">ContinuationScope</span> <span class="variable">SCOPE</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ContinuationScope</span>(<span class="string">&quot;io&quot;</span>);</span><br><span class="line"> <span class="type">Result</span> <span class="variable">result</span> <span class="operator">=</span> <span class="literal">null</span>;</span><br><span class="line"> </span><br><span class="line"> <span class="type">Continuation</span> <span class="variable">cont</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Continuation</span>(SCOPE, () -&gt; &#123;</span><br><span class="line">     <span class="comment">// 发起异步操作</span></span><br><span class="line">     CompletableFuture&lt;Result&gt; future = service.fetchDataAsync();</span><br><span class="line">     </span><br><span class="line">     <span class="comment">// 注册回调以恢复 Continuation</span></span><br><span class="line">     future.whenComplete((r, ex) -&gt; &#123;</span><br><span class="line">         result = r;</span><br><span class="line">         scheduler.schedule(cont::run, <span class="number">0</span>, TimeUnit.MILLISECONDS);</span><br><span class="line">     &#125;);</span><br><span class="line">     </span><br><span class="line">     <span class="comment">// 挂起等待结果</span></span><br><span class="line">     Continuation.<span class="keyword">yield</span>(SCOPE);</span><br><span class="line">     </span><br><span class="line">     <span class="comment">// 恢复后处理结果</span></span><br><span class="line">     processResult(result);</span><br><span class="line"> &#125;);</span><br><span class="line"> </span><br><span class="line"> <span class="comment">// 开始执行</span></span><br><span class="line"> cont.run();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>实现协作式调度<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">void</span> <span class="title function_">cooperativeTask</span><span class="params">()</span> &#123;</span><br><span class="line"> <span class="type">ContinuationScope</span> <span class="variable">SCOPE</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ContinuationScope</span>(<span class="string">&quot;task&quot;</span>);</span><br><span class="line"> </span><br><span class="line"> <span class="type">Runnable</span> <span class="variable">task</span> <span class="operator">=</span> () -&gt; &#123;</span><br><span class="line">     <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">1000</span>; i++) &#123;</span><br><span class="line">         <span class="comment">// 做一些计算</span></span><br><span class="line">         compute();</span><br><span class="line">         </span><br><span class="line">         <span class="comment">// 每处理一定量数据就主动让出控制权</span></span><br><span class="line">         <span class="keyword">if</span> (i % <span class="number">100</span> == <span class="number">0</span>) &#123;</span><br><span class="line">             Continuation.<span class="keyword">yield</span>(SCOPE);</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line"> &#125;;</span><br><span class="line"> </span><br><span class="line"> <span class="type">Continuation</span> <span class="variable">cont</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Continuation</span>(SCOPE, task);</span><br><span class="line"> </span><br><span class="line"> <span class="comment">// 循环执行直到完成</span></span><br><span class="line"> <span class="keyword">while</span> (!cont.isDone()) &#123;</span><br><span class="line">     cont.run();</span><br><span class="line">     <span class="comment">// 这里可以调度其他任务</span></span><br><span class="line"> &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h3 id="实现简单的虚拟线程"><a href="#实现简单的虚拟线程" class="headerlink" title="实现简单的虚拟线程"></a>实现简单的虚拟线程</h3><hr>
+<p><img data-src="/../../images/loom/img8.png" alt="img.png"></p>
+<h4 id="实现-VirtualThread"><a href="#实现-VirtualThread" class="headerlink" title="实现 VirtualThread"></a>实现 VirtualThread</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThread</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">ContinuationScope</span> <span class="variable">SCOPE</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ContinuationScope</span>(<span class="string">&quot;VirtualThread&quot;</span>);</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">AtomicInteger</span> <span class="variable">COUNTER</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AtomicInteger</span>(<span class="number">1</span>);</span><br><span class="line">    <span class="keyword">private</span> Continuation cont;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">int</span> id;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">VirtualThread</span><span class="params">(Runnable runnable)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.cont = <span class="keyword">new</span> <span class="title class_">Continuation</span>(SCOPE, runnable);</span><br><span class="line">        <span class="built_in">this</span>.id = COUNTER.getAndIncrement();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">run</span><span class="params">()</span> &#123;</span><br><span class="line">        System.out.printf(<span class="string">&quot;Virtual Thread %s is running on %s\n&quot;</span>, id, Thread.currentThread());</span><br><span class="line">        cont.run();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="实现-VirtualThreadScheduler"><a href="#实现-VirtualThreadScheduler" class="headerlink" title="实现 VirtualThreadScheduler"></a>实现 VirtualThreadScheduler</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">VirtualThreadScheduler</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> ScopedValue&lt;VirtualThread&gt; CURRENT_VIRTUAL_THREAD = ScopedValue.newInstance();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> Queue&lt;VirtualThread&gt; queue = <span class="keyword">new</span> <span class="title class_">ConcurrentLinkedQueue</span>&lt;&gt;();</span><br><span class="line">    <span class="keyword">private</span> <span class="type">ExecutorService</span> <span class="variable">executor</span> <span class="operator">=</span> Executors.newFixedThreadPool(<span class="number">10</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">start</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (!queue.isEmpty()) &#123;</span><br><span class="line">                <span class="type">VirtualThread</span> <span class="variable">vt</span> <span class="operator">=</span> queue.remove();</span><br><span class="line">                <span class="comment">// 创建一个新的执行环境，在该环境中CURRENT_VIRTUAL_THREAD的值被设置为vt</span></span><br><span class="line">                <span class="comment">// 这个值只在接下来的.run()方法执行的代码块中可见</span></span><br><span class="line">                executor.submit(() -&gt; ScopedValue.where(CURRENT_VIRTUAL_THREAD, vt).run(vt::run));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">scheduler</span><span class="params">(VirtualThread vt)</span> &#123;</span><br><span class="line">        queue.add(vt);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="实现-WaitingOperation"><a href="#实现-WaitingOperation" class="headerlink" title="实现 WaitingOperation"></a>实现 WaitingOperation</h4><blockquote>
+<p>模拟一些IO操作</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">WaitingOperation</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">perform</span><span class="params">(String name, <span class="type">int</span> duration)</span> &#123;</span><br><span class="line">        System.out.printf(<span class="string">&quot;wait for %s for %d seconds\n&quot;</span>, name, duration);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取当前执行的vt</span></span><br><span class="line">        <span class="type">var</span> <span class="variable">VirtualThread</span> <span class="operator">=</span> VirtualThreadScheduler.CURRENT_VIRTUAL_THREAD.get();</span><br><span class="line">        <span class="type">var</span> <span class="variable">timer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Timer</span>();</span><br><span class="line">        timer.schedule(<span class="keyword">new</span> <span class="title class_">TimerTask</span>() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">run</span><span class="params">()</span> &#123;</span><br><span class="line">                <span class="comment">// 让vt继续执行</span></span><br><span class="line">                SCHEDULER.scheduler(VirtualThread);</span><br><span class="line">                timer.cancel();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, duration * <span class="number">1_000L</span>);</span><br><span class="line"></span><br><span class="line">        Continuation.<span class="keyword">yield</span>(SCOPE);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Demo</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">VirtualThreadScheduler</span> <span class="variable">SCHEDULER</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">VirtualThreadScheduler</span>();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">        <span class="keyword">new</span> <span class="title class_">Thread</span>(SCHEDULER::start).start();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 总数量: 4000</span></span><br><span class="line">        <span class="comment">// 一半任务需要2s，另外一半5s</span></span><br><span class="line">        <span class="comment">// 10个线程</span></span><br><span class="line">        <span class="comment">// 虚拟线程: 只需要 5s</span></span><br><span class="line">        <span class="comment">// 平台线程: 2000 * 2 / 10 + 2000 * 5 / 10 = 1400s</span></span><br><span class="line"></span><br><span class="line">        <span class="type">long</span> <span class="variable">start</span> <span class="operator">=</span> System.currentTimeMillis();</span><br><span class="line"></span><br><span class="line">        <span class="type">int</span> <span class="variable">count</span> <span class="operator">=</span> <span class="number">2000</span>;</span><br><span class="line">        <span class="type">CountDownLatch</span> <span class="variable">countDownLatch</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">CountDownLatch</span>(count * <span class="number">2</span>);</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; count; i++) &#123;</span><br><span class="line">            <span class="type">var</span> <span class="variable">vt1</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">VirtualThread</span>(() -&gt; &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;1.1&quot;</span>);</span><br><span class="line">                System.out.println(<span class="string">&quot;1.2&quot;</span>);</span><br><span class="line">                WaitingOperation.perform(<span class="string">&quot;Network&quot;</span>, <span class="number">2</span>);</span><br><span class="line">                System.out.println(<span class="string">&quot;1.3&quot;</span>);</span><br><span class="line">                System.out.println(<span class="string">&quot;1.4&quot;</span>);</span><br><span class="line">                countDownLatch.countDown();</span><br><span class="line">            &#125;);</span><br><span class="line"></span><br><span class="line">            <span class="type">var</span> <span class="variable">vt2</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">VirtualThread</span>(() -&gt; &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;2.1&quot;</span>);</span><br><span class="line">                System.out.println(<span class="string">&quot;2.2&quot;</span>);</span><br><span class="line">                WaitingOperation.perform(<span class="string">&quot;DB&quot;</span>, <span class="number">5</span>);</span><br><span class="line">                System.out.println(<span class="string">&quot;2.3&quot;</span>);</span><br><span class="line">                System.out.println(<span class="string">&quot;2.4&quot;</span>);</span><br><span class="line">                countDownLatch.countDown();</span><br><span class="line">            &#125;);</span><br><span class="line"></span><br><span class="line">            SCHEDULER.scheduler(vt1);</span><br><span class="line">            SCHEDULER.scheduler(vt2);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        countDownLatch.await();</span><br><span class="line"></span><br><span class="line">        <span class="type">long</span> <span class="variable">end</span> <span class="operator">=</span> System.currentTimeMillis();</span><br><span class="line">        System.out.println(<span class="string">&quot;finish -&gt; &quot;</span> + (end - start) + <span class="string">&quot; ms&quot;</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试发现 2000个 2s 的任务，2000个 5s 的任务，在平台线程只有 <code>10</code> 的基础上只需要 <code>5s</code></p>
 <script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
       <categories>
         <category>loom</category>
@@ -3765,6 +3820,145 @@ sequenceDiagram
       </tags>
   </entry>
   <entry>
+    <title>JVM内存解析 - 2.JVM 内存申请与使用流程</title>
+    <url>/2025/03/01/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-jvm-nei-cun-shen-qing-yu-shi-yong/posts/undefined/</url>
+    <content><![CDATA[<blockquote>
+<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 2.JVM 内存申请与使用流程</p>
+</blockquote>
+<ul>
+<li><a href="https://juejin.cn/post/7225875600644407357">JVM 内存申请与使用流程</a></li>
+</ul>
+<h2 id="Linux-下内存管理模型简述"><a href="#Linux-下内存管理模型简述" class="headerlink" title="Linux 下内存管理模型简述"></a>Linux 下内存管理模型简述</h2><ul>
+<li><a href="https://mp.weixin.qq.com/s?__biz=Mzg2MzU3Mjc3Ng==&mid=2247486732&idx=1&sn=435d5e834e9751036c96384f6965b328&chksm=ce77cb4bf900425d33d2adfa632a4684cf7a63beece166c1ffedc4fdacb807c9413e8c73f298&token=1468822011&lang=zh_CN&scene=21&key=d9f8952995f1859ec52d8f5d9e6ab4720ffabd5403c103322ee7ec6f45279c0d6ff004df4d91e603b8da30fc862da32560064a1680e06e498f1478dedf8d24cd54abfe5bbf80610ac6a1ecfcadeceb1ce74fd27e061bc962a5e9d18c369786619a9ac7ad030b16a0f350638aed32ec61ad2c47b2df53b2fffac6419c8a55feb1&ascene=2&uin=MTQxMDM0OTkyNA==&devicetype=Windows+11+x64&version=6308011a&exportkey=n_ChQIAhIQLReSAiPPBq/rjeEsvhWLGhLpAQIE97dBBAEAAAAAAPboBnzhWE0AAAAOpnltbLcz9gKNyK89dVj0LB8MByB+LnarvTJ9k5LjHnaHSiRCVUH6zSSXMnbZ9AQCusp6IDK5hwtnugd9Du4BG2pqPuJHPIkVIcUMia320lXFN61yM/+2MKyl86soaJUlu0zu8x69eop1Fbdi4YBaoocZrDbr+Buq4hsy+Kf6ElIQw+6gPfQqllJ5R86pa0DoVOjdnD2bi7ZuxdMyvcOPEu3pDa5H/BgY1A+DcifqtVZlp+5LoJKYNhtlZg1zOS06RY15Ry0DdonN38efMsG2Req/&acctmode=0&pass_ticket=ywhUvrTZ0ZCaWLuvLdidNGnNwyS7T41V+KEL2N0td3RvwmPJ+ZREM3Zc0lit4wDxNhALtKqF2gPCKD6sLdagzA==&wx_header=1&fontgear=2">bin神系列文章深入理解linux内存</a></li>
+</ul>
+<p>CPU 是通过寻址来访问内存的，目前大部分 CPU 都是 64 位的，即寻址范围是：<code>0x0000 0000 0000 0000 ~ 0xFFFF FFFF FFFF FFFF</code>，即可以管理 16EB 的内存。但是，实际程序并不会直接通过 CPU 寻址访问到实际的物理内存，而是通过引入 <code>MMU</code>（Memory Management Unit 内存管理单元）与实际物理地址隔了一层虚拟内存的抽象。这样，程序申请以及访问的其实是<code>虚拟内存地址</code>，MMU 会将这个虚拟内存地址<code>映射</code>为实际的物理内存地址。同时，<code>为了减少内存碎片，以及增加内存分配效率</code>，在 MMU 的基础上 Linux 抽象了<code>内存分页（Paging）</code>的概念，将虚拟地址按固定大小分割成<code>页</code>（默认是 4K，如果平台支持更多更大的页大小 JVM 也是可以利用的，我们后面分析相关的 JVM 参数会看到），并在页被实际使用写入数据的时候，<code>映射同样大小的实际的物理内存</code>（页帧，Page Frame），或者是在物理内存不足的时候，将某些不常用的页<code>转移到其他存储设备比如磁盘上</code>。</p>
+<p>一般系统中会有多个进程使用内存，每个进程都有自己独立的虚拟内存空间，假设我们这里有三个进程，进程 A 访问的虚拟地址可以与进程 B 和进程 C 的虚拟地址相同，那么操作系统如何区分呢？即操作系统如何将这些虚拟地址转换为物理内存。这就需要页表了，页表也是每个进程独立的，操作系统会在给进程映射物理内存用来保存用户数据的时候，将物理内存保存到进程的页表里面。然后，进程访问虚拟内存空间的时候，通过页表找到物理内存：<br><img data-src="/images/jvm/memory/01.png" alt="img"></p>
+<p>页表如何将一个虚拟内存地址（我们需要注意一点，目前虚拟内存地址，用户空间与内核空间可以使用从 <code>0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF</code> 的地址，即 256TB），转化为物理内存的呢？下面我们举一个在 x86，64 位环境下四级页表的结构视图：<br><img data-src="/images/jvm/memory/02.png" alt="img"></p>
+<p>在这里，页表分为四个级别：PGD（Page Global Directory），PUD（Page Upper Directory），PMD（Page Middle Directory），PTE（Page Table Entry）。每个页表，里面的页表项，保存了指向下一个级别的页表的引用，除了最后一层的 PTE 里面的页表项保存的是指向用户数据内存的指针。如何将虚拟内存地址通过页表找到对应用户数据内存从而读取数据，过程是：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
+<ol>
+<li>取虚拟地址的 <code>39 ~ 47</code> 位（因为用户空间与内核空间可以使用从 0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF 的地址，即 47 位以下的地址）作为 offset，在<code>唯一</code>的 PGD 页面根据 offset 定位到 PGD 页表项 <code>pgd_t</code></li>
+<li>使用 <code>pgd_t</code> 定位到具体的 PUD 页面</li>
+<li>取虚拟地址的 <code>30 ~ 38</code> 位作为 offset，在对应的 PUD 页面根据 offset 定位到 PUD 页表项 <code>pud_t</code></li>
+<li>使用 <code>pud_t</code> 定位到具体的 PMD 页面</li>
+<li>取虚拟地址的 <code>21 ~ 29</code> 位作为 offset，在对应的 PMD 页面根据 offset 定位到 PMD 页表项 <code>pmd_t</code></li>
+<li>使用 <code>pmd_t</code> 定位到具体的 PTE 页面</li>
+<li>取虚拟地址的 <code>12 ~ 20</code> 位作为 offset，在对应的 PTE 页面根据 offset 定位到 PTE 页表项 <code>pte_t</code></li>
+<li>使用 <code>pte_t</code> 定位到具体的用户数据物理内存页面</li>
+<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset</li>
+</ol>
+<p>如果每次访问虚拟内存，都需要访问这个页表翻译成实际物理内存的话，性能太差。所以一般 CPU 里面都有一个 <code>TLB</code>（Translation Lookaside Buffer，翻译后备缓冲）存在，一般它属于 CPU 的 MMU 的一部分。<code>TLB 负责缓存虚拟内存与实际物理内存的映射关系</code>，一般 TLB 容量很小。每次访问虚拟内存，先查看 TLB 中是否有缓存，如果没有才会去页表查询。<br><img data-src="/images/jvm/memory/04.png" alt="img"><br>默认情况下，TLB 缓存的 key 为地址的 <code>12 ~ 47</code> 位，value 是实际的物理内存页面。这样前面从<code>第 1 到第 7 步</code>就可以被替换成访问 TLB 了：</p>
+<ol>
+<li>取虚拟地址的 <code>12 ~ 47</code> 位作为 key，访问 TLB，定位到具体的用户数据物理内存页面。</li>
+<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset。<br><img data-src="/images/jvm/memory/05.png" alt="img"></li>
+</ol>
+<p>TLB 整体可以容纳个数不多；页大小越大，TLB 能容纳的个数越少。但是整体看，TLB 能容纳的页大小还是增多的（比如 Nehalem 的 iTLB，页大小 4K 的时候，一共可以容纳 128 * 4 &#x3D; 512K 的内存，页大小 2M 的时候，一共可以容纳 2 * 7 &#x3D; 14M 的内存）</p>
+<p>JVM 中很多地方需要知道页大小，JVM 在初始化的时候，通过系统调用 <code>sysconf(_SC_PAGESIZE)</code> 读取出页大小，并保存下来以供后续使用。参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp</a></p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">//设置全局默认页大小，通过 Linux::page_size() 可以获取全局默认页大小</span></span><br><span class="line">Linux::<span class="built_in">set_page_size</span>(<span class="built_in">sysconf</span>(_SC_PAGESIZE));</span><br><span class="line"><span class="keyword">if</span> (Linux::<span class="built_in">page_size</span>() == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fatal</span>(<span class="string">&quot;os_linux.cpp: os::init: sysconf failed (%s)&quot;</span>,</span><br><span class="line">      os::<span class="built_in">strerror</span>(errno));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//将默认页大小加入可选的页大小列表，在涉及大页分配的时候有用</span></span><br><span class="line">_page_sizes.<span class="built_in">add</span>(Linux::<span class="built_in">page_size</span>());</span><br></pre></td></tr></table></figure>
+
+<h2 id="JVM-主要内存申请分配流程"><a href="#JVM-主要内存申请分配流程" class="headerlink" title="JVM 主要内存申请分配流程"></a>JVM 主要内存申请分配流程</h2><h3 id="每个子系统-Reserve-内存"><a href="#每个子系统-Reserve-内存" class="headerlink" title="每个子系统 Reserve 内存"></a>每个子系统 <code>Reserve</code> 内存</h3><p><strong>第一步，JVM 的每个子系统</strong>（例如 Java 堆，元空间，JIT 代码缓存，GC 等等等等），<strong>如果需要的话，在初始化的时候首先 <code>Reserve</code> 要分配区域的最大限制大小的内存</strong>（这个最大大小，需要按照<code>页大小对齐</code>（即是页大小的整数倍），默认页大小是前面提到的 <code>Linux::page_size()</code>），例如对于 Java 堆，就是最大堆大小（通过 <code>-Xmx</code> 或者 <code>-XX:MaxHeapSize</code>限制），还有对于代码缓存，也是最大代码缓存大小（通过 <code>-XX:ReservedCodeCacheSize</code> 限制）。Reserve 的目的是在虚拟内存空间划出一块内存专门给某个区域使用，这样做的好处是：</p>
+<ol>
+<li>隔离每个 JVM 子系统使用的内存的<code>虚拟空间</code>，这样在 JVM 代码有 bug 的时候（例如发生 Segment Fault 异常），通过报错中的<code>虚拟内存地址</code>可以快速定位到是哪个子系统出了问题。</li>
+<li>可以很方便的限制这个区域使用的最大内存大小。</li>
+<li>便于管理，<code>Reserve 不会触发操作系统分配映射实际物理内存</code>，这个区域可以在 Reserve 的区域内按需伸缩。</li>
+<li>便于一些 JIT 优化，例如我们故意将这个区域保留起来但是故意不将这个区域的虚拟内存映射物理内存，访问这块内存会造成 Segment Fault 异常。JVM 会预设 Segment Fault 异常的处理器，在处理器里面检查发生 Segment Fault 异常的内存地址属于哪个子系统的 Reserve 的区域，判断要做什么操作。后面我们会看到，null 检查抛出 <code>NullPointerException</code> 异常的优化，全局安全点，抛出 <code>StackOverflowError</code> 的实现，都和这个机制有关。</li>
+</ol>
+<p>在 Linux 的环境下，Reserve 通过  <code>mmap(2)</code> 系统调用实现，参数传入 <code>prot = PROT_NONE</code>，<code>PROT_NONE</code> 代表不会使用，即<code>不能做任何操作，包括读和写</code>。如果 JVM 使用这块内存，会发生 Segment Fault 异常。</p>
+<h3 id="每个子系统按照各自策略向操作系统申请映射物理内存"><a href="#每个子系统按照各自策略向操作系统申请映射物理内存" class="headerlink" title="每个子系统按照各自策略向操作系统申请映射物理内存"></a>每个子系统按照各自策略向操作系统申请映射物理内存</h3><p><strong>第二步，JVM 的每个子系统，按照各自的策略，通过 <code>Commit</code> 第一步 Reserve 的区域的<code>一部分扩展内存</code>（大小也一般页大小对齐的），从而<code>向操作系统申请映射物理内存</code>，通过 <code>Uncommit</code> 已经 Commit 的内存来释放物理内存给操作系统</strong></p>
+<p>Commit 内存之后，<code>并不是操作系统会立刻分配物理内存</code>，而是在向 <code>Commit 的内存里面写入数据的时候，操作系统才会实际映射内存</code>，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数。</p>
+<h3 id="JVM-commit-的内存与实际占用内存的差异"><a href="#JVM-commit-的内存与实际占用内存的差异" class="headerlink" title="JVM commit 的内存与实际占用内存的差异"></a>JVM commit 的内存与实际占用内存的差异</h3><p>前面一节我们知道了，JVM 中大块内存，基本都是先 <code>reserve</code> 一大块，之后 <code>commit</code> 其中需要的一小块，然后开始读写处理内存，在 Linux 环境下，底层基于 <code>mmap(2)</code> 实现。但是需要注意一点的是，commit 之后，内存并不是立刻被分配了物理内存，而是真正往内存中 <code>store</code> 东西的时候，才会真正映射物理内存，如果是 load 读取也是可能不映射物理内存的。</p>
+<p>这其实是可能你平常看到但是忽略的现象，如果你使用的是 SerialGC，ParallelGC 或者 CMS GC，老年代的内存在有对象晋升到老年代之前，可能是不会映射物理内存的，虽然这块内存已经被 commit 了。并且年轻代可能也是随着使用才会映射物理内存。如果你用的是 ZGC，G1GC，或者 ShenandoahGC，那么内存用的会更激进些（主要因为分区算法划分导致内存被写入），<code>这是你在换 GC 之后看到物理内存内存快速上涨的原因之一</code>。JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数，这个参数我们后面会详细分析以及历史版本存在的缺陷。还有的差异，主要来源于在 uncommit 之后，系统可能还没有来的及将这块物理内存真正回收。</p>
+<p>所以，JVM 认为自己 commit 的内存，与实际系统分配的物理内存，<code>可能是有差异的</code>，可能 JVM 认为自己 commit 的内存比系统分配的物理内存多，也可能少。这就是为啥 <code>Native Memory Tracking（JVM 认为自己 commit 的内存）与实际其他系统监控中体现的物理内存使用指标对不上的原因</code>。</p>
+<h2 id="大页分配-UseLargePages"><a href="#大页分配-UseLargePages" class="headerlink" title="大页分配 UseLargePages"></a>大页分配 UseLargePages</h2><p>前面提到了虚拟内存需要映射物理内存才能使用，这个映射关系被保存在内存中的<code>页表（Page Table）</code>。现代 CPU 架构中一般有 <code>TLB</code> （Translation Lookaside Buffer，翻译后备缓冲，也称为页表寄存器缓冲）存在，在里面保存了经常使用的页表映射项。TLB 的大小有限，一般 TLB 如果只能容纳小于 100 个页表映射项。 我们能让程序的虚拟内存对应的页表映射项都处于 TLB 中，那么能大大提升程序性能，这就要尽量减少页表映射项的个数：<code>页表项个数 = 程序所需内存大小 / 页大小</code>。我们要么缩小程序所需内存，要么增大页大小。我们一般会考虑<code>增加页大小</code>，这就大页分配的由来，JVM 对于堆内存分配也支持大页分配，用于优化大堆内存的分配。那么 Linux 环境中有哪些大页分配的方式呢？</p>
+<h3 id="Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs"><a href="#Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs" class="headerlink" title="Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)"></a>Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">相关的 Linux 内核文档</a></p>
+<p>这是出现的比较早的大页分配方式，其实就是在之前提到的页表映射上面做文章：</p>
+<p><strong>默认 4K 页大小</strong>：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
+<p><strong>PMD 直接映射实际物理页面，页面大小为 <code>4K * 2^9 = 2M</code></strong>：<br><img data-src="/images/jvm/memory/06.png" alt="img"></p>
+<p><strong>PUD 直接映射实际物理页面，页面大小为 <code>2M * 2^9 = 1G</code></strong>：<br><img data-src="/images/jvm/memory/07.png" alt="img"></p>
+<p>但是，要想使用这个特性，需要操作系统构建的时候开启 <code>CONFIG_HUGETLBFS</code> 以及 <code>CONFIG_HUGETLB_PAGE</code>。之后，大的页面通常是通过系统管理控制预先分配并放入池里面的。然后，可以通过 <code>mmap</code> 系统调用或者 <code>shmget,shmat</code> 这些 SysV 的共享内存系统调用使用大页分配方式从池中申请内存。</p>
+<p>这种大页分配的方式，需要系统预设开启大页，预分配大页之外，对于代码也是有一定侵入性的，在灵活性上面查一些。但是带来的好处就是，性能表现上更加可控。另一种灵活性很强的 Transparent Huge Pages (THP) 方式，总是可能在性能表现上有一些意想不到的情况。</p>
+<h3 id="Linux-大页分配方式-Transparent-Huge-Pages-THP"><a href="#Linux-大页分配方式-Transparent-Huge-Pages-THP" class="headerlink" title="Linux 大页分配方式 - Transparent Huge Pages (THP)"></a>Linux 大页分配方式 - Transparent Huge Pages (THP)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/transhuge.txt">相关的 Linux 内核文档</a></p>
+<p>THP 是一种使用大页的第二种方法，它支持页面大小的自动升级和降级，这样对于用户使用代码基本没有侵入性，非常灵活。但是，前面也提到过，这种系统自己去做页面大小的升级降级，并且系统一般考虑通用性，所以在某些情况下会出现意想不到的性能瓶颈。</p>
+<h3 id="JVM-大页分配相关参数与机制"><a href="#JVM-大页分配相关参数与机制" class="headerlink" title="JVM 大页分配相关参数与机制"></a>JVM 大页分配相关参数与机制</h3><p>相关的参数如下：</p>
+<ul>
+<li><code>UseLargePages</code>：明确指定是否开启大页分配，如果关闭，那么下面的参数就都不生效。<code>在 linux 下默认为 false</code>。</li>
+<li><code>UseHugeTLBFS</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>mmap</code> 系统调用分配内存。在 linux 下默认为 false。</li>
+<li><code>UseSHM</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>shmget,shmat</code> 系统调用分配内存。在 linux 下默认为 false。</li>
+<li><code>UseTransparentHugePages</code>：明确指定是否使用前面第二种大页分配方式 THP。在 linux 下默认为 false。</li>
+<li><code>LargePageSizeInBytes</code>：指定明确的大页的大小，仅适用于前面第一种大页分配方式 hugetlbfs，并且必须属于操作系统支持的页大小否则不生效。默认为 0，即不指定</li>
+</ul>
+<p>首先，需要对以上参数做一个简单的判断：如果没有指定 <code>UseLargePages</code>，那么使用对应系统的默认 <code>UseLargePages</code> 的值，在 linux 下是 false，那么就不会启用大页分配。如果启动参数明确指定 <code>UseLargePages</code> 不启用，那么也不会启用大页分配。如果读取 <code>/proc/meminfo</code> 获取默认大页大小读取不到或者为 0，则代表系统也不支大页分配，大页分配也不启用。</p>
+<p>那么如果大页分配启用的话，我们需要初始化并验证大页分配参数可行性，流程是：<br><img data-src="/images/jvm/memory/08.png" alt="img"></p>
+<p>首先，JVM 会读取根据当前所处的平台与系统环境读取支持的页的大小，当然，这个是针对前面第一种大页分配方式 <code>hugetlbfs</code> 的。在 Linux 环境下，JVM 会从 <code>/proc/meminfo</code> 读取默认的 <strong><code>Hugepagesize</code></strong>，从 <code>/sys/kernel/mm/hugepages</code> 目录下检索<strong>所有支持的大页大小</strong>，这块可以参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp%E3%80%82">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp。</a><br>有关这些文件或者目录的详细信息，请参考前面章节提到的 Linux 内核文档：<a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt</a></p>
+<p>如果操作系统开启了 hugetlbfs，<code>/sys/kernel/mm/hugepages</code> 目录下的结构类似于：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tree /sys/kernel/mm/hugepages</span><br><span class="line">/sys/kernel/mm/hugepages</span><br><span class="line">├── hugepages-1048576kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-2048kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-32768kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">└── hugepages-64kB</span><br><span class="line">    ├── free_hugepages</span><br><span class="line">    ├── nr_hugepages</span><br><span class="line">    ├── nr_hugepages_mempolicy</span><br><span class="line">    ├── nr_overcommit_hugepages</span><br><span class="line">    ├── resv_hugepages</span><br><span class="line">    └── surplus_hugepages</span><br></pre></td></tr></table></figure>
+
+<p>这个 <code>hugepages-1048576kB</code> 就代表支持大小为 <code>1GB</code> 的页，<code>hugepages-2048kB</code> 就代表支持大小为 2MB 的页。</p>
+<p>如果没有设置 <code>UseHugeTLBFS</code>，也没有设置 <code>UseSHM</code>，也没有设置 <code>UseTransparentHugePages</code>，那么其实就是走默认的，默认使用 <code>hugetlbfs</code> 方式，不使用 <code>THP</code> 方式，因为如前所述， THP 在某些场景下有意想不到的性能瓶颈表现，在大型应用中，稳定性优先于峰值性能。之后，默认优先尝试 <code>UseHugeTLBFS</code>（即使用 <code>mmap</code> 系统调用通过 hugetlbfs 方式大页分配），不行的话再尝试 <code>UseSHM</code>（即使用 <code>shmget</code> 系统调用通过 hugetlbfs 方式大页分配）。这里只是验证下这些大页内存的分配方式是否可用，只有可用后面真正分配内存的时候才会采用那种可用的大页内存分配方式。</p>
+<h2 id="JVM内存申请与分配机制分析"><a href="#JVM内存申请与分配机制分析" class="headerlink" title="JVM内存申请与分配机制分析"></a>JVM内存申请与分配机制分析</h2><h3 id="内存管理的多级层次"><a href="#内存管理的多级层次" class="headerlink" title="内存管理的多级层次"></a>内存管理的多级层次</h3><p><strong><code>Reserve</code></strong> (预留) → <strong><code>Commit</code></strong> (提交) → <strong><code>Physical Allocation</code></strong> (物理分配)</p>
+<ol>
+<li>Reserve阶段：<ul>
+<li>JVM向操作系统预留一块连续的虚拟地址空间</li>
+<li>此时仅分配地址空间，不分配物理内存或交换空间</li>
+<li>对应参数如 -Xmx 设置的最大堆内存</li>
+</ul>
+</li>
+<li>Commit阶段：<ul>
+<li>JVM向操作系统提交请求，准备使用之前预留的部分虚拟空间</li>
+<li>操作系统标记这部分空间为”已提交”，准备关联物理内存</li>
+<li>对应初始堆大小，如 -Xms 设置的内存</li>
+</ul>
+</li>
+<li>物理分配阶段:<ul>
+<li>当JVM实际写入数据到已提交的内存时，操作系统才分配物理内存页</li>
+<li>这符合现代操作系统的”按需分页”(demand paging)机制</li>
+<li>因此，已提交内存不等于实际使用的物理内存</li>
+</ul>
+</li>
+</ol>
+<h3 id="内存监控与差异"><a href="#内存监控与差异" class="headerlink" title="内存监控与差异"></a>内存监控与差异</h3><p><code>NMT(Native Memory Tracking)</code>显示的提交内存与进程实际使用的物理内存确实存在差异。</p>
+<ol>
+<li>NMT观察到的内存：<ul>
+<li>显示已提交(committed)的内存量</li>
+<li>包括已向操作系统申请但可能尚未使用的内存</li>
+<li>命令: jcmd <pid> VM.native_memory</li>
+</ul>
+</li>
+<li>实际物理内存使用<ul>
+<li>通过 &#x2F;proc&#x2F;<pid>&#x2F;smaps_rollup 中的 PSS(Proportional Set Size)查看</li>
+<li>PSS比VSS和RSS更准确地反映进程实际的物理内存使用</li>
+<li>PSS &#x3D; 私有内存 + 按比例分摊的共享内存</li>
+</ul>
+</li>
+</ol>
+<h3 id="内存监控的最佳实践"><a href="#内存监控的最佳实践" class="headerlink" title="内存监控的最佳实践"></a>内存监控的最佳实践</h3><ol>
+<li>JVM层面<ul>
+<li>NMT: jcmd <pid> VM.native_memory</li>
+<li>JConsole&#x2F;VisualVM可视化监控</li>
+</ul>
+</li>
+<li>OS层面<ul>
+<li>&#x2F;proc&#x2F;<pid>&#x2F;smaps_rollup中的PSS</li>
+<li>top&#x2F;htop命令的RES&#x2F;RSS列</li>
+<li>numastat -p <pid>查看NUMA内存分布</li>
+</ul>
+</li>
+<li>高级监控<ul>
+<li>perf工具分析内存访问模式</li>
+<li>BPF&#x2F;eBPF工具追踪内存分配</li>
+</ul>
+</li>
+</ol>
+<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
+      <categories>
+        <category>JVM内存解析</category>
+      </categories>
+      <tags>
+        <tag>JVM</tag>
+        <tag>内存</tag>
+        <tag>linux内存</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>raft</title>
     <url>/2025/02/09/fen-bu-shi/suan-fa/raft/posts/undefined/</url>
     <content><![CDATA[<h2 id="Raft-的核心目标和基本工作原理"><a href="#Raft-的核心目标和基本工作原理" class="headerlink" title="Raft 的核心目标和基本工作原理"></a>Raft 的核心目标和基本工作原理</h2><p>核心目标：</p>
@@ -4050,145 +4244,6 @@ sequenceDiagram
       <tags>
         <tag>数据库</tag>
         <tag>ES</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>JVM内存解析 - 2.JVM 内存申请与使用流程</title>
-    <url>/2025/03/01/jvm/nei-cun-jie-xi/jvm-nei-cun-jie-xi-jvm-nei-cun-shen-qing-yu-shi-yong/posts/undefined/</url>
-    <content><![CDATA[<blockquote>
-<p>本文参考张哥 -&gt; 全网最硬核 JVM 内存解析 - 2.JVM 内存申请与使用流程</p>
-</blockquote>
-<ul>
-<li><a href="https://juejin.cn/post/7225875600644407357">JVM 内存申请与使用流程</a></li>
-</ul>
-<h2 id="Linux-下内存管理模型简述"><a href="#Linux-下内存管理模型简述" class="headerlink" title="Linux 下内存管理模型简述"></a>Linux 下内存管理模型简述</h2><ul>
-<li><a href="https://mp.weixin.qq.com/s?__biz=Mzg2MzU3Mjc3Ng==&mid=2247486732&idx=1&sn=435d5e834e9751036c96384f6965b328&chksm=ce77cb4bf900425d33d2adfa632a4684cf7a63beece166c1ffedc4fdacb807c9413e8c73f298&token=1468822011&lang=zh_CN&scene=21&key=d9f8952995f1859ec52d8f5d9e6ab4720ffabd5403c103322ee7ec6f45279c0d6ff004df4d91e603b8da30fc862da32560064a1680e06e498f1478dedf8d24cd54abfe5bbf80610ac6a1ecfcadeceb1ce74fd27e061bc962a5e9d18c369786619a9ac7ad030b16a0f350638aed32ec61ad2c47b2df53b2fffac6419c8a55feb1&ascene=2&uin=MTQxMDM0OTkyNA==&devicetype=Windows+11+x64&version=6308011a&exportkey=n_ChQIAhIQLReSAiPPBq/rjeEsvhWLGhLpAQIE97dBBAEAAAAAAPboBnzhWE0AAAAOpnltbLcz9gKNyK89dVj0LB8MByB+LnarvTJ9k5LjHnaHSiRCVUH6zSSXMnbZ9AQCusp6IDK5hwtnugd9Du4BG2pqPuJHPIkVIcUMia320lXFN61yM/+2MKyl86soaJUlu0zu8x69eop1Fbdi4YBaoocZrDbr+Buq4hsy+Kf6ElIQw+6gPfQqllJ5R86pa0DoVOjdnD2bi7ZuxdMyvcOPEu3pDa5H/BgY1A+DcifqtVZlp+5LoJKYNhtlZg1zOS06RY15Ry0DdonN38efMsG2Req/&acctmode=0&pass_ticket=ywhUvrTZ0ZCaWLuvLdidNGnNwyS7T41V+KEL2N0td3RvwmPJ+ZREM3Zc0lit4wDxNhALtKqF2gPCKD6sLdagzA==&wx_header=1&fontgear=2">bin神系列文章深入理解linux内存</a></li>
-</ul>
-<p>CPU 是通过寻址来访问内存的，目前大部分 CPU 都是 64 位的，即寻址范围是：<code>0x0000 0000 0000 0000 ~ 0xFFFF FFFF FFFF FFFF</code>，即可以管理 16EB 的内存。但是，实际程序并不会直接通过 CPU 寻址访问到实际的物理内存，而是通过引入 <code>MMU</code>（Memory Management Unit 内存管理单元）与实际物理地址隔了一层虚拟内存的抽象。这样，程序申请以及访问的其实是<code>虚拟内存地址</code>，MMU 会将这个虚拟内存地址<code>映射</code>为实际的物理内存地址。同时，<code>为了减少内存碎片，以及增加内存分配效率</code>，在 MMU 的基础上 Linux 抽象了<code>内存分页（Paging）</code>的概念，将虚拟地址按固定大小分割成<code>页</code>（默认是 4K，如果平台支持更多更大的页大小 JVM 也是可以利用的，我们后面分析相关的 JVM 参数会看到），并在页被实际使用写入数据的时候，<code>映射同样大小的实际的物理内存</code>（页帧，Page Frame），或者是在物理内存不足的时候，将某些不常用的页<code>转移到其他存储设备比如磁盘上</code>。</p>
-<p>一般系统中会有多个进程使用内存，每个进程都有自己独立的虚拟内存空间，假设我们这里有三个进程，进程 A 访问的虚拟地址可以与进程 B 和进程 C 的虚拟地址相同，那么操作系统如何区分呢？即操作系统如何将这些虚拟地址转换为物理内存。这就需要页表了，页表也是每个进程独立的，操作系统会在给进程映射物理内存用来保存用户数据的时候，将物理内存保存到进程的页表里面。然后，进程访问虚拟内存空间的时候，通过页表找到物理内存：<br><img data-src="/images/jvm/memory/01.png" alt="img"></p>
-<p>页表如何将一个虚拟内存地址（我们需要注意一点，目前虚拟内存地址，用户空间与内核空间可以使用从 <code>0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF</code> 的地址，即 256TB），转化为物理内存的呢？下面我们举一个在 x86，64 位环境下四级页表的结构视图：<br><img data-src="/images/jvm/memory/02.png" alt="img"></p>
-<p>在这里，页表分为四个级别：PGD（Page Global Directory），PUD（Page Upper Directory），PMD（Page Middle Directory），PTE（Page Table Entry）。每个页表，里面的页表项，保存了指向下一个级别的页表的引用，除了最后一层的 PTE 里面的页表项保存的是指向用户数据内存的指针。如何将虚拟内存地址通过页表找到对应用户数据内存从而读取数据，过程是：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
-<ol>
-<li>取虚拟地址的 <code>39 ~ 47</code> 位（因为用户空间与内核空间可以使用从 0x0000 0000 0000 0000 ~ 0x0000 FFFF FFFF FFFF 的地址，即 47 位以下的地址）作为 offset，在<code>唯一</code>的 PGD 页面根据 offset 定位到 PGD 页表项 <code>pgd_t</code></li>
-<li>使用 <code>pgd_t</code> 定位到具体的 PUD 页面</li>
-<li>取虚拟地址的 <code>30 ~ 38</code> 位作为 offset，在对应的 PUD 页面根据 offset 定位到 PUD 页表项 <code>pud_t</code></li>
-<li>使用 <code>pud_t</code> 定位到具体的 PMD 页面</li>
-<li>取虚拟地址的 <code>21 ~ 29</code> 位作为 offset，在对应的 PMD 页面根据 offset 定位到 PMD 页表项 <code>pmd_t</code></li>
-<li>使用 <code>pmd_t</code> 定位到具体的 PTE 页面</li>
-<li>取虚拟地址的 <code>12 ~ 20</code> 位作为 offset，在对应的 PTE 页面根据 offset 定位到 PTE 页表项 <code>pte_t</code></li>
-<li>使用 <code>pte_t</code> 定位到具体的用户数据物理内存页面</li>
-<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset</li>
-</ol>
-<p>如果每次访问虚拟内存，都需要访问这个页表翻译成实际物理内存的话，性能太差。所以一般 CPU 里面都有一个 <code>TLB</code>（Translation Lookaside Buffer，翻译后备缓冲）存在，一般它属于 CPU 的 MMU 的一部分。<code>TLB 负责缓存虚拟内存与实际物理内存的映射关系</code>，一般 TLB 容量很小。每次访问虚拟内存，先查看 TLB 中是否有缓存，如果没有才会去页表查询。<br><img data-src="/images/jvm/memory/04.png" alt="img"><br>默认情况下，TLB 缓存的 key 为地址的 <code>12 ~ 47</code> 位，value 是实际的物理内存页面。这样前面从<code>第 1 到第 7 步</code>就可以被替换成访问 TLB 了：</p>
-<ol>
-<li>取虚拟地址的 <code>12 ~ 47</code> 位作为 key，访问 TLB，定位到具体的用户数据物理内存页面。</li>
-<li>使用最后的 <code>0 ~ 11</code> 位作为 offset，对应到用户数据物理内存页面的对应 offset。<br><img data-src="/images/jvm/memory/05.png" alt="img"></li>
-</ol>
-<p>TLB 整体可以容纳个数不多；页大小越大，TLB 能容纳的个数越少。但是整体看，TLB 能容纳的页大小还是增多的（比如 Nehalem 的 iTLB，页大小 4K 的时候，一共可以容纳 128 * 4 &#x3D; 512K 的内存，页大小 2M 的时候，一共可以容纳 2 * 7 &#x3D; 14M 的内存）</p>
-<p>JVM 中很多地方需要知道页大小，JVM 在初始化的时候，通过系统调用 <code>sysconf(_SC_PAGESIZE)</code> 读取出页大小，并保存下来以供后续使用。参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp</a></p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">//设置全局默认页大小，通过 Linux::page_size() 可以获取全局默认页大小</span></span><br><span class="line">Linux::<span class="built_in">set_page_size</span>(<span class="built_in">sysconf</span>(_SC_PAGESIZE));</span><br><span class="line"><span class="keyword">if</span> (Linux::<span class="built_in">page_size</span>() == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fatal</span>(<span class="string">&quot;os_linux.cpp: os::init: sysconf failed (%s)&quot;</span>,</span><br><span class="line">      os::<span class="built_in">strerror</span>(errno));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//将默认页大小加入可选的页大小列表，在涉及大页分配的时候有用</span></span><br><span class="line">_page_sizes.<span class="built_in">add</span>(Linux::<span class="built_in">page_size</span>());</span><br></pre></td></tr></table></figure>
-
-<h2 id="JVM-主要内存申请分配流程"><a href="#JVM-主要内存申请分配流程" class="headerlink" title="JVM 主要内存申请分配流程"></a>JVM 主要内存申请分配流程</h2><h3 id="每个子系统-Reserve-内存"><a href="#每个子系统-Reserve-内存" class="headerlink" title="每个子系统 Reserve 内存"></a>每个子系统 <code>Reserve</code> 内存</h3><p><strong>第一步，JVM 的每个子系统</strong>（例如 Java 堆，元空间，JIT 代码缓存，GC 等等等等），<strong>如果需要的话，在初始化的时候首先 <code>Reserve</code> 要分配区域的最大限制大小的内存</strong>（这个最大大小，需要按照<code>页大小对齐</code>（即是页大小的整数倍），默认页大小是前面提到的 <code>Linux::page_size()</code>），例如对于 Java 堆，就是最大堆大小（通过 <code>-Xmx</code> 或者 <code>-XX:MaxHeapSize</code>限制），还有对于代码缓存，也是最大代码缓存大小（通过 <code>-XX:ReservedCodeCacheSize</code> 限制）。Reserve 的目的是在虚拟内存空间划出一块内存专门给某个区域使用，这样做的好处是：</p>
-<ol>
-<li>隔离每个 JVM 子系统使用的内存的<code>虚拟空间</code>，这样在 JVM 代码有 bug 的时候（例如发生 Segment Fault 异常），通过报错中的<code>虚拟内存地址</code>可以快速定位到是哪个子系统出了问题。</li>
-<li>可以很方便的限制这个区域使用的最大内存大小。</li>
-<li>便于管理，<code>Reserve 不会触发操作系统分配映射实际物理内存</code>，这个区域可以在 Reserve 的区域内按需伸缩。</li>
-<li>便于一些 JIT 优化，例如我们故意将这个区域保留起来但是故意不将这个区域的虚拟内存映射物理内存，访问这块内存会造成 Segment Fault 异常。JVM 会预设 Segment Fault 异常的处理器，在处理器里面检查发生 Segment Fault 异常的内存地址属于哪个子系统的 Reserve 的区域，判断要做什么操作。后面我们会看到，null 检查抛出 <code>NullPointerException</code> 异常的优化，全局安全点，抛出 <code>StackOverflowError</code> 的实现，都和这个机制有关。</li>
-</ol>
-<p>在 Linux 的环境下，Reserve 通过  <code>mmap(2)</code> 系统调用实现，参数传入 <code>prot = PROT_NONE</code>，<code>PROT_NONE</code> 代表不会使用，即<code>不能做任何操作，包括读和写</code>。如果 JVM 使用这块内存，会发生 Segment Fault 异常。</p>
-<h3 id="每个子系统按照各自策略向操作系统申请映射物理内存"><a href="#每个子系统按照各自策略向操作系统申请映射物理内存" class="headerlink" title="每个子系统按照各自策略向操作系统申请映射物理内存"></a>每个子系统按照各自策略向操作系统申请映射物理内存</h3><p><strong>第二步，JVM 的每个子系统，按照各自的策略，通过 <code>Commit</code> 第一步 Reserve 的区域的<code>一部分扩展内存</code>（大小也一般页大小对齐的），从而<code>向操作系统申请映射物理内存</code>，通过 <code>Uncommit</code> 已经 Commit 的内存来释放物理内存给操作系统</strong></p>
-<p>Commit 内存之后，<code>并不是操作系统会立刻分配物理内存</code>，而是在向 <code>Commit 的内存里面写入数据的时候，操作系统才会实际映射内存</code>，JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数。</p>
-<h3 id="JVM-commit-的内存与实际占用内存的差异"><a href="#JVM-commit-的内存与实际占用内存的差异" class="headerlink" title="JVM commit 的内存与实际占用内存的差异"></a>JVM commit 的内存与实际占用内存的差异</h3><p>前面一节我们知道了，JVM 中大块内存，基本都是先 <code>reserve</code> 一大块，之后 <code>commit</code> 其中需要的一小块，然后开始读写处理内存，在 Linux 环境下，底层基于 <code>mmap(2)</code> 实现。但是需要注意一点的是，commit 之后，内存并不是立刻被分配了物理内存，而是真正往内存中 <code>store</code> 东西的时候，才会真正映射物理内存，如果是 load 读取也是可能不映射物理内存的。</p>
-<p>这其实是可能你平常看到但是忽略的现象，如果你使用的是 SerialGC，ParallelGC 或者 CMS GC，老年代的内存在有对象晋升到老年代之前，可能是不会映射物理内存的，虽然这块内存已经被 commit 了。并且年轻代可能也是随着使用才会映射物理内存。如果你用的是 ZGC，G1GC，或者 ShenandoahGC，那么内存用的会更激进些（主要因为分区算法划分导致内存被写入），<code>这是你在换 GC 之后看到物理内存内存快速上涨的原因之一</code>。JVM 有对应的参数，可以在 Commit 内存后立刻写入 0 来强制操作系统分配内存，即 <code>AlwaysPreTouch</code> 这个参数，这个参数我们后面会详细分析以及历史版本存在的缺陷。还有的差异，主要来源于在 uncommit 之后，系统可能还没有来的及将这块物理内存真正回收。</p>
-<p>所以，JVM 认为自己 commit 的内存，与实际系统分配的物理内存，<code>可能是有差异的</code>，可能 JVM 认为自己 commit 的内存比系统分配的物理内存多，也可能少。这就是为啥 <code>Native Memory Tracking（JVM 认为自己 commit 的内存）与实际其他系统监控中体现的物理内存使用指标对不上的原因</code>。</p>
-<h2 id="大页分配-UseLargePages"><a href="#大页分配-UseLargePages" class="headerlink" title="大页分配 UseLargePages"></a>大页分配 UseLargePages</h2><p>前面提到了虚拟内存需要映射物理内存才能使用，这个映射关系被保存在内存中的<code>页表（Page Table）</code>。现代 CPU 架构中一般有 <code>TLB</code> （Translation Lookaside Buffer，翻译后备缓冲，也称为页表寄存器缓冲）存在，在里面保存了经常使用的页表映射项。TLB 的大小有限，一般 TLB 如果只能容纳小于 100 个页表映射项。 我们能让程序的虚拟内存对应的页表映射项都处于 TLB 中，那么能大大提升程序性能，这就要尽量减少页表映射项的个数：<code>页表项个数 = 程序所需内存大小 / 页大小</code>。我们要么缩小程序所需内存，要么增大页大小。我们一般会考虑<code>增加页大小</code>，这就大页分配的由来，JVM 对于堆内存分配也支持大页分配，用于优化大堆内存的分配。那么 Linux 环境中有哪些大页分配的方式呢？</p>
-<h3 id="Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs"><a href="#Linux-大页分配方式-Huge-Translation-Lookaside-Buffer-Page-hugetlbfs" class="headerlink" title="Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)"></a>Linux 大页分配方式 - Huge Translation Lookaside Buffer Page (hugetlbfs)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">相关的 Linux 内核文档</a></p>
-<p>这是出现的比较早的大页分配方式，其实就是在之前提到的页表映射上面做文章：</p>
-<p><strong>默认 4K 页大小</strong>：<br><img data-src="/images/jvm/memory/03.png" alt="img"></p>
-<p><strong>PMD 直接映射实际物理页面，页面大小为 <code>4K * 2^9 = 2M</code></strong>：<br><img data-src="/images/jvm/memory/06.png" alt="img"></p>
-<p><strong>PUD 直接映射实际物理页面，页面大小为 <code>2M * 2^9 = 1G</code></strong>：<br><img data-src="/images/jvm/memory/07.png" alt="img"></p>
-<p>但是，要想使用这个特性，需要操作系统构建的时候开启 <code>CONFIG_HUGETLBFS</code> 以及 <code>CONFIG_HUGETLB_PAGE</code>。之后，大的页面通常是通过系统管理控制预先分配并放入池里面的。然后，可以通过 <code>mmap</code> 系统调用或者 <code>shmget,shmat</code> 这些 SysV 的共享内存系统调用使用大页分配方式从池中申请内存。</p>
-<p>这种大页分配的方式，需要系统预设开启大页，预分配大页之外，对于代码也是有一定侵入性的，在灵活性上面查一些。但是带来的好处就是，性能表现上更加可控。另一种灵活性很强的 Transparent Huge Pages (THP) 方式，总是可能在性能表现上有一些意想不到的情况。</p>
-<h3 id="Linux-大页分配方式-Transparent-Huge-Pages-THP"><a href="#Linux-大页分配方式-Transparent-Huge-Pages-THP" class="headerlink" title="Linux 大页分配方式 - Transparent Huge Pages (THP)"></a>Linux 大页分配方式 - Transparent Huge Pages (THP)</h3><p><a href="https://www.kernel.org/doc/Documentation/vm/transhuge.txt">相关的 Linux 内核文档</a></p>
-<p>THP 是一种使用大页的第二种方法，它支持页面大小的自动升级和降级，这样对于用户使用代码基本没有侵入性，非常灵活。但是，前面也提到过，这种系统自己去做页面大小的升级降级，并且系统一般考虑通用性，所以在某些情况下会出现意想不到的性能瓶颈。</p>
-<h3 id="JVM-大页分配相关参数与机制"><a href="#JVM-大页分配相关参数与机制" class="headerlink" title="JVM 大页分配相关参数与机制"></a>JVM 大页分配相关参数与机制</h3><p>相关的参数如下：</p>
-<ul>
-<li><code>UseLargePages</code>：明确指定是否开启大页分配，如果关闭，那么下面的参数就都不生效。<code>在 linux 下默认为 false</code>。</li>
-<li><code>UseHugeTLBFS</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>mmap</code> 系统调用分配内存。在 linux 下默认为 false。</li>
-<li><code>UseSHM</code>：明确指定是否使用前面第一种大页分配方式 hugetlbfs 并且通过 <code>shmget,shmat</code> 系统调用分配内存。在 linux 下默认为 false。</li>
-<li><code>UseTransparentHugePages</code>：明确指定是否使用前面第二种大页分配方式 THP。在 linux 下默认为 false。</li>
-<li><code>LargePageSizeInBytes</code>：指定明确的大页的大小，仅适用于前面第一种大页分配方式 hugetlbfs，并且必须属于操作系统支持的页大小否则不生效。默认为 0，即不指定</li>
-</ul>
-<p>首先，需要对以上参数做一个简单的判断：如果没有指定 <code>UseLargePages</code>，那么使用对应系统的默认 <code>UseLargePages</code> 的值，在 linux 下是 false，那么就不会启用大页分配。如果启动参数明确指定 <code>UseLargePages</code> 不启用，那么也不会启用大页分配。如果读取 <code>/proc/meminfo</code> 获取默认大页大小读取不到或者为 0，则代表系统也不支大页分配，大页分配也不启用。</p>
-<p>那么如果大页分配启用的话，我们需要初始化并验证大页分配参数可行性，流程是：<br><img data-src="/images/jvm/memory/08.png" alt="img"></p>
-<p>首先，JVM 会读取根据当前所处的平台与系统环境读取支持的页的大小，当然，这个是针对前面第一种大页分配方式 <code>hugetlbfs</code> 的。在 Linux 环境下，JVM 会从 <code>/proc/meminfo</code> 读取默认的 <strong><code>Hugepagesize</code></strong>，从 <code>/sys/kernel/mm/hugepages</code> 目录下检索<strong>所有支持的大页大小</strong>，这块可以参考源码：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp%E3%80%82">https://github.com/openjdk/jdk/blob/jdk-21%2B3/src/hotspot/os/linux/os_linux.cpp。</a><br>有关这些文件或者目录的详细信息，请参考前面章节提到的 Linux 内核文档：<a href="https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt">https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt</a></p>
-<p>如果操作系统开启了 hugetlbfs，<code>/sys/kernel/mm/hugepages</code> 目录下的结构类似于：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tree /sys/kernel/mm/hugepages</span><br><span class="line">/sys/kernel/mm/hugepages</span><br><span class="line">├── hugepages-1048576kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-2048kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">├── hugepages-32768kB</span><br><span class="line">│   ├── demote</span><br><span class="line">│   ├── demote_size</span><br><span class="line">│   ├── free_hugepages</span><br><span class="line">│   ├── nr_hugepages</span><br><span class="line">│   ├── nr_hugepages_mempolicy</span><br><span class="line">│   ├── nr_overcommit_hugepages</span><br><span class="line">│   ├── resv_hugepages</span><br><span class="line">│   └── surplus_hugepages</span><br><span class="line">└── hugepages-64kB</span><br><span class="line">    ├── free_hugepages</span><br><span class="line">    ├── nr_hugepages</span><br><span class="line">    ├── nr_hugepages_mempolicy</span><br><span class="line">    ├── nr_overcommit_hugepages</span><br><span class="line">    ├── resv_hugepages</span><br><span class="line">    └── surplus_hugepages</span><br></pre></td></tr></table></figure>
-
-<p>这个 <code>hugepages-1048576kB</code> 就代表支持大小为 <code>1GB</code> 的页，<code>hugepages-2048kB</code> 就代表支持大小为 2MB 的页。</p>
-<p>如果没有设置 <code>UseHugeTLBFS</code>，也没有设置 <code>UseSHM</code>，也没有设置 <code>UseTransparentHugePages</code>，那么其实就是走默认的，默认使用 <code>hugetlbfs</code> 方式，不使用 <code>THP</code> 方式，因为如前所述， THP 在某些场景下有意想不到的性能瓶颈表现，在大型应用中，稳定性优先于峰值性能。之后，默认优先尝试 <code>UseHugeTLBFS</code>（即使用 <code>mmap</code> 系统调用通过 hugetlbfs 方式大页分配），不行的话再尝试 <code>UseSHM</code>（即使用 <code>shmget</code> 系统调用通过 hugetlbfs 方式大页分配）。这里只是验证下这些大页内存的分配方式是否可用，只有可用后面真正分配内存的时候才会采用那种可用的大页内存分配方式。</p>
-<h2 id="JVM内存申请与分配机制分析"><a href="#JVM内存申请与分配机制分析" class="headerlink" title="JVM内存申请与分配机制分析"></a>JVM内存申请与分配机制分析</h2><h3 id="内存管理的多级层次"><a href="#内存管理的多级层次" class="headerlink" title="内存管理的多级层次"></a>内存管理的多级层次</h3><p><strong><code>Reserve</code></strong> (预留) → <strong><code>Commit</code></strong> (提交) → <strong><code>Physical Allocation</code></strong> (物理分配)</p>
-<ol>
-<li>Reserve阶段：<ul>
-<li>JVM向操作系统预留一块连续的虚拟地址空间</li>
-<li>此时仅分配地址空间，不分配物理内存或交换空间</li>
-<li>对应参数如 -Xmx 设置的最大堆内存</li>
-</ul>
-</li>
-<li>Commit阶段：<ul>
-<li>JVM向操作系统提交请求，准备使用之前预留的部分虚拟空间</li>
-<li>操作系统标记这部分空间为”已提交”，准备关联物理内存</li>
-<li>对应初始堆大小，如 -Xms 设置的内存</li>
-</ul>
-</li>
-<li>物理分配阶段:<ul>
-<li>当JVM实际写入数据到已提交的内存时，操作系统才分配物理内存页</li>
-<li>这符合现代操作系统的”按需分页”(demand paging)机制</li>
-<li>因此，已提交内存不等于实际使用的物理内存</li>
-</ul>
-</li>
-</ol>
-<h3 id="内存监控与差异"><a href="#内存监控与差异" class="headerlink" title="内存监控与差异"></a>内存监控与差异</h3><p><code>NMT(Native Memory Tracking)</code>显示的提交内存与进程实际使用的物理内存确实存在差异。</p>
-<ol>
-<li>NMT观察到的内存：<ul>
-<li>显示已提交(committed)的内存量</li>
-<li>包括已向操作系统申请但可能尚未使用的内存</li>
-<li>命令: jcmd <pid> VM.native_memory</li>
-</ul>
-</li>
-<li>实际物理内存使用<ul>
-<li>通过 &#x2F;proc&#x2F;<pid>&#x2F;smaps_rollup 中的 PSS(Proportional Set Size)查看</li>
-<li>PSS比VSS和RSS更准确地反映进程实际的物理内存使用</li>
-<li>PSS &#x3D; 私有内存 + 按比例分摊的共享内存</li>
-</ul>
-</li>
-</ol>
-<h3 id="内存监控的最佳实践"><a href="#内存监控的最佳实践" class="headerlink" title="内存监控的最佳实践"></a>内存监控的最佳实践</h3><ol>
-<li>JVM层面<ul>
-<li>NMT: jcmd <pid> VM.native_memory</li>
-<li>JConsole&#x2F;VisualVM可视化监控</li>
-</ul>
-</li>
-<li>OS层面<ul>
-<li>&#x2F;proc&#x2F;<pid>&#x2F;smaps_rollup中的PSS</li>
-<li>top&#x2F;htop命令的RES&#x2F;RSS列</li>
-<li>numastat -p <pid>查看NUMA内存分布</li>
-</ul>
-</li>
-<li>高级监控<ul>
-<li>perf工具分析内存访问模式</li>
-<li>BPF&#x2F;eBPF工具追踪内存分配</li>
-</ul>
-</li>
-</ol>
-<script type="text&#x2F;javascript" src="https://unpkg.com/kity@2.0.4/dist/kity.min.js"></script><script type="text&#x2F;javascript" src="https://unpkg.com/kityminder-core@1.4.50/dist/kityminder.core.min.js"></script><script defer="true" type="text&#x2F;javascript" src="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.js"></script><link rel="stylesheet" type="text&#x2F;css" href="https://unpkg.com/hexo-simple-mindmap@0.8.0/dist/mindmap.min.css">]]></content>
-      <categories>
-        <category>JVM内存解析</category>
-      </categories>
-      <tags>
-        <tag>JVM</tag>
-        <tag>内存</tag>
-        <tag>linux内存</tag>
       </tags>
   </entry>
   <entry>
