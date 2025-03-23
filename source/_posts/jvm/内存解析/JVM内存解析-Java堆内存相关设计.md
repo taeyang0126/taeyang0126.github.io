@@ -4,6 +4,7 @@ abbrlink: 58697
 date: 2025-03-01 17:46:30
 tags: [JVM, 内存, 堆内存]
 categories: [JVM内存解析]
+updated: 2025-03-23 17:30:30
 ---
 
 > 本文参考张哥 -> 全网最硬核 JVM 内存解析
