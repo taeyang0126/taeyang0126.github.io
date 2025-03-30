@@ -33,7 +33,7 @@ date: 2025-02-10 17:51:22
 - 内置 `arthas`
 - 内置运行脚本 [run.sh](/files/java/run.sh)
 
-```Dockerfile
+```shell
 ####################################################################
 # Global ARGs (build-time variables)
 # ARG 定义的变量在 FROM 指令中是可以直接使用的
