@@ -218,5 +218,3 @@ JVM 元空间，会在全局建立`两个元空间上下文`（`MetaspaceContext
 
 ### 类加载的入口 `SystemDictionary` 与保留所有 `ClassLoaderData` 的 `ClassLoaderDataGraph`
 
-类加载的入口在全局唯一的 SystemDictionary 中，这里我们只是为了看一下类加载需要哪些参数，来搞清楚对应关系，不用关心细节
-
