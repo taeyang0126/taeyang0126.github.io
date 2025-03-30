@@ -64,7 +64,7 @@ date: 2025-02-10 18:51:22
 
 > from、size 超过 10000 时会报错，不适合深度分页，因为需要在每个分片上拉取 （from + size）
 
-```Java
+```java
 # 简单的分页操作
 GET books/_search
 {
@@ -83,7 +83,7 @@ GET books/_search
 1. 在 sort 中指定需要排序的字段，并且保证其值的唯一性（可以使用文档的 ID）。
 2. 在下一次查询时，带上返回结果中最后一个文档的 sort 值进行访问
 
-```Java
+```java
 # 第一次调用 search after
 POST books/_search
 {
@@ -136,7 +136,7 @@ POST books/_search
 
 1. ES 7.10 中引入了 Point In Time 后，scroll API 就不建议被使用了
 
-```Java
+```java
 # 第一次使用 scroll API，指定快照10m结束，超过10m
 POST books/_search?scroll=10m
 {
@@ -178,7 +178,7 @@ POST /_search/scroll
 1. 使用 PIT 前需要显式使用 _pit API 获取一个 PID ID
 2.  PIT 可以允许用户在同一个固定数据集合上运行不同的查询，例如多个请求可以使用同一个 PIT 视图而互不影响
 
-```Java
+```java
 # 使用 pit API 获取一个 PID ID
 POST /books/_pit?keep_alive=20m
 
@@ -191,7 +191,7 @@ POST /books/_pit?keep_alive=20m
 1. PIT 可以结合 search after 进行查询，能有效保证数据的一致性
 2. Pit + search after 允许更改查询或排序字段，因为根据 search_after 一定定位到了某条数据，无论更改查询条件还是排序条件，只需要从新的查询条件的结果过滤出 search_after 后面的数据就能得到结果了
 
-```Java
+```java
 # 第一次调用 search after，因为使用了 PIT，这个时候搜索不需要指定 index 了。
 # 不再需要在 sort 中指定唯一的排序值了
 POST _search

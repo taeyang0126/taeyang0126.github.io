@@ -17,7 +17,7 @@ date: 2025-02-09 18:51:22
 - feignClient 实现类依旧是 LoadBalancerFeignClient
 - LoadBalancerFeignClient 中 delegate 更换为自定义实现的 vertx-web-client
 
-```Java
+```java
 public class VertxFeignClient implements Client {
 
     private final WebClient webClient;
@@ -71,7 +71,7 @@ public class VertxFeignClient implements Client {
 
 - 配置类装配 FeignClient bean
 
-```Java
+```java
 @Configuration
 public class VertxFeignClientConfiguration {
 

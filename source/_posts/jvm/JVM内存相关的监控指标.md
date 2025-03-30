@@ -18,7 +18,7 @@ categories: [JVM]
 
 #### 1. SpringBoot的JVM metrics埋点代码
 
-```Java
+```java
 // 通过io.micrometer.core引入了JVMMemoryuMetrics这个埋点实现
 for (MemoryPoolMXBean memoryPoolBean : ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) {
     String area = MemoryType.HEAP.equals(memoryPoolBean.getType()) ? "heap" : "nonheap";

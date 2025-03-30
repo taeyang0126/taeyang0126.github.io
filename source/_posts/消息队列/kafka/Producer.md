@@ -33,7 +33,7 @@ date: 2025-02-09 19:52:22
 | compression.type                          | none             | 消息压缩方式，默认是 none，支持 none、gzip、snappy、lz4，如果需要提升吞吐量，可以开启消息压缩 | `*properties*.put(ProducerConfig.*COMPRESSION_TYPE_CONFIG*, "none");` |
 | connections.max.idle.ms                   | 9 * 60 * 1000    | 关闭闲置的连接，默认 9 分钟，如果生产者在 9 分钟内没有发送消息，那么生产者会关闭连接，如果生产者在 9 分钟内发送消息，那么生产者会重置闲置时间 | `*properties*.put(ProducerConfig.*CONNECTIONS_MAX_IDLE_MS_CONFIG*, 9 * 60 * 1000);` |
 
-```Java
+```java
 static {
     properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);
     properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());

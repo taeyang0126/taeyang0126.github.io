@@ -36,7 +36,7 @@ date: 2025-02-09 19:58:22
 
 - 自动提交流程
 
-```Java
+```java
 public void maybeAutoCommitOffsetsAsync(long now) {
     if (autoCommitEnabled) {
         nextAutoCommitTimer.update(now);
@@ -99,7 +99,7 @@ public void maybeAutoCommitOffsetsAsync(long now) {
 
 - 定义重试次数 & 重试间隔
 
-```Java
+```java
 FixedBackOff fixedBackOff = new FixedBackOff(100, 1);
 DefaultErrorHandler defaultErrorHandler = new DefaultErrorHandler(fixedBackOff);
 kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);
@@ -107,7 +107,7 @@ kafkaMessageListenerContainer.setCommonErrorHandler(defaultErrorHandler);
 
 - 批量消费时，遇到异常需要抛出 BatchListenerFailedException，否则会重试整个批次，重试次数过后会越过整个批次的 offset
 
-```Java
+```java
 // 3 指的是失败最小消息的index，重试会从这里开始
 BatchListenerFailedException batchListenerFailedException = new BatchListenerFailedException("批次消费失败", 3);
 throw batchListenerFailedException;
@@ -119,7 +119,7 @@ throw batchListenerFailedException;
 
 所以需要重写 ConsumerRecordRecoverer 接口，将失败的消息发送到死信队列中，便于后续人工或程序进行处理
 
-```Java
+```java
 // 自定义重试次数 & 重试间隔
 FixedBackOff fixedBackOff = new FixedBackOff(2000, 1);
 // 自定义消息recover，针对不同类型的消息，转发到不同的topic中

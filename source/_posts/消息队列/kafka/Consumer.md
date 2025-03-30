@@ -33,7 +33,7 @@ date: 2025-02-09 19:55:22
 | send.buffer.bytes           | 128 * 1024       | 设置 socket 发送消息缓冲区（SO_SNDBUF）的大小，默认是 128KB，如果设置为 -1，那么使用操作系统的默认值，如果 Consumer 与 Kafka 处于不同的数据中心，那么可以适当增大此值 | `*properties*.put(ConsumerConfig.*SEND_BUFFER_CONFIG*, 128 * 1024);` |
 | request.timeout.ms          | 30 * 1000        | 配置 consumer 等待请求响应的最大时间，默认是 30s             | `*properties*.put(ConsumerConfig.*REQUEST_TIMEOUT_MS_CONFIG*, 30 * 1000);` |
 
-```Java
+```java
 static {
     properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList);
     properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());

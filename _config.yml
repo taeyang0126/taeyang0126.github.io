@@ -106,10 +106,32 @@ shiki:
   highlight_lang: true # show the code language
   highlight_height_limit: 360 # code-block max height,unit: px
   is_highlight_shrink: true # true: shrink the code blocks / false: expand the code blocks | none: expand code blocks and hide the button
+  langs: # 添加额外的语言支持
+    - typescript
+    - javascript
+    - python
+    - java
+    - kotlin
+    - swift
+    - go
+    - rust
+    - ruby
+    - php
+    - html
+    - css
+    - scss
+    - json
+    - yaml
+    - toml
+    - markdown
+    - bash
+    - shell
+    - sql
   copy: # copy message
     success: 'Copy Success'
     error: 'Copy Error'
     no_support: 'Browser Not Support'
+
 
 
 mermaid:

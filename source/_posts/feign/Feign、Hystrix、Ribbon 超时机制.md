@@ -38,7 +38,7 @@ date: 2025-02-09 18:50:22
 - 最上层是 hystrix 超时，hystrix 会异步提交一个延时任务，延时时间就是配置的超时时间
 - 配置 hystrix 全局的超时时间
 
-```YAML
+```yaml
 hystrix:
   command:
     # 默认的配置，如果没有独立配置，那么这个会是默认的配置
@@ -51,7 +51,7 @@ hystrix:
 
 - [配置文件]配置具体接口的超时时间，${commandKey} 表示 commandKey，比如接口位于类 HttpBinFeign，方法名为 delay_3（），则 commandKey=HttpBinFeign#delay_3（）；默认会优先读取具体接口的配置，具体接口的配置不存在则会使用默认的配置
 
-```Properties
+```properties
 hystrix.command.${commandKey}.execution.isolation.thread.timeoutInMilliseconds=4000
 ```
 
@@ -61,12 +61,11 @@ hystrix.command.${commandKey}.execution.isolation.thread.timeoutInMilliseconds=4
 
 - [@HystrixCommand]配置具体接口的超时时间
 
-    1. 启用切面
-
-    ```Java
+1. 启用切面
+    ```java
     @Configuration
     public class HystrixConfiguration {
-
+    
         @Bean
         public HystrixCommandAspect hystrixCommandAspect() {
             return new HystrixCommandAspect();
@@ -76,7 +75,7 @@ hystrix.command.${commandKey}.execution.isolation.thread.timeoutInMilliseconds=4
 
     2. @HystrixCommand 配置，这里用了种取巧的方式，添加上此注解会先转换为 HystrixCommandProperties，然后当 Feign 接口封装为 hystrixCommand 时就会从 factory 中根据 cacheKey 获取，cacheKey 就是 commandKey，所以只需要保证在 feign 接口前面组装此配置就行。这里是取巧的方式，不确定会有什么问题- _ -
 
-    ```Java
+    ```java
     @HystrixCommand(
             commandKey = "HttpBinFeign#delay_3()",
             commandProperties = {
@@ -95,7 +94,7 @@ hystrix.command.${commandKey}.execution.isolation.thread.timeoutInMilliseconds=4
 - feign 未配置时，请求超时按 ribbon 配置；若配置了 feign 超时，则请求超时按 feign 配置
 - feign 全局超时配置，**注意 connect-timeout 与 read-timeout 两个配置都需要配置**，单独配置不生效
 
-```Java
+```java
 feign:
   client:
     config:
@@ -129,7 +128,7 @@ feign:
 
     3. 单个接口代码配置，注意配置类不能使用@component 注解，否则会全局生效
 
-    ```Java
+    ```java
     public class CustomFeignConfiguration {
 
         @Bean
@@ -145,7 +144,7 @@ feign:
 
 - ribbon 全局配置
 
-```Java
+```java
 ribbon:
   ReadTimeout: 5000 # 请求处理的超时时间
   ConnectTimeout: 2000 # 请求连接超时时间
@@ -186,7 +185,7 @@ ribbon:
 
 ###  自定义 CachingSpringLoadBalancerFactory，给所有服务添加本地地址
 
-```Java
+```java
 public class LocalCachingSpringLoadBalancerFactory extends CachingSpringLoadBalancerFactory {
 
     private volatile Map<String, FeignLoadBalancer> cache = new ConcurrentReferenceHashMap<>();
@@ -219,7 +218,7 @@ public class LocalCachingSpringLoadBalancerFactory extends CachingSpringLoadBala
 
 ###  注入 bean，覆盖默认的配置 FeignRibbonClientAutoConfiguration
 
-```Java
+```java
 @Configuration
 public class LocalRibbonConfiguration {
 
@@ -240,7 +239,7 @@ public class LocalRibbonConfiguration {
 
 ###  使用 BeanPostProcessor 修改 LoadBalancerFeignClient 中的 CachingSpringLoadBalancerFactory
 
-```Java
+```java
 public class LocalCachingSpringLoadBalancerFactoryBeanPostProcessor implements BeanPostProcessor {
 
     private String localHost;

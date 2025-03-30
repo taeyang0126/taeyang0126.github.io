@@ -21,7 +21,7 @@ date: 2025-02-09 18:52:22
 >
 > 比如下面的代码中，自定义了服务路由信息，会根据配置返回服务的路由信息
 
-```Java
+```java
 public class UserServiceLoadBalanceConfiguration {
 
     @Bean
