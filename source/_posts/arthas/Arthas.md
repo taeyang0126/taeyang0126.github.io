@@ -77,7 +77,7 @@ date: 2025-02-09 14:51:22
 
 - Ognl 获取spring context
 
-    ```Plain
+    ```text
     # 49c2faae 表示classloader hash
     # cn.hutool.extra.spring.SpringUtil 表示能获取到spring容器的方法
     ognl -c 49c2faae '#beanName="eventDataAuthManage", #bean=@cn.hutool.extra.spring.SpringUtil@getBean(#beanName), @org.springframework.aop.support.AopUtils@getTargetClass(#bean).getName()'
@@ -85,7 +85,7 @@ date: 2025-02-09 14:51:22
 
 - Ognl lambda 表达式
 
-    ```Shell
+    ```shell
     -- 使用 =:[] 定义lambda即函数
     -- 使用 #getBean() 调用
     ognl -c 49c2faae '
@@ -103,7 +103,7 @@ date: 2025-02-09 14:51:22
 
 - 修改变量的值
 
-    ```Shell
+    ```java
     -- 1. 使用 tt 记录方法调用
     tt -t com.example.UserService getUserById
     -- 2. 查看记录
@@ -114,7 +114,7 @@ date: 2025-02-09 14:51:22
 
 - 过滤参数类型为class的方法
 
-    ```Shell
+    ```java
     -- 过滤要点就是通过全类名@class拿到class对象，再getName()获取名称
     watch com.wangji92.arthas.plugin.demo.controller.StaticTest invokeClass '{returnObj,throwExp}'  -n 5  -x 3  
     'params[0].getName().equals(@com.wangji92.arthas.plug.demo.controller.User@class.getName())' -v
@@ -122,7 +122,7 @@ date: 2025-02-09 14:51:22
 
 - 查找response404的堆栈
 
-    ```Shell
+    ```java
     stack -E javax.servlet.http.HttpServletResponse sendError|setStatus params[0]==404
     ```
 
@@ -130,7 +130,7 @@ date: 2025-02-09 14:51:22
 
 - Trace 命令多个类、多个方法、指定线程、指定耗时时间
 
-    ```Plain
+    ```text
     # trace -E 表示正则
     trace -E 
     # 表示类是 NioEventLoop 或者 SingleThreadEventExecutor
@@ -143,7 +143,7 @@ date: 2025-02-09 14:51:22
 
 - 获取代理对象的原始对象
 
-    ```Shell
+    ```java
     tt -w '#isProxy=:[ @org.springframework.aop.support.AopUtils@isAopProxy(#this)?1: #this instanceof java.lang.reflect.Proxy ? 0 :-1],#isJdkDynamicProxy =:[@org.springframework.aop.support.AopUtils@isJdkDynamicProxy(#this) ? true :false ],#cglibTarget =:[#hField =#this.getClass().getDeclaredField("CGLIB$CALLBACK_0"),#hField.setAccessible(true),#dynamicAdvisedInterceptor=#hField.get(#this),#fieldAdvised=#dynamicAdvisedInterceptor.getClass().getDeclaredField("advised"),#fieldAdvised.setAccessible(true),1==1? #fieldAdvised.get(#dynamicAdvisedInterceptor).getTargetSource().getTarget():null],#jdkTarget=:[ #hField=#this.getClass().getSuperclass().getDeclaredField("h"),#hField.setAccessible(true),#aopProxy=#hField.get(#this),#advisedField=#aopProxy.getClass().getDeclaredField("advised"),#advisedField.setAccessible(true),1==1?#advisedField.get(#aopProxy).getTargetSource().getTarget():null],#nonProxyResultFunc = :[#proxyResul=#isProxy(#this),#proxyResul== -1 ?#this :#proxyResul== 0? @java.lang.reflect.Proxy@getInvocationHandler(#this):#isJdkDynamicProxy(#this)? #isJdkDynamicProxy(#this) : #cglibTarget(#this)],#nonProxyTarget=#nonProxyResultFunc(target),#nonProxyTarget'  -x 1 -i 1002
     ```
 
@@ -157,7 +157,7 @@ date: 2025-02-09 14:51:22
   - `--action getClassLoader`：获取类加载器信息
 - com.xxx.cache.CacheAspect 中的 boolean 变量 cacheEnabled 修改为false
 
-    ```Shell
+    ```java
     vmtool: Arthas 的一个命令，用于对 JVM 进行底层操作。
     -x 3: 设置执行次数限制为 3 次。
     --action getInstances: 指定操作为获取类的实例。
@@ -173,13 +173,13 @@ date: 2025-02-09 14:51:22
 
 - 修改final变量
 
-    ```Shell
+    ```java
     vmtool -x 4 --action getInstances --className com.wangji92.arthas.plugin.demo.controller.CommonController  --express '#field=instances[0].getClass().getDeclaredField("FINAL_VALUE"),#modifiers=#field.getClass().getDeclaredField("modifiers"),#modifiers.setAccessible(true),#modifiers.setInt(#field,#field.getModifiers() & ~@java.lang.reflect.Modifier@FINAL),#field.setAccessible(true),#field.set(instances[0]," 3333")' -c  18b4aac2
     ```
 
 - 执行某个方法
 
-    ```Shell
+    ```java
     vmtool -x 1 --action getInstances 
     --className com.xx.SyncDataAuthController 
     --express 'instances[0].getDataCodePage(@com.xx.UtilJson@convertValue("{\"pageIndex\":0,\"pageSize\":0}", @com.xx.BaseQuery@class))'
@@ -188,12 +188,12 @@ date: 2025-02-09 14:51:22
 
 - 获取spring context
 
-    ```Shell
+    ```java
     vmtool --action getInstances --className org.springframework.context.ConfigurableApplicationContext --express 'instances[0].getEnvironment().getProperty("server.port")'
     ```
 
 - 获取 spring Environment 配置
     
-    ```Shell
+    ```java
     vmtool -x 3 --action getInstances --className org.springframework.core.env.Environment  --express 'instances[0].getProperty("server.port")' -c 7b5a12ae
     ```
