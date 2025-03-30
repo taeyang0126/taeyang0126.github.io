@@ -2,7 +2,7 @@ name: Deploy Hexo site to Pages
 
 on:
   push:
-    branches: [main]
+    branches: [blog-new]
 
 jobs:
   build:
