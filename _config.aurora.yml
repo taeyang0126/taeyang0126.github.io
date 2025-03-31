@@ -394,9 +394,7 @@ aurora_bot:
 #! ---------------------------------------------------------------
 injects:
   scripts:
-    - <script src="https://unpkg.com/mermaid@10.6.1/dist/mermaid.min.js"></script>
   css:
-    - <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jetbrains-mono@1.0.6/css/jetbrains-mono.min.css">
 
 
 #! ---------------------------------------------------------------
