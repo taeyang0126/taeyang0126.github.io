@@ -7,6 +7,7 @@ categories:
   - MySQL
 abbrlink: 17349
 date: 2025-02-10 19:52:22
+cover: ../../../images/db/MySQL/25.png
 ---
 
 - [《MySQL 是怎样运行的：从根儿上理解 MySQL》](https://relph1119.github.io/mysql-learning-notes/#/)
@@ -21,15 +22,14 @@ date: 2025-02-10 19:52:22
 - **mysqld.server** 也是一个启动脚本，会间接的调用 mysqld_safe。在执行 mysql.server 时，在后面添加 start 参数就可以启动服务器程序了。需要注意的是，mysqld.server 文件其实是一个链接文件，它对应的时机文件是 ../support-files/mysql.server
 - **mysqld_multi** 在一台计算机上运行多个服务器实例
 
-```bash
-{% mermaid %}
+![img.png](../../../images/db/MySQL/25.png)
+```shell
 flowchart LR
 A[mysqld.server]
 B[mysql_safe]
 C[mysqld]
 
 A-->|启动|B-->|监控并启动|C
-{% endmermaid %}
 ```
 
 ### 启动客户端程序

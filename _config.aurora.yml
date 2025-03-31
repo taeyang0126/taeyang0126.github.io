@@ -95,7 +95,7 @@ socials:
 #! @docs https://aurora.tridiamond.tech/guide/theme.html
 #! ---------------------------------------------------------------
 site_meta:
-  cdn: en
+  cdn: cn
   favicon:
   description: ''
   keywords: ''

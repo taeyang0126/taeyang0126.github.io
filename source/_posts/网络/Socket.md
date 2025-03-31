@@ -8,13 +8,13 @@ categories:
    - 网络
 abbrlink: 17349
 date: 2025-02-09 17:43:22
-cover: ../../images/network/img.png
+cover: ../../images/network/01.png
 ---
 
 - [聊聊Netty那些事儿之从内核角度看IO模型](https://zhuanlan.zhihu.com/p/455352339)
 
 ### Socket 数据接收到 Epoll 处理流程
-![img](../../images/network/img.png)
+![img](../../images/network/01.png)
 
 ```
 sequenceDiagram
