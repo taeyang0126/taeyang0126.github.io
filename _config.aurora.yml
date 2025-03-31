@@ -95,7 +95,7 @@ socials:
 #! @docs https://aurora.tridiamond.tech/guide/theme.html
 #! ---------------------------------------------------------------
 site_meta:
-  cdn: cn
+  cdn: en
   favicon:
   description: ''
   keywords: ''
@@ -118,7 +118,7 @@ gitalk:
   id: uid
   language: en
   distractionFreeMode: true
-  recentComment: true
+  recentComment: false
   proxy: ''
 
 # Valine comment plugin (recommended!)
@@ -135,13 +135,13 @@ valine:
   meta: ['nick', 'mail']
   requiredFields: ['nick', 'mail']
   admin: '' # admin username
-  recentComment: true
+  recentComment: false
 
 # Twikoo comment plugin
 # see https://twikoo.js.org/quick-start.html
 twikoo:
   enable: false
-  recentComment: true
+  recentComment: false
   envId: xxxxxxxxxxxxxxx # 腾讯云环境填 envId；Vercel 环境填地址（https://xxx.vercel.app）
   # region: ap-guangzhou # 环境地域，默认为 ap-shanghai，腾讯云环境填 ap-shanghai 或 ap-guangzhou；Vercel 环境不填
   lang: 'en' # 用于手动设定评论区语言，支持的语言列表 https://github.com/imaegoo/twikoo/blob/main/src/client/utils/i18n/index.js
@@ -150,7 +150,7 @@ twikoo:
 # see https://waline.js.org/guide/get-started/
 waline:
   enable: false
-  recentComment: true
+  recentComment: false
   reaction: false
   login: 'disable'
   meta: ['nick', 'mail']
@@ -394,9 +394,7 @@ aurora_bot:
 #! ---------------------------------------------------------------
 injects:
   scripts:
-    - <script src="https://unpkg.com/mermaid@10.6.1/dist/mermaid.min.js"></script>
   css:
-    - <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jetbrains-mono@1.0.6/css/jetbrains-mono.min.css">
 
 
 #! ---------------------------------------------------------------
