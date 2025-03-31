@@ -27,8 +27,5 @@
     "hexo-tag-mermaid": "^1.0.0",
     "hexo-theme-aurora": "^2.5.3",
     "hexo-theme-landscape": "^1.0.0"
-  },
-  "devDependencies": {
-    "shiki-transformer-copy-button": "^0.0.3"
   }
 }
