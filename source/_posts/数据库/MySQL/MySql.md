@@ -21,6 +21,7 @@ date: 2025-02-10 19:52:22
 - **mysqld.server** 也是一个启动脚本，会间接的调用 mysqld_safe。在执行 mysql.server 时，在后面添加 start 参数就可以启动服务器程序了。需要注意的是，mysqld.server 文件其实是一个链接文件，它对应的时机文件是 ../support-files/mysql.server
 - **mysqld_multi** 在一台计算机上运行多个服务器实例
 
+```bash
 {% mermaid %}
 flowchart LR
 A[mysqld.server]
@@ -29,6 +30,7 @@ C[mysqld]
 
 A-->|启动|B-->|监控并启动|C
 {% endmermaid %}
+```
 
 ### 启动客户端程序
 
