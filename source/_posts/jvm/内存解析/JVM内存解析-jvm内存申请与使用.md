@@ -2,7 +2,7 @@
 title: JVM内存解析 - 2.JVM 内存申请与使用流程
 abbrlink: 58697
 date: 2025-03-01 15:46:30
-tags: [JVM, 内存, linux内存]
+tags: [JVM, 内存]
 categories: [JVM内存解析]
 ---
 
