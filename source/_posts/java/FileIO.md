@@ -1,8 +1,8 @@
 ---
-title: MappedByteBuffer VS FileChannel
+title: FileIO
 abbrlink: 45275
 date: 2025-05-11 10:43:22
-tags: [ JAVA, mmap, FileChannel ]
+tags: [ JAVA, mmap, FileChannel, FileIO ]
 categories: [ JAVA ]
 cover: https://pic4.zhimg.com/v2-99ba5bbbf8253b2f492af33f457d68cf_1440w.jpg
 ---
@@ -11,7 +11,7 @@ cover: https://pic4.zhimg.com/v2-99ba5bbbf8253b2f492af33f457d68cf_1440w.jpg
 
 - [MappedByteBuffer VS FileChannel：从内核层面对比两者的性能差异](https://zhuanlan.zhihu.com/p/689498356)
 
-### FileChannel 读写文件过程
+## FileChannel 读写文件过程
 
 当我们使用 HeapByteBuffer 传入 FileChannel 的 read or write 方法对文件进行读写时，JDK 会首先创建一个临时的 DirectByteBuffer，对于 `FileChannel#read` 来说，JDK 在 native 层会将 read 系统调用从文件中读取的内容首先存放到这个临时的 DirectByteBuffer 中，然后在拷贝到 HeapByteBuffer 中返回。
 
@@ -61,7 +61,7 @@ public class IOUtil {
 }
 ```
 
-#### 为什么必须要在 DirectByteBuffer 中做一次中转
+### 为什么必须要在 DirectByteBuffer 中做一次中转
 
 ![](https://pic4.zhimg.com/v2-a2de0421c5fda585ce677e1121314e23_1440w.jpg)
 
@@ -77,7 +77,7 @@ public final class Unsafe {
                                   long bytes);  
 }
 ```
-#### FileChannel 对文件的读流程
+### FileChannel 对文件的读流程
 
 ![](https://pic4.zhimg.com/v2-99ba5bbbf8253b2f492af33f457d68cf_1440w.jpg)
 
@@ -90,7 +90,7 @@ public final class Unsafe {
 
 从以上过程我们可以看到，当使用 FileChannel#read 对文件读取的时候，如果文件数据在 page cache 中，涉及到的性能开销点主要有两次上下文切换，以及一次 CPU 拷贝。其中上下文切换是主要的性能开销点。
 
-#### FileChannel 对文件的写流程
+### FileChannel 对文件的写流程
 
 ![](https://pic4.zhimg.com/v2-47db9ba10664c46773d6f0da662ffc21_1440w.jpg)
 
@@ -103,7 +103,7 @@ public final class Unsafe {
 
 ---
 
-### MappedByteBuffer 读写文件过程
+## MappedByteBuffer 读写文件过程
 
 ![](https://picx.zhimg.com/v2-9921fd1e142ef404977d1be969f2a821_1440w.jpg)
 
@@ -115,8 +115,6 @@ public final class Unsafe {
 
 ![](https://pic4.zhimg.com/v2-9235731ee9c68d8b173c784d97b309e7_1440w.jpg)
 
-image.png
-
 后面 JVM 进程对 MappedByteBuffer 的读写就相当于是直接读写 page cache 了，关于这一点，很多读者朋友会有这样的疑问：page cache 是内核态的部分，为什么我们通过用户态的 MappedByteBuffer 就可以直接访问内核态的东西了？
 
 这里大家不要被内核态这三个字给唬住了，虽然 page cache 是属于内核部分的，但其本质上还是一块普通的物理内存，想想我们是怎么访问内存的 ？ 不就是先有一段虚拟内存，然后在申请一段物理内存，最后通过进程页表将虚拟内存和物理内存映射起来么，进程在访问虚拟内存的时候，通过页表找到其映射的物理内存地址，然后直接通过物理内存地址访问物理内存。
@@ -126,4 +124,57 @@ image.png
 也正因为 MappedByteBuffer 背后映射的物理内存是内核空间的 page cache，所以它不会消耗任何用户空间的物理内存（JVM 的堆外内存），因此也不会受到 `-XX:MaxDirectMemorySize` 参数的限制。
 
 --- 
+
+## MappedByteBuffer VS FileChannel
+
+现在已经清楚了 FileChannel 以及 MappedByteBuffer 进行文件读写的整个过程，下面就来把两种文件读写方式放在一起来对比一下，但这里有一个对比的前提：
+- 对于 **MappedByteBuffer** 来说，我们对比的是其在缺页处理之后，读写文件的开销。
+- 对于 **FileChannel** 来说，我们对比的是文件数据已经存在于 page cache 中的情况下读写文件的开销。
+
+因为笔者认为只有基于这个前提来对比两者的性能差异才有意义。
+
+- 对于 FileChannel 来说，无论是通过 read 方法对文件的读取，还是通过 write 方法对文件的写入，它们都需要**两次上下文切换**，以及**一次 CPU 拷贝**，其中上下文切换是其主要的性能开销点。
+- 对于 MappedByteBuffer 来说，由于其背后直接映射的就是 page cache，读写 MappedByteBuffer 本质上就是读写 page cache，整个读写过程和读写普通的内存没有任何区别，因此**没有上下文切换的开销，不会切态，更没有任何拷贝**。
+
+从上面的对比我们可以看出使用 MappedByteBuffer 来读写文件既没有上下文切换的开销，也没有数据拷贝的开销（可忽略），简直是完爆 FileChannel。
+既然 MappedByteBuffer 这么屌，那我们何不干脆在所有文件的读写场景中全部使用 MappedByteBuffer，这样岂不省事 ？JDK 为何还保留了 FileChannel 的 read , write 方法呢 ？让我们来带着这个疑问继续下面的内容~~
+
+### 通过 Benchmark 从内核层面对比两者的性能差异
+从两个方面来对比 MappedByteBuffer 和 FileChannel 的文件读写性能：
+1. 文件数据完全加载到 page cache 中，并且将 page cache 锁定在内存中，不允许 swap，MappedByteBuffer 不会有缺页中断，FileChannel 不会触发磁盘 IO 都是直接对 page cache 进行读写。
+2. 文件数据不在 page cache 中，我们加上了 缺页中断，磁盘IO，以及 swap 对文件读写的影响。
+
+具体的测试思路是，用 MappedByteBuffer 和 FileChannel 分别以 64B ,128B ,512B ,1K ,2K ,4K ,8K ,32K ,64K ,1M ,32M ,64M ,512M 为单位依次对 1G 大小的文件进行读写，从以上两个方面对比两者在不同读写单位下的性能表现。
+
+[测试代码](https://github.com/taeyang0126/JavaForge/tree/main/src/main/java/com/lei/java/forge/fileio)
+
+测试环境:
+- 处理器：M1 Max
+- 内存：64 GB
+- 操作系统：macOS
+- JVM：OpenJDK 24-graal
+
+#### 文件数据在 page cache 中
+
+下面是 MappedByteBuffer 和 FileChannel 在不同数据集下对 page cache 的读取性能测试结果:
+
+![img.png](../../images/java/02.png)
+
+能看出在 page cache 下 mmap 性能好于 fileChannel，这与 [bin神文章](https://zhuanlan.zhihu.com/p/689498356) 测试结果不一致！！所以实际的性能表现还是得在自己的环境中进行测试
+
+下面是 MappedByteBuffer 和 FileChannel 在不同数据集下对 page cache 的写入性能测试结果:
+
+![img.png](../../images/java/03.png)
+
+#### 文件数据不在 page cache 中
+
+下面是 MappedByteBuffer 和 FileChannel 在不同数据集下对文件的读取性能测试结果:
+
+![img.png](../../images/java/04.png)
+
+从这里我们可以看到，在加入了缺页中断和磁盘 IO 的影响之后，MappedByteBuffer 在缺页中断的影响下平均比之前多出了 100 ms 的开销。FileChannel 在磁盘 IO 的影响下平均比之前多出了 50 ms 的开销。
+
+下面是 MappedByteBuffer 和 FileChannel 在不同数据集下对文件的写入性能测试结果:
+
+![img.png](../../images/java/05.png)
 
