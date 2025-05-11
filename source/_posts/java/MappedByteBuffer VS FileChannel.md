@@ -1,10 +1,10 @@
 ---
-title: HttpClient基准测试
+title: MappedByteBuffer VS FileChannel
 abbrlink: 45275
 date: 2025-05-11 10:43:22
 tags: [ JAVA, mmap, FileChannel ]
 categories: [ JAVA ]
-cover: ../../images/java/01.png
+cover: https://pic4.zhimg.com/v2-99ba5bbbf8253b2f492af33f457d68cf_1440w.jpg
 ---
 
 > 本文基于 Linux 内核 5.4 版本进行讨论
