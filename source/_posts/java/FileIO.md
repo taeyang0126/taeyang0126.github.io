@@ -9,6 +9,8 @@ cover: https://pic4.zhimg.com/v2-99ba5bbbf8253b2f492af33f457d68cf_1440w.jpg
 
 > 本文基于 Linux 内核 5.4 版本进行讨论
 
+- [从 Linux 内核角度探秘 JDK MappedByteBuffer（上）](https://zhuanlan.zhihu.com/p/687793377)
+- [从 Linux 内核角度探秘 JDK MappedByteBuffer（下）](https://zhuanlan.zhihu.com/p/687796037)
 - [MappedByteBuffer VS FileChannel：从内核层面对比两者的性能差异](https://zhuanlan.zhihu.com/p/689498356)
 
 ## FileChannel 读写文件过程
@@ -160,7 +162,7 @@ public final class Unsafe {
 
 ![img.png](../../images/java/02.png)
 
-能看出在 page cache 下 mmap 性能好于 fileChannel，这与 [bin神文章](https://zhuanlan.zhihu.com/p/689498356) 测试结果不一致！！所以实际的性能表现还是得在自己的环境中进行测试
+能看出在 page cache 下 mmap 性能好于 fileChannel，这与 [bin神文章](https://zhuanlan.zhihu.com/p/689498356) 测试结果不一致！！但是能看出随着文件越来越大，FileChannel与 mmap 的性能差距越来越小，至于实际环境使用哪个，需要根据实际情况测试后进行选择
 
 下面是 MappedByteBuffer 和 FileChannel 在不同数据集下对 page cache 的写入性能测试结果:
 
@@ -177,4 +179,130 @@ public final class Unsafe {
 下面是 MappedByteBuffer 和 FileChannel 在不同数据集下对文件的写入性能测试结果:
 
 ![img.png](../../images/java/05.png)
+
+#### 为什么数据量越大，性能差距越小，甚至 fileChannel 好于 mmap？
+
+##### mmap 的性能开销
+1. MappedByteBuffer 的主要性能开销是在缺页中断，缺页中断会涉及上下文的切换
+2. MappedByteBuffer 的缺页中断也有磁盘IO 也有预读
+3. MappedByteBuffer 是需要进程页表支持的，在实际访问内存的过程中会遇到页表竞争以及 TLB shootdown 等问题
+4. MappedByteBuffer 刚刚被映射出来的时候，其在进程页表中对应的各级页表以及页目录可能都是空的。所以缺页中断这里需要做的一件非常重要的事情就是补齐完善 MappedByteBuffer 在进程页表中对应的各级页目录表和页表，并在页表项中将 page cache 映射起来，最后还要刷新 TLB 等硬件缓存
+
+##### FileChannel 的性能开销
+1. FileChannel 的主要开销是在系统调用，会涉及上下文的切换
+2. FileChannel 在读写文件的时候有磁盘IO，有预读
+
+理论上来讲 MappedByteBuffer 应该是完爆 FileChannel 才对啊，因为 MappedByteBuffer 没有系统调用的开销，为什么性能在后面反而被 FileChannel 追赶甚至超越呢？根据上面的性能开销分析，实际上 mmap 的缺页中断要比 FileChannel 的系统调用开销要大。从上面的测试也能看出来，MappedByteBuffer 在缺页中断的影响下平均比之前多出了 100 ms 的开销，FileChannel 在磁盘 IO 的影响下平均比之前多出了 50 ms 的开销。
+
+MappedByteBuffer 的缺页中断是平均每 4K 触发一次，而 FileChannel 的系统调用开销则是每次都会触发。当两者单次按照小数据量读取 1G 文件的时候，MappedByteBuffer 的缺页中断较少触发，而 FileChannel 的系统调用却在频繁触发，所以在这种情况下，FileChannel 的系统调用是主要的性能瓶颈。
+
+这也就解释了当我们在**频繁读写小数据量的时候，MappedByteBuffer 的性能具有压倒性优势**。当单次读写的数据量越来越大的时候，FileChannel 调用的次数就会越来越少，**这时候缺页中断就会成为 MappedByteBuffer 的性能瓶颈，到某一个点之后，FileChannel 就会反超 MappedByteBuffer。因此当我们需要高吞吐量读写文件的时候 FileChannel 反而是最合适的**。
+
+##### 脏页回写对应性能的性能
+
+内核的脏页回写也会对 MappedByteBuffer 以及 FileChannel 的文件写入性能有非常大的影响，无论是我们在用户态中调用 fsync 或者 msync 主动触发脏页回写还是内核通过 pdflush 线程异步脏页回写，当我们使用 MappedByteBuffer 或者 FileChannel 写入 page cache 的时候，如果恰巧遇到文件页的回写，那么写入操作都会有非常大的延迟，这个在 MappedByteBuffer 身上体现的更为明显。
+
+###### 脏页回写对 FileChannel 的写入影响
+```c
+struct page *grab_cache_page_write_begin(struct address_space *mapping,
+          pgoff_t index, unsigned flags)
+{
+  struct page *page;
+  // 在 page cache 中查找写入数据的缓存页
+  page = pagecache_get_page(mapping, index, fgp_flags,
+      mapping_gfp_mask(mapping));
+  if (page)
+    wait_for_stable_page(page);
+  return page;
+}
+```
+`wait_for_stable_page`，这个函数的作用就是判断当前 page cache 中的这个文件页是否正在被回写，如果正在回写到磁盘，那么**当前进程就会阻塞直到脏页回写完毕**。等到脏页回写完毕之后，进程才会调用 `iov_iter_copy_from_user_atomic` 将待写入数据拷贝到 page cache 中，最后在 write_end 中调用 `mark_buffer_dirty` 将写入的文件页标记为脏页。
+
+除了正在回写的脏页会阻塞 FileChannel 的写入过程之外，如果此时系统中的脏页太多了，超过了 dirty_ratio 或者 dirty_bytes 等内核参数配置的脏页比例，那么进程就会同步去回写脏页，这也对写入性能有非常大的影响。
+
+###### 脏页回写对 MappedByteBuffer 的写入影响
+
+**通过 MappedByteBuffer 写入 page cache 之后，page cache 中的相应文件页是怎么变脏的 ？**
+
+MappedByteBuffer 不会走系统调用，直接读写的就是 page cache，而 page cache 也只是内核在软件层面上的定义，它的本质还是物理内存。另外脏页以及脏页的回写都是**内核**在软件层面上定义的概念和行为。MappedByteBuffer 直接写入的是硬件层面的物理内存（page cache），硬件哪管你软件上定义的脏页以及脏页回写啊，没有内核的参与，那么在通过 MappedByteBuffer 写入文件页之后，文件页是如何变脏的呢 ？还有就是 MappedByteBuffer 如何探测到对应文件页正在回写并阻塞等待呢 ？
+
+既然我们涉及到了软件的概念和行为，那么一定就会有内核的参与，我们回想一下整个 MappedByteBuffer 的生命周期，唯一一次和内核打交道的机会就是缺页中断，我们看看能不能在缺页中断中发现点什么~
+
+当 MappedByteBuffer 刚刚被 mmap 映射出来的时候它还只是一段普通的虚拟内存，背后什么都没有，其在进程页表中的各级页目录项以及页表项都还是空的。
+
+当我们立即对 MappedByteBuffer 进行写入的时候就会发生缺页中断，在缺页中断的处理中，内核会在进程页表中补齐与 MappedByteBuffer 映射相关的各级页目录并在页表项中与 page cache 进行映射。
+
+```c
+static vm_fault_t do_shared_fault(struct vm_fault *vmf)
+{
+    // 从 page cache 中读取文件页
+    ret = __do_fault(vmf);   
+    if (vma->vm_ops->page_mkwrite) {
+        unlock_page(vmf->page);
+        // 将文件页变为可写状态，并设置文件页为脏页
+        // 如果文件页正在回写，那么阻塞等待
+        tmp = do_page_mkwrite(vmf);
+    }
+}
+```
+
+除此之外，内核还会调用 do_page_mkwrite 方法将 MappedByteBuffer 对应的页表项变成可写状态，并将与其映射的文件页立即设置为脏页，如果此时文件页正在回写，那么 MappedByteBuffer 在缺页中断中也会阻塞。
+
+```c
+int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+    get_block_t get_block)
+{
+ set_page_dirty(page);
+ wait_for_stable_page(page);
+}
+```
+这里我们可以看到 MappedByteBuffer 在内核中是先变脏然后在对 page cache 进行写入，而 FileChannel 是先写入 page cache 后在变脏。
+
+从此之后，通过 MappedByteBuffer 对 page cache 的写入就会变得非常丝滑，那么问题来了，当 page cache 中的脏页被内核异步回写之后，内核会把文件页中的脏页标记清除掉，那么这时如果 MappedByteBuffer 对 page cache 写入，**由于不会发生缺页中断，那么 page cache 中的文件页如何再次变脏呢** ？
+
+内核这里的设计非常巧妙，当内核回写完脏页之后，会调用 page_mkclean_one 函数清除文件页的脏页标记，在这里会首先通过 page_vma_mapped_walk 判断该文件页是不是被 mmap 映射到进程地址空间的，如果是，那么说明该文件页是被 MappedByteBuffer 映射的。随后内核就会做一些特殊处理：
+1. 通过 pte_wrprotect 对 MappedByteBuffer 在进程页表中对应的页表项 pte 进行写保护，变为只读权限。
+2. 通过 pte_mkclean 清除页表项上的脏页标记。
+
+```c
+static bool page_mkclean_one(struct page *page, struct vm_area_struct *vma,
+       unsigned long address, void *arg)
+{
+
+ while (page_vma_mapped_walk(&pvmw)) {
+  int ret = 0;
+
+  address = pvmw.address;
+  if (pvmw.pte) {
+   pte_t entry;
+   entry = ptep_clear_flush(vma, address, pte);
+   entry = pte_wrprotect(entry);
+   entry = pte_mkclean(entry);
+   set_pte_at(vma->vm_mm, address, pte, entry);
+  }
+ return true;
+}
+```
+
+这样一来，在脏页回写完毕之后，MappedByteBuffer 在页表中就变成**只读**的了，这一切对用户态的我们都是透明的，当再次对 MappedByteBuffer 写入的时候就不是那么丝滑了，**会触发写保护缺页中断**（我们以为不会有缺页中断，其实是有的），**在写保护中断的处理中，内核会重新将页表项 pte 变为可写，文件页标记为脏页**。如果文件页正在回写，缺页中断会阻塞。如果脏页积累的太多，这里也会同步回写脏页。
+
+```c
+static vm_fault_t wp_page_shared(struct vm_fault *vmf)
+    __releases(vmf->ptl)
+{
+    if (vma->vm_ops && vma->vm_ops->page_mkwrite) {
+        // 设置页表项为可写
+        // 标记文件页为脏页
+        // 如果文件页正在回写则阻塞等待
+        tmp = do_page_mkwrite(vmf);
+    } 
+    // 判断是否需要同步回写脏页，
+    fault_dirty_shared_page(vma, vmf->page);
+    return VM_FAULT_WRITE;
+}
+```
+
+**所以并不是对 MappedByteBuffer 调用 mlock 之后就万事大吉了，在遇到脏页回写的时候，MappedByteBuffer 依然会发生写保护类型的缺页中断**。在缺页中断处理中会等待脏页的回写，并且还可能会发生脏页的同步回写。这对 MappedByteBuffer 的写入性能会有非常大的影响。这就是为什么`RocketMQ`提供了读写分离的场景，如果我们通过 mappedByteBuffer 来高频地不断向 CommitLog 写入消息的话， page cache 中的脏页比例就会越来越大，而 page cache 回写脏页的时机是由内核来控制的，当脏页积累到一定程度，内核就会启动 pdflush 线程来将 page cache 中的脏页回写到磁盘中。
+虽然现在 page cache 已经被我们 mlock 住了，但是我们在用户态无法控制脏页的回写，当脏页回写完毕之后，我们通过 mappedByteBuffer 写入文件时**仍然会触发写保护缺页中断**。这样也会加大 mappedByteBuffer 的写入延迟，产生性能毛刺。为了避免这种毛刺，所以产生了读写分离，后续 Broker 再对 CommitLog 写入消息的时候，首先会写到 writeBuffer 中，因为 writeBuffer 只是一段普通的堆外内存，不会涉及到脏页回写，因此 CommitLog 的写入过程就会非常平滑，不会有性能毛刺。而从 CommitLog 读取消息的时候仍然是通过 mappedByteBuffer 进行。
+
 
