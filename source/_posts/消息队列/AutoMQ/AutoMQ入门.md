@@ -9,7 +9,7 @@ categories:
   - 消息队列
 abbrlink: 17349
 date: 2025-05-25 19:55:22
-cover: https://github.com/AutoMQ/automq/blob/main/docs/images/automq_simple_arch.png
+cover: ../../../images/message/automq/01.png
 ---
 
 - [官方文档](https://www.automq.com/docs/zh/automq/what-is-automq/overview)
