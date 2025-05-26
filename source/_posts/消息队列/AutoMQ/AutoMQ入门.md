@@ -22,4 +22,5 @@ cover: ../../../images/message/automq/01.png
 - [持续数据自平衡](https://www.automq.com/docs/zh/automq/architecture/technical-advantage/continuous-self-balancing)
 - [无状态 Broker](https://www.automq.com/docs/zh/automq/architecture/technical-advantage/stateless-broker)
 - [冷热隔离 & 5 倍冷读效率](https://www.automq.com/docs/zh/automq/architecture/technical-advantage/5x-catch-up-read-efficiency#automq-%E5%86%B7%E7%83%AD%E9%9A%94%E7%A6%BB%E6%9E%B6%E6%9E%84)
+- [海外开发者为 AutoMQ 写的精品介绍](https://segmentfault.com/a/1190000045508756)
 
